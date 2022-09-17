@@ -1,0 +1,96 @@
+#!/bin/bash
+
+# set -uex
+set -ue
+
+usage() {
+	echo 'Usage:' 1>&2
+	echo -e "\t$0 SRC_IMG_FILE DST_IMG_FILE" 1>&2
+	echo -e "\t$0 -h" 1>&2
+}
+
+if [ $# -eq 1 ]; then
+	if [ "$1" = '-h' ]; then
+		usage
+		exit 0
+	fi
+fi
+if [ $# -ne 2 ]; then
+	usage
+	exit 1
+fi
+
+SRC_IMG_FILE=$1
+DST_IMG_FILE=$2
+
+txt22bpp() {
+	local txt=$1
+	local out=$2
+
+	local msb=''
+	local lsb=''
+	for i in $(seq 64); do
+		local ch=$(cut -c${i} ${txt})
+		case $ch in
+		A)
+			msb="${msb}1"
+			lsb="${lsb}1"
+			;;
+		B)
+			msb="${msb}1"
+			lsb="${lsb}0"
+			;;
+		C)
+			msb="${msb}0"
+			lsb="${lsb}1"
+			;;
+		D)
+			msb="${msb}0"
+			lsb="${lsb}0"
+			;;
+		esac
+		if [ $((i % 8)) -eq 0 ]; then
+			local msb_hex=$(echo "obase=16;ibase=2;${msb}" | bc)
+			local lsb_hex=$(echo "obase=16;ibase=2;${lsb}" | bc)
+			echo -en "\x${lsb_hex}\x${msb_hex}" >>${out}
+			msb=''
+			lsb=''
+		fi
+	done
+}
+
+tempdir="${DST_IMG_FILE}_temp"
+mkdir ${tempdir}
+trap "rm -rf $tempdir" EXIT
+
+src_name=$(basename $SRC_IMG_FILE | rev | cut -d'.' -f2- | rev)
+
+convert $SRC_IMG_FILE -type GrayScale $tempdir/${src_name}_gray.png
+convert $tempdir/${src_name}_gray.png -depth 2 $tempdir/${src_name}_depth2.png
+# 4色への減色の際にうまく行かない時は、予め元画像をGIMP等で4色に減色した上で、
+# convertコマンドによる減色処理は行わないようにするとうまく行くこともある
+# cp $tempdir/${src_name}_gray.png $tempdir/${src_name}_depth2.png
+convert $tempdir/${src_name}_depth2.png $tempdir/${src_name}_depth2.pgm
+
+oct4col=$(sed -n '$p' $tempdir/${src_name}_depth2.pgm | od -bv -w1 \
+		  | cut -d' ' -f2 | head -n -1 | sort -nu | sed 's/^/\\/' \
+		  | tr -d '\n')
+
+mkdir $tempdir/${src_name}_crop
+convert $tempdir/${src_name}_depth2.pgm \
+	-crop 8x8 $tempdir/${src_name}_crop/%03d.pgm
+
+mkdir $tempdir/${src_name}_txt
+for pgm_file in $(ls $tempdir/${src_name}_crop); do
+	pgm_name=$(echo $pgm_file | rev | cut -d'.' -f2- | rev)
+	sed -n '$p' $tempdir/${src_name}_crop/$pgm_file \
+		| tr "$oct4col" 'ABCD' \
+		     >$tempdir/${src_name}_txt/${pgm_name}.txt
+done
+
+for txt_file in $(ls $tempdir/${src_name}_txt); do
+	txt_name=$(echo $txt_file | rev | cut -d'.' -f2- | rev)
+	txt22bpp $tempdir/${src_name}_txt/$txt_file $tempdir/${txt_name}.2bpp
+done
+
+cat $tempdir/*.2bpp >$DST_IMG_FILE
