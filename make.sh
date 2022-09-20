@@ -10,7 +10,7 @@ usage() {
 	echo -e '\trun'
 }
 
-TARGET=amado
+TARGET=daisy-os
 ROM_FILE_NAME=${TARGET}.gb
 RAM_FILE_NAME=${TARGET}.sav
 EMU=bgb
