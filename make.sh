@@ -105,7 +105,7 @@ print_fs_system() {
 
 		# sound_ch2_rand_description.2bpp
 		if [ ! -f fs_system/0200.2bpp ]; then
-			cp imgs/sound_ch2_rand_description.2bpp fs_system/0200.2bpp
+			cp files_img/sound_ch2_rand_description.2bpp fs_system/0200.2bpp
 		fi
 
 		# sound_ch2_rand.exe
@@ -134,7 +134,7 @@ print_fs_system() {
 
 		# # version.2bpp
 		# if [ ! -f fs_system/0400.2bpp ]; then
-		# 	cp imgs/version.2bpp fs_system/0400.2bpp
+		# 	cp files_img/version.2bpp fs_system/0400.2bpp
 		# fi
 
 		# # appendix.txt
