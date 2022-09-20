@@ -116,8 +116,8 @@ print_fs_system() {
 
 		# colophon_random_sound_play.txt
 		if [ ! -f fs_system/0400.txt ]; then
-			make -C docs/colophon_random_sound_play
-			cp docs/colophon_random_sound_play/colophon_random_sound_play.txt fs_system/0400.txt
+			make -C files_txt/colophon_random_sound_play
+			cp files_txt/colophon_random_sound_play/colophon_random_sound_play.txt fs_system/0400.txt
 		fi
 
 		# # cartram_formatter.exe
@@ -128,8 +128,8 @@ print_fs_system() {
 
 		# # welcome.txt
 		# if [ ! -f fs_system/0300.txt ]; then
-		# 	make -C docs/welcome
-		# 	cp docs/welcome/welcome.txt fs_system/0300.txt
+		# 	make -C files_txt/welcome
+		# 	cp files_txt/welcome/welcome.txt fs_system/0300.txt
 		# fi
 
 		# # version.2bpp
@@ -139,8 +139,8 @@ print_fs_system() {
 
 		# # appendix.txt
 		# if [ ! -f fs_system/0450.txt ]; then
-		# 	make -C docs/appendix
-		# 	cp docs/appendix/appendix.txt fs_system/0450.txt
+		# 	make -C files_txt/appendix
+		# 	cp files_txt/appendix/appendix.txt fs_system/0450.txt
 		# fi
 
 		# # lifegame_glider.exe
@@ -244,14 +244,14 @@ clean_apps() {
 	make -C apps/sound_ch2_rand clean
 }
 
-clean_docs() {
+clean_files_txt() {
 	# welcome.txt
-	make -C docs/welcome clean
+	make -C files_txt/welcome clean
 }
 
 clean_fs_system() {
 	clean_apps
-	clean_docs
+	clean_files_txt
 	rm -rf fs_system.img fs_system
 }
 
