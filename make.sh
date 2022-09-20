@@ -99,8 +99,8 @@ print_fs_system() {
 
 		# binedit.exe
 		if [ ! -f fs_system/0100.exe ]; then
-			make -C apps/binedit
-			cp apps/binedit/binedit.exe fs_system/0100.exe
+			make -C files_exe/binedit
+			cp files_exe/binedit/binedit.exe fs_system/0100.exe
 		fi
 
 		# sound_ch2_rand_description.2bpp
@@ -110,8 +110,8 @@ print_fs_system() {
 
 		# sound_ch2_rand.exe
 		if [ ! -f fs_system/0300.exe ]; then
-			make -C apps/sound_ch2_rand
-			cp apps/sound_ch2_rand/sound_ch2_rand.exe fs_system/0300.exe
+			make -C files_exe/sound_ch2_rand
+			cp files_exe/sound_ch2_rand/sound_ch2_rand.exe fs_system/0300.exe
 		fi
 
 		# colophon_random_sound_play.txt
@@ -122,8 +122,8 @@ print_fs_system() {
 
 		# # cartram_formatter.exe
 		# if [ ! -f fs_system/0200.exe ]; then
-		# 	make -C apps/cartram_formatter
-		# 	cp apps/cartram_formatter/cartram_formatter.exe fs_system/0200.exe
+		# 	make -C files_exe/cartram_formatter
+		# 	cp files_exe/cartram_formatter/cartram_formatter.exe fs_system/0200.exe
 		# fi
 
 		# # welcome.txt
@@ -145,14 +145,14 @@ print_fs_system() {
 
 		# # lifegame_glider.exe
 		# if [ ! -f fs_system/0500.exe ]; then
-		# 	make -C apps/lifegame_glider
-		# 	cp apps/lifegame_glider/lifegame_glider.exe fs_system/0500.exe
+		# 	make -C files_exe/lifegame_glider
+		# 	cp files_exe/lifegame_glider/lifegame_glider.exe fs_system/0500.exe
 		# fi
 
 		# # lifegame_random.exe
 		# if [ ! -f fs_system/0600.exe ]; then
-		# 	make -C apps/lifegame_random
-		# 	cp apps/lifegame_random/lifegame_random.exe fs_system/0600.exe
+		# 	make -C files_exe/lifegame_random
+		# 	cp files_exe/lifegame_random/lifegame_random.exe fs_system/0600.exe
 		# fi
 
 		tools/make_fs fs_system fs_system.img
@@ -224,24 +224,24 @@ clean_boot_kern() {
 	rm -f boot_kern.bin
 }
 
-clean_apps() {
+clean_files_exe() {
 	# binedit.exe
-	make -C apps/binedit clean
+	make -C files_exe/binedit clean
 
 	# cartram_formatter.exe
-	make -C apps/cartram_formatter clean
+	make -C files_exe/cartram_formatter clean
 
 	# lifegame_glider.exe
-	make -C apps/lifegame_glider clean
+	make -C files_exe/lifegame_glider clean
 
 	# lifegame_random.exe
-	make -C apps/lifegame_random clean
+	make -C files_exe/lifegame_random clean
 
 	# # sound_ch2_C4D4E4F4G4A4B4C5.exe
-	# make -C apps/sound_ch2_C4D4E4F4G4A4B4C5 clean
+	# make -C files_exe/sound_ch2_C4D4E4F4G4A4B4C5 clean
 
 	# sound_ch2_rand.exe
-	make -C apps/sound_ch2_rand clean
+	make -C files_exe/sound_ch2_rand clean
 }
 
 clean_files_txt() {
@@ -250,7 +250,7 @@ clean_files_txt() {
 }
 
 clean_fs_system() {
-	clean_apps
+	clean_files_exe
 	clean_files_txt
 	rm -rf fs_system.img fs_system
 }
