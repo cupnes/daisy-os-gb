@@ -71,7 +71,9 @@ var_exe_3=c025	# ファイルタイプ
 var_timer_handler=c026
 # 現状、0xc028 までは使っている
 
-# 変数領域が$GBOS_TDQ_FIRSTに達しないようにすること
-# (include/tdq.sh参照)
+# 0xc300 - 0xcefd : TDQ
+# (include/tdq.sh 参照)
 
 var_dbg_over_vblank=cf00	# vblank期間を超えたことを示すフラグ
+
+# 0xdc00 - : タイルミラー領域

@@ -3648,6 +3648,7 @@ tdq_handler() {
 event_driven() {
 	local sz
 
+	# [割り込み待ち]
 	lr35902_halt
 
 
@@ -3682,6 +3683,7 @@ event_driven() {
 	sz=$(stat -c '%s' src/event_driven.1.o)
 	lr35902_rel_jump_with_cond Z $(two_digits_d $sz)
 	cat src/event_driven.1.o
+
 
 	# [タイル描画キュー処理]
 	tdq_handler
@@ -3728,7 +3730,6 @@ event_driven() {
 	cat src/event_driven.5.o
 
 
-
 	# [ボタンリリース処理]
 
 	# ボタンのリリースがあった場合それに応じた処理を実施
@@ -3745,7 +3746,6 @@ event_driven() {
 	# 前回の入力状態更新
 	lr35902_copy_to_from regA regD
 	lr35902_copy_to_addr_from_regA $var_prv_btn
-
 
 
 	# [キー入力処理]
