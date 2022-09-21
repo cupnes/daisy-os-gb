@@ -458,60 +458,6 @@ f_clr_win() {
 	lr35902_pop_reg regAF
 	lr35902_return
 }
-f_clr_win_old2() {
-	# 計時(*clr_win.2): ここから(*clr_win.3)までで 1/4096 秒
-	# (* (/ 1 4096.0) 1000)0.244140625 ms
-	lr35902_push_reg regAF
-	lr35902_push_reg regDE
-
-	lr35902_set_reg regA $GBOS_TILE_NUM_SPC
-
-	lr35902_set_reg regD 03
-	lr35902_set_reg regE 02
-	lr35902_call $a_lay_tile_at_tcoord
-
-	lr35902_inc regE
-	lr35902_call $a_lay_tile_at_tcoord
-
-	lr35902_inc regD
-	lr35902_call $a_lay_tile_at_tcoord
-
-	lr35902_dec regE
-	lr35902_call $a_lay_tile_at_tcoord
-
-	lr35902_pop_reg regDE
-	lr35902_pop_reg regAF
-	# 計時(*clr_win.3)
-	lr35902_return
-}
-f_clr_win_old() {
-	# 計時(*f_clr_win.1): ここから(*f_clr_win.2)までで 14/4096 秒
-	# (* (/ 14 4096.0) 1000) 3.41796875 ms
-	lr35902_push_reg regAF
-	lr35902_push_reg regBC
-	lr35902_push_reg regDE
-
-	lr35902_set_reg regA $GBOS_TILE_NUM_SPC
-	lr35902_set_reg regC $GBOS_WIN_DRAWABLE_WIDTH_T
-	lr35902_set_reg regD 03
-	lr35902_set_reg regE 02
-	lr35902_set_reg regB $GBOS_WIN_DRAWABLE_HEIGHT_T
-
-	(
-		lr35902_call $a_lay_tiles_at_wtcoord_to_right
-		lr35902_inc regD
-		lr35902_dec regB
-	) >src/f_clr_win.1.o
-	cat src/f_clr_win.1.o
-	local sz=$(stat -c '%s' src/f_clr_win.1.o)
-	lr35902_rel_jump_with_cond NZ $(two_comp_d $((sz+2)))
-
-	lr35902_pop_reg regDE
-	lr35902_pop_reg regBC
-	lr35902_pop_reg regAF
-	# 計時(*f_clr_win.2)
-	lr35902_return
-}
 
 # テキストファイルを表示
 # in : regA  - ファイル番号
@@ -772,8 +718,6 @@ f_tn_to_addr() {
 	local sz
 
 	# HLへ0x8000を設定
-	# 計時(1)ここから(2)までで 5/16384 秒
-	# (* (/ 5 16384.0) 1000)0.30517578125 ms
 	lr35902_set_reg regHL $GBOS_TILE_DATA_START
 
 	# A == 0x00 の場合、そのままreturn
@@ -807,7 +751,6 @@ f_tn_to_addr() {
 	lr35902_pop_reg regAF
 
 	# return
-	# 計時(2)
 	lr35902_return
 }
 
@@ -963,8 +906,6 @@ f_view_img_cyc() {
 		lr35902_copy_to_from regB regA
 
 		# Cへ16を設定(ループ用カウンタ。16バイト)
-		# 計時(1)ここから(2)まで 2/16384 秒
-		# (* (/ 2 16384.0) 1000)0.1220703125 ms
 		lr35902_set_reg regC 10
 
 		# Cの数だけ1バイトずつ[DE]->[HL]へコピー
@@ -3397,31 +3338,15 @@ init() {
 	# ウィンドウ座標(タイル番目)の変数へデフォルト値設定
 	set_win_coord $GBOS_WX_DEF $GBOS_WY_DEF
 
-	# タイトル・中身空のウィンドウを描画
-	draw_blank_window
-
 	# ファイルシステム先頭アドレス変数をデフォルト値で初期化
 	lr35902_set_reg regA $(echo $GBOS_FS_BASE_DEF | cut -c3-4)
 	lr35902_copy_to_addr_from_regA $var_fs_base_bh
 	lr35902_set_reg regA $(echo $GBOS_FS_BASE_DEF | cut -c1-2)
 	lr35902_copy_to_addr_from_regA $var_fs_base_th
 
-	# 初期アイコンを配置
-	lr35902_call $a_view_dir
-	(
-		lr35902_call $a_view_dir_cyc
-		lr35902_copy_to_regA_from_addr $var_draw_act_stat
-		lr35902_test_bitN_of_reg $GBOS_DA_BITNUM_VIEW_DIR regA
-	) >src/init.1.o
-	cat src/init.1.o
-	local sz_1=$(stat -c '%s' src/init.1.o)
-	lr35902_rel_jump_with_cond NZ $(two_comp_d $((sz_1 + 2)))
-
 	# マウスカーソルを描画
 	obj_init $GBOS_OAM_NUM_CSL $GBOS_OBJ_HEIGHT $GBOS_OBJ_WIDTH \
 		 $GBOS_TILE_NUM_CSL $GBOS_OBJ_DEF_ATTR
-	# 別途 obj_move とかの関数も作る
-	# TODO グローバル関数化
 
 	# コンソールの初期化
 	lr35902_call $a_init_con
@@ -3443,8 +3368,6 @@ init() {
 	lr35902_clear_reg regA
 	lr35902_copy_to_addr_from_regA $var_btn_stat
 	lr35902_copy_to_addr_from_regA $var_prv_btn
-	# - DASをゼロクリア
-	lr35902_copy_to_addr_from_regA $var_draw_act_stat
 	# - アプリ用ボタンリリースフラグをゼロクリア
 	lr35902_copy_to_addr_from_regA $var_app_release_btn
 	# - 実行ファイル用変数をゼロクリア
@@ -3722,103 +3645,6 @@ tdq_handler() {
 	cat src/tdq_handler.1.o
 }
 
-# DASのビットに応じた処理を呼び出す
-# in : regA - DAS
-das_handler() {
-	# rstr_tilesのチェック
-	lr35902_test_bitN_of_reg $GBOS_DA_BITNUM_RSTR_TILES regA
-	(
-		# rstr_tilesがセットされていた場合
-		lr35902_call $a_rstr_tiles_cyc
-
-		# この周期ではVIEW系の処理は実施しない
-		lr35902_res_bitN_of_reg $GBOS_DA_BITNUM_VIEW_DIR regA
-		lr35902_res_bitN_of_reg $GBOS_DA_BITNUM_VIEW_TXT regA
-		lr35902_res_bitN_of_reg $GBOS_DA_BITNUM_VIEW_IMG regA
-	) >src/das_handler.5.o
-	local sz_5=$(stat -c '%s' src/das_handler.5.o)
-	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_5)
-	# rstr_tilesがセットされていた場合
-	cat src/das_handler.5.o
-
-	# clr_winのチェック
-	lr35902_test_bitN_of_reg $GBOS_DA_BITNUM_CLR_WIN regA
-	(
-		# clr_winがセットされていなかった場合
-
-		# view_dirのチェック
-		lr35902_test_bitN_of_reg $GBOS_DA_BITNUM_VIEW_DIR regA
-		(
-			# view_dirがセットされていた場合
-			lr35902_call $a_view_dir_cyc
-		) >src/das_handler.6.o
-		local sz_6=$(stat -c '%s' src/das_handler.6.o)
-		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_6)
-		# view_dirがセットされていた場合
-		cat src/das_handler.6.o
-
-		# run_exeのチェック
-		lr35902_test_bitN_of_reg $GBOS_DA_BITNUM_RUN_EXE regA
-		(
-			# run_exeがセットされていた場合
-
-			# EXE周期実行関数を呼び出す
-			lr35902_call $a_run_exe_cyc
-		) >src/das_handler.7.o
-		local sz_7=$(stat -c '%s' src/das_handler.7.o)
-		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_7)
-		# run_exeがセットされていた場合
-		cat src/das_handler.7.o
-
-		# view_txtのチェック
-		lr35902_test_bitN_of_reg $GBOS_DA_BITNUM_VIEW_TXT regA
-		(
-			# view_txtがセットされていた場合
-			lr35902_call $a_view_txt_cyc
-		) >src/das_handler.3.o
-		local sz_3=$(stat -c '%s' src/das_handler.3.o)
-		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_3)
-		# view_txtがセットされていた場合
-		cat src/das_handler.3.o
-
-		# view_imgのチェック
-		lr35902_test_bitN_of_reg $GBOS_DA_BITNUM_VIEW_IMG regA
-		(
-			# view_imgがセットされていた場合
-			lr35902_call $a_view_img_cyc
-		) >src/das_handler.4.o
-		local sz_4=$(stat -c '%s' src/das_handler.4.o)
-		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_4)
-		# view_imgがセットされていた場合
-		cat src/das_handler.4.o
-	) >src/das_handler.1.o
-	(
-		# clr_winがセットされていた場合
-		lr35902_call $a_clr_win_cyc
-
-		# clr_winがセットされていなかった場合の処理を飛ばす
-		local sz_1=$(stat -c '%s' src/das_handler.1.o)
-		lr35902_rel_jump $(two_digits_d $sz_1)
-	) >src/das_handler.2.o
-	local sz_2=$(stat -c '%s' src/das_handler.2.o)
-	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_2)
-	# clr_winがセットされていた場合
-	cat src/das_handler.2.o
-	# clr_winがセットされていなかった場合
-	cat src/das_handler.1.o
-}
-
-# 2020-03-05 19時現在
-# 処理時間: 1/4096 秒
-# (* (/ 1 4096.0) 1000.0)0.244140625 ms
-# (/ 1000000 4096.0)244.140625 us
-#
-# 1496サイクル(計上していないものもある)
-# 4.19MHz -> (/ 1000 4.19)238.6634844868735 ns/cyc
-# (* 238 1496)356048 ns -> 356.048 us
-# これは本来は通らない条件も全て含んでいる
-# より正確なのは↑の244 usで、概ね同じ数値が出ているので
-# ↑の244usは妥当そうだと言える
 event_driven() {
 	local sz
 
@@ -3832,8 +3658,6 @@ event_driven() {
 	# [マウスカーソル更新]
 
 	# 現在の入力状態を変数から取得
-	# 計時(*0): ここから(*1)までで 1/4096 秒
-	# (* (/ 1 4096.0) 1000)0.244140625 ms
 	lr35902_copy_to_regA_from_addr $var_btn_stat
 	lr35902_copy_to_from regD regA
 
@@ -3892,8 +3716,7 @@ event_driven() {
 	(
 		# ディレクトリ表示中の場合
 
-		# 隠しコマンドステート更新
-		lr35902_call $a_update_hidden_com_stat
+		# 処理なし
 
 		# ディレクトリ表示中以外の場合の処理を飛ばす
 		local sz5=$(stat -c '%s' src/event_driven.5.o)
@@ -3905,42 +3728,19 @@ event_driven() {
 	cat src/event_driven.5.o
 
 
-	# [描画アクション(DA)あるいはボタンリリース処理]
 
-	# DASに何らかのビットがセットされているか
-	lr35902_copy_to_regA_from_addr $var_draw_act_stat
-	lr35902_compare_regA_and 00
-	# TIMA = 01
+	# [ボタンリリース処理]
+
+	# ボタンのリリースがあった場合それに応じた処理を実施
+	lr35902_copy_to_from regA regB
+	lr35902_and_to_regA $GBOS_BTN_KEY_MASK
 	(
-		# DASに何らかのビットがセットされていた場合の処理
-		das_handler
-	) >src/event_driven.4.o
-	(
-		# DASにビットが何もセットされていなかった場合の処理
-		# (ボタンリリースに応じた処理を実施)
-
-		# ボタンのリリースがあった場合それに応じた処理を実施
-		lr35902_copy_to_from regA regB
-		lr35902_and_to_regA $GBOS_BTN_KEY_MASK
-		(
-			# ボタンリリースがあれば応じた処理を実施
-			btn_release_handler
-		) >src/event_driven.2.o
-		sz=$(stat -c '%s' src/event_driven.2.o)
-		lr35902_rel_jump_with_cond Z $(two_digits_d $sz)
-		cat src/event_driven.2.o
-
-		# DAS用の処理は飛ばす
-		local sz2=$(stat -c '%s' src/event_driven.4.o)
-		lr35902_rel_jump $(two_digits_d $sz2)
-	) >src/event_driven.3.o
-	sz=$(stat -c '%s' src/event_driven.3.o)
-	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz)
-	# DASにビットが何もセットされていなかった場合の処理
-	# (ボタンリリースに応じた処理を実施)
-	cat src/event_driven.3.o
-	# DASにビットがセットされていた場合の処理
-	cat src/event_driven.4.o
+		# ボタンリリースがあれば応じた処理を実施
+		btn_release_handler
+	) >src/event_driven.2.o
+	sz=$(stat -c '%s' src/event_driven.2.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz)
+	cat src/event_driven.2.o
 
 	# 前回の入力状態更新
 	lr35902_copy_to_from regA regD
@@ -4075,8 +3875,6 @@ event_driven() {
 
 
 	# [割り込み待ち(halt)へ戻る]
-	# lr35902_rel_jump $(two_comp 76)			# 2
-	# (+ 2 4 (* 2 (+ 8 5 40)) 4 2)118
 	gbos_const >src/gbos_const.o
 	local const_bytes=$(stat -c '%s' src/gbos_const.o)
 	local init_bytes=$(stat -c '%s' src/init.o)
@@ -4084,7 +3882,6 @@ event_driven() {
 	local const_init=$(echo $bc_form | bc)
 	bc_form="obase=16;ibase=16;${GB_ROM_FREE_BASE}+${const_init}"
 	local halt_addr=$(echo $bc_form | bc)
-	# 計時(*3)
 	lr35902_abs_jump $(four_digits $halt_addr)
 }
 
