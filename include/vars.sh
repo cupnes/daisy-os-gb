@@ -68,8 +68,17 @@ var_exe_3=c025	# ファイルタイプ
 # タイマー割り込みで、このアドレスへジャンプしてくる
 # push AF -> push HLの後、ここへジャンプしてくるため
 # 最低限、pop HL(0xe1) -> pop AF(0xf1) -> reti(0xd9) は行うこと
+# タイマーハンドラの実装はinclude/timer.shのtimer_init_handler()
+# 2022-09-22現在、timer_init_handler()で$var_timer_handlerに並べているのは
+# 上記したpop HL・pop AF・retiの3バイト
+# ただし、今後、タイマーハンドラに色々と実装するかもしれない事を考えて
+# 100バイトの領域は確保しておくことにする
 var_timer_handler=c026
-# 現状、0xc028 までは使っている
+# ↑100(0x64)バイトは確保しておくということで、
+# 　0xc026 - 0xc089 は変数等に使わないこと
+
+# バイナリ生物用変数
+var_cell_next_tile=c08a	# 次に描画する細胞タイルのタイル番号
 
 # 0xc300 - 0xcefd : TDQ
 # (include/tdq.sh 参照)

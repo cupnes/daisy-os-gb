@@ -3748,6 +3748,11 @@ event_driven() {
 	lr35902_copy_to_addr_from_regA $var_prv_btn
 
 
+	# [バイナリ生物周期処理]
+
+	
+
+
 	# [キー入力処理]
 	# チャタリング(あるのか？)等のノイズ除去は未実装
 
