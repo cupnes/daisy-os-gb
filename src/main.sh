@@ -3391,6 +3391,9 @@ init() {
 	lr35902_copy_to_addr_from_regA $var_mouse_enable
 	# - タイマーハンドラ初期化
 	timer_init_handler
+	# - 次に描画する細胞タイルのタイル番号初期化
+	lr35902_set_reg regA $GBOS_TILE_NUM_CELL_1
+	lr35902_copy_to_addr_from_regA $var_cell_next_tile
 
 	# タイルミラー領域の初期化
 	init_tmrr
