@@ -79,6 +79,8 @@ var_timer_handler=c026
 
 # バイナリ生物用変数
 var_cell_next_tile=c08a	# 次に描画する細胞タイルのタイル番号
+var_cell_tadr_bh=c08b	# 描画アドレス(下位8ビット)
+var_cell_tadr_th=c08c	# 描画アドレス(上位8ビット)
 
 # 0xc300 - 0xcefd : TDQ
 # (include/tdq.sh 参照)

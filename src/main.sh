@@ -14,6 +14,7 @@ SRC_MAIN_SH=true
 . include/fs.sh
 . include/con.sh
 . include/timer.sh
+. include/binbio.sh
 . src/tiles.sh
 
 rm -f $MAP_FILE_NAME
@@ -3394,6 +3395,11 @@ init() {
 	# - 次に描画する細胞タイルのタイル番号初期化
 	lr35902_set_reg regA $GBOS_TILE_NUM_CELL_1
 	lr35902_copy_to_addr_from_regA $var_cell_next_tile
+	# - 細胞の描画アドレス変数初期化
+	lr35902_set_reg regA $(echo $BINBIO_CELL_TADR | cut -c3-4)
+	lr35902_copy_to_addr_from_regA $var_cell_tadr_bh
+	lr35902_set_reg regA $(echo $BINBIO_CELL_TADR | cut -c1-2)
+	lr35902_copy_to_addr_from_regA $var_cell_tadr_th
 
 	# タイルミラー領域の初期化
 	init_tmrr
@@ -3753,7 +3759,41 @@ event_driven() {
 
 	# [バイナリ生物周期処理]
 
-	
+	# 細胞タイル更新
+	# 変数から次に描画するタイル番号をregBへ取得
+	lr35902_copy_to_regA_from_addr $var_cell_next_tile
+	lr35902_copy_to_from regB regA
+	# 細胞のVRAMアドレスをregDEへ取得
+	lr35902_copy_to_regA_from_addr $var_cell_tadr_bh
+	lr35902_copy_to_from regE regA
+	lr35902_copy_to_regA_from_addr $var_cell_tadr_th
+	lr35902_copy_to_from regD regA
+	# 取得したタイル番号をtdqへエンキュー
+	lr35902_call $a_enq_tdq
+	# 次に描画するタイル番号を更新
+	lr35902_copy_to_from regA regB
+	lr35902_compare_regA_and $GBOS_TILE_NUM_CELL_1
+	(
+		# アニメーションの最後のコマを描画した
+
+		# regAへ最初のコマのタイル番号を設定
+		lr35902_set_reg regA $GBOS_TILE_NUM_CELL_0
+	) >src/event_driven.cellanime_last.o
+	(
+		# まだ一連のアニメーションの途中
+
+		# 次のコマのタイル番号を設定(インクリメント)
+		lr35902_inc regA
+
+		# 「最後のコマを描画した」の処理を飛ばす
+		local sz_cellanime_last=$(stat -c '%s' src/event_driven.cellanime_last.o)
+		lr35902_rel_jump $(two_digits_d $sz_cellanime_last)
+	) >src/event_driven.cellanime_doing.o
+	local sz_cellanime_doing=$(stat -c '%s' src/event_driven.cellanime_doing.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_cellanime_doing)
+	cat src/event_driven.cellanime_doing.o
+	cat src/event_driven.cellanime_last.o
+	lr35902_copy_to_addr_from_regA $var_cell_next_tile
 
 
 	# [キー入力処理]
