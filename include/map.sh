@@ -45,3 +45,4 @@ a_print_regA=1774
 a_tile_to_byte=1789
 a_get_rnd=1799
 a_tdq_enq=17AC
+a_init_cell_data=17F5

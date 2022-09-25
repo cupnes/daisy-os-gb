@@ -88,8 +88,9 @@ var_cell_data_current_th=c08e	# 選択中の細胞データのアドレス(上�
 # ※ 念の為、細胞データを2バイト境界に配置する為
 
 # 0xc090 - 0xc161 : 細胞データ1
-var_cell_tadr_bh=c092	# 描画アドレス(下位8ビット)
-var_cell_tadr_th=c093	# 描画アドレス(上位8ビット)
+# (include/binbio.sh 参照)
+# var_cell_tadr_bh=c092	# 描画アドレス(下位8ビット)
+# var_cell_tadr_th=c093	# 描画アドレス(上位8ビット)
 # TODO 細胞データ初期化関数を追加し↑2つの変数は消す
 
 # 0xc300 - 0xcefd : TDQ
