@@ -3472,7 +3472,7 @@ init() {
 	lr35902_set_reg regA $GBOS_TILE_NUM_CELL_1
 	lr35902_copy_to_addr_from_regA $var_cell_next_tile
 
-	# 初期細胞の初期化
+	# 初期配置の細胞の初期化
 	lr35902_set_reg regL $(echo $BINBIO_CELL_DATA_1 | cut -c3-4)
 	lr35902_set_reg regH $(echo $BINBIO_CELL_DATA_1 | cut -c1-2)
 	lr35902_call $a_init_cell_data
