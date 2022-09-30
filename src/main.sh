@@ -2898,7 +2898,8 @@ f_tdq_enq() {
 }
 
 # 指定されたアドレス先を細胞データで初期化する
-# in : regHL  - 細胞データで初期化するアドレス
+# in : regH  - 細胞データで初期化するアドレス[15:8]
+#      regL  - 細胞データで初期化するアドレス[7:0]
 f_tdq_enq >src/f_tdq_enq.o
 fsz=$(to16 $(stat -c '%s' src/f_tdq_enq.o))
 fadr=$(calc16 "${a_tdq_enq}+${fsz}")
