@@ -2973,6 +2973,39 @@ f_init_cell_data() {
 	lr35902_return
 }
 
+# 指定されたアドレスの細胞データへ指定されたVRAMアドレスを設定する
+# in : regH  - 細胞データアドレス[15:8]
+#      regL  - 細胞データアドレス[7:0]
+#      regD  - VRAMアドレス[15:8]
+#      regE  - VRAMアドレス[7:0]
+f_init_cell_data >src/f_init_cell_data.o
+fsz=$(to16 $(stat -c '%s' src/f_init_cell_data.o))
+fadr=$(calc16 "${a_init_cell_data}+${fsz}")
+a_set_vram_addr_to_cell=$(four_digits $fadr)
+echo -e "a_set_vram_addr_to_cell=$a_set_vram_addr_to_cell" >>$MAP_FILE_NAME
+f_set_vram_addr_to_cell() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regBC
+	lr35902_push_reg regHL
+
+	# regHL += VRAMアドレスへのオフセット(2バイト)
+	lr35902_set_reg regBC 0002
+	lr35902_add_to_regHL regBC
+
+	# *regHL = regDE
+	lr35902_copy_to_ptrHL_from regE
+	lr35902_dec regBC
+	lr35902_add_to_regHL regBC
+	lr35902_copy_to_ptrHL_from regD
+
+	# pop & return
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regBC
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
 # V-Blankハンドラ
 # f_vblank_hdlr() {
 	# V-Blank/H-Blank時の処理は、
@@ -3038,6 +3071,7 @@ global_functions() {
 	f_get_rnd
 	f_tdq_enq
 	f_init_cell_data
+	f_set_vram_addr_to_cell
 }
 
 gbos_vec() {
