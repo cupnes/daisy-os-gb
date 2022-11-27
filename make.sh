@@ -46,8 +46,8 @@ case "$1" in
 	;;
 esac
 
-set -uex
-# set -ue
+# set -uex
+set -ue
 
 . include/gb.sh
 . src/main.sh
