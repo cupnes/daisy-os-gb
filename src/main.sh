@@ -3006,6 +3006,211 @@ f_set_vram_addr_to_cell() {
 	lr35902_return
 }
 
+# 細胞の「死」の振る舞い
+# 現在の細胞の`alive`フラグをクリアする
+f_set_vram_addr_to_cell >src/f_set_vram_addr_to_cell.o
+fsz=$(to16 $(stat -c '%s' src/f_set_vram_addr_to_cell.o))
+fadr=$(calc16 "${a_set_vram_addr_to_cell}+${fsz}")
+a_cell_death=$(four_digits $fadr)
+echo -e "a_cell_death=$a_cell_death" >>$MAP_FILE_NAME
+f_cell_death() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regBC
+	lr35902_push_reg regHL
+
+	# regHLへ現在の細胞のアドレスを設定する
+	lr35902_copy_to_regA_from_addr $var_cur_cell_addr_bh
+	lr35902_copy_to_from regL regA
+	lr35902_copy_to_regA_from_addr $var_cur_cell_addr_th
+	lr35902_copy_to_from regH regA
+
+	# regHLのアドレスをフラグの位置まで進める
+	lr35902_set_reg regBC 0002
+	lr35902_add_to_regHL regBC
+
+	# aliveフラグをクリア
+	lr35902_res_bitN_of_reg 0 ptrHL
+
+	# pop & return
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regBC
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
+# 細胞の「成長」の振る舞い
+# 現在の細胞の機械語バイナリの中に取得したコード化合物と同じものが存在したら、
+# 対応するcollected_flagsのビットをセットする
+# in : regA  - 取得したコード化合物
+f_cell_death >src/f_cell_death.o
+fsz=$(to16 $(stat -c '%s' src/f_cell_death.o))
+fadr=$(calc16 "${a_cell_death}+${fsz}")
+a_cell_growth=$(four_digits $fadr)
+echo -e "a_cell_growth=$a_cell_growth" >>$MAP_FILE_NAME
+f_cell_growth() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regBC
+	lr35902_push_reg regDE
+	lr35902_push_reg regHL
+
+	# 取得したコード化合物をregDへコピー
+	lr35902_copy_to_from regD regA
+
+	# regHLへ現在の細胞のアドレスを設定する
+	lr35902_copy_to_regA_from_addr $var_cur_cell_addr_bh
+	lr35902_copy_to_from regL regA
+	lr35902_copy_to_regA_from_addr $var_cur_cell_addr_th
+	lr35902_copy_to_from regH regA
+
+	# regHLのアドレスを機械語バイナリサイズの位置まで進める
+	lr35902_set_reg regBC 0009
+	lr35902_add_to_regHL regBC
+
+	# 機械語バイナリサイズをregBへコピー
+	lr35902_copy_to_from regB ptrHL
+
+	# regBCをスタックへpush
+	lr35902_push_reg regBC
+
+	# regHLのアドレスを機械語バイナリの各バイトの取得フラグの位置まで進める
+	lr35902_set_reg regBC 0006
+	lr35902_add_to_regHL regBC
+
+	# 取得フラグをregEへコピー
+	lr35902_copy_to_from regE ptrHL
+
+	# regHLのアドレスを機械語バイナリの位置まで戻す
+	lr35902_set_reg regBC $(two_comp_4 5)
+	lr35902_add_to_regHL regBC
+
+	# regBCをスタックからpop
+	lr35902_pop_reg regBC
+
+	# regCをゼロクリア(処理したバイト数のカウンタにする)
+	lr35902_set_reg regC 00
+
+	# 機械語バイナリを1バイトずつチェック
+	## regE(取得フラグ)を1ビットずつ右ローテートさせながらチェックする
+	(
+		# ptrHL == regD ?
+		lr35902_copy_to_from regA regD
+		lr35902_compare_regA_and ptrHL
+		(
+			# ptrHL == regD の場合
+
+			# ループ脱出フラグ(regA)をゼロクリア
+			lr35902_xor_to_regA regA
+
+			# regEのビット0 == 0 ?
+			lr35902_test_bitN_of_reg 0 regE
+			(
+				# regEのビット0 == 0 の場合
+
+				# regEのビット0をセットする
+				lr35902_set_bitN_of_reg 0 regE
+
+				# ループ脱出フラグを設定
+				lr35902_inc regA
+			) >src/f_cell_growth.3.o
+			local sz_3=$(stat -c '%s' src/f_cell_growth.3.o)
+			lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_3)
+			cat src/f_cell_growth.3.o
+		) >src/f_cell_growth.1.o
+		(
+			# ptrHL != regD の場合
+
+			# ループ脱出フラグ(regA)をゼロクリア
+			lr35902_xor_to_regA regA
+
+			# ptrHL == regD の場合の処理を飛ばす
+			local sz_1=$(stat -c '%s' src/f_cell_growth.1.o)
+			lr35902_rel_jump $(two_digits_d $sz_1)
+		) >src/f_cell_growth.2.o
+		local sz_2=$(stat -c '%s' src/f_cell_growth.2.o)
+		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_2)
+		cat src/f_cell_growth.2.o	# ptrHL != regD
+		cat src/f_cell_growth.1.o	# ptrHL == regD
+
+		# regEを1ビット右ローテート
+		## regBCをスタックへpush
+		lr35902_push_reg regBC
+		## regAをregBへ退避
+		lr35902_copy_to_from regB regA
+		## regEをregAへコピー
+		lr35902_copy_to_from regA regE
+		## regAを1ビット右ローテート
+		lr35902_rot_regA_right
+		## regAをregEへコピー
+		lr35902_copy_to_from regE regA
+		## regAをregBから復帰
+		lr35902_copy_to_from regA regB
+		## regBCをスタックからpop
+		lr35902_pop_reg regBC
+
+		# 処理したバイト数カウンタ(regC)をインクリメント
+		lr35902_inc regC
+
+		# regBの機械語バイナリサイズをデクリメント
+		lr35902_dec regB
+
+		# regB == 0 ?
+		## regDEをスタックへpush
+		lr35902_push_reg regDE
+		## regAをregDへ退避
+		lr35902_copy_to_from regD regA
+		## regBをregAへコピー
+		lr35902_copy_to_from regA regB
+		## regA == 0 ?
+		lr35902_compare_regA_and 00
+		(
+			# regA == 0 の場合
+
+			# ループ脱出フラグを設定
+			lr35902_inc regA
+		) >src/f_cell_growth.4.o
+		local sz_4=$(stat -c '%s' src/f_cell_growth.4.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_4)
+		cat src/f_cell_growth.4.o
+		## regAをregDから復帰
+		lr35902_copy_to_from regA regD
+		## regDEをスタックからpop
+		lr35902_pop_reg regDE
+
+		# regA != 0 なら、1バイトずつチェックするループを脱出する
+		## TBD
+	) >src/f_cell_growth.5.o
+	local sz_5=$(stat -c '%s' src/f_cell_growth.5.o)
+	lr35902_rel_jump $(two_comp_d $((sz_5 + 2)))
+
+	# regA = 8 - 処理したバイト数(regC)
+	lr35902_set_reg regA 08
+	lr35902_sub_to_regA regC
+
+	# regA != 0 ?
+	lr35902_compare_regA_and 00
+	(
+		# regA != 0 の場合
+
+		# regAの値だけregEを右ローテート
+		## TBD
+	) >src/f_cell_growth.6.o
+	local sz_6=$(stat -c '%s' src/f_cell_growth.6.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_6)
+	cat src/f_cell_growth.6.o
+
+	# regEを細胞の機械語バイナリの各バイトの取得フラグへ書き戻す
+	## TBD
+
+	# pop & return
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regDE
+	lr35902_pop_reg regBC
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
 # V-Blankハンドラ
 # f_vblank_hdlr() {
 	# V-Blank/H-Blank時の処理は、
@@ -3072,6 +3277,8 @@ global_functions() {
 	f_tdq_enq
 	f_init_cell_data
 	f_set_vram_addr_to_cell
+	f_cell_death
+	f_cell_growth
 }
 
 gbos_vec() {
