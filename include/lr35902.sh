@@ -1117,6 +1117,10 @@ lr35902_complement_regA() {
 #   0xaa(carry=0) -> 0x55(carry=0)
 #   0x55(carry=1) -> 0xaa(carry=1)
 #   0xaa(carry=1) -> 0x55(carry=0)
+lr35902_rot_regA_right() {
+	echo -en '\x0f'	# rrca
+	echo -e 'rrca\t;4' >>$ASM_LIST_FILE
+}
 
 # 0x1f (rra)
 # 動作イメージ:
