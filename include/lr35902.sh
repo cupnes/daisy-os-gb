@@ -1190,6 +1190,27 @@ lr35902_shift_left_arithmetic() {
 #   0xaa(carry=0) -> 0x55(carry=0)
 #   0x55(carry=1) -> 0x2a(carry=1)
 #   0xaa(carry=1) -> 0x55(carry=0)
+lr35902_shift_right_logical() {
+	local reg=$1
+
+	local regnum=$(to_regnum_pat1 $reg)
+	if [ "$regnum" = 'error' ]; then
+		echo -n 'Error: no such instruction: ' 1>&2
+		echo "lr35902_shift_right_logical $reg" 1>&2
+		return 1
+	fi
+	local pref=3
+	echo -en "\xcb\x${pref}${regnum}"
+
+	local regname=$(to_regname $reg)
+	local cyc
+	if [ "$regnum" = "$(to_regnum_pat1 ptrHL)" ]; then
+		cyc=16
+	else
+		cyc=8
+	fi
+	echo -e "srl $regname\t;$cyc" >>$ASM_LIST_FILE
+}
 
 lr35902_func_bitN_of_reg_impl() {
 	local n=$1
