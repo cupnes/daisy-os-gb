@@ -64,18 +64,13 @@
 
 ## 振る舞い
 ### `death`: 死
-```mermaid
-flowchart TD
-  A(["Start"]) --> B["HL = `cur_cell_addr`"]
-  B --> C["HL += 2"]
-  C --> D["A = *HL"]
-  D --> E["Aのビット0(`flags`.`alive`)をクリア"]
-  E --> F["*HL = A"]
-  F --> G(["Return"])
-```
+- 処理内容
+  - 現在の細胞の`alive`フラグをクリアする
 
 ### `growth`: 成長
-```mermaid
-flowchart TD
-  A(["Start"]) --> B[""]
-```
+- 引数
+  | レジスタ | 内容 |
+  | --- | --- |
+  | A | 取得したコード化合物 |
+- 処理内容
+  - 現在の細胞の`bin_data`の中に「取得したコード化合物」と同じものが存在したら、対応する`collected_flags`のビットをセットする
