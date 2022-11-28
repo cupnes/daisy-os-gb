@@ -10,6 +10,7 @@ var_win_xt=c003	# ウィンドウのX座標(タイル番目)
 var_win_yt=c004	# ウィンドウのY座標(タイル番目)
 var_prv_btn=c005	# 前回のキー状態を示す変数
 var_draw_act_stat=c006	# 描画アクション(DA)ステータス
+
 var_da_var1=c007	# DA用変数1
 			# - view_txt: 残り文字数(下位8ビット)
 var_da_var2=c008	# DA用変数2
@@ -22,6 +23,9 @@ var_da_var5=c00b	# DA用変数5
 			# - view_txt: 次に配置するウィンドウタイル座標Y
 var_da_var6=c00c	# DA用変数6
 			# - view_txt: 次に配置するウィンドウタイル座標X
+# 0xc007 - 0xc00c の6バイトはバイナリ生物用にも使用している
+# (include/binbio.sh 参照)
+
 var_clr_win_nyt=c00d	# - clr_win: 次にクリアするウィンドウタイル座標Y
 var_view_img_nt=c00e	# view_img: 次に描画するタイル番号
 var_view_img_ntadr_bh=c00f	# view_img: 次に使用するタイルアドレス(下位8ビット)
@@ -42,7 +46,7 @@ var_tdq_stat=c01b	# tdq.stat
 
 var_app_release_btn=c01c	# アプリ用ボタンリリースフラグ
 
-# 0xc01d: 未使用
+# 0xc01d : 未使用
 
 # 実行ファイル用変数は使い終わったらゼロクリアすること
 # bineditはこの変数が0か否かで、
@@ -79,10 +83,14 @@ var_timer_handler=c026
 # 　0xc026 - 0xc089 は変数等に使わないこと
 
 # バイナリ生物用変数
-var_cur_cell_addr_bh=c08a	# 現在対象としている細胞アドレス(下位8ビット)
-var_cur_cell_addr_th=c08b	# 現在対象としている細胞アドレス(上位8ビット)
+var_binbio_cur_cell_addr_bh=c08a	# 現在対象としている細胞アドレス(下位8ビット)
+var_binbio_cur_cell_addr_th=c08b	# 現在対象としている細胞アドレス(上位8ビット)
+var_binbio_mutation_probability=c08c	# 突然変異確率
 
-# 0xc08c - 0xc2ff : 未使用
+# 0xc08d - 0xc08f : 未使用
+
+# 0xc090 - 0xc2ff : 細胞データ領域
+# (include/binbio.sh 参照)
 
 # 0xc300 - 0xcefd : TDQ
 # (include/tdq.sh 参照)

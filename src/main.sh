@@ -2748,9 +2748,9 @@ f_cell_death() {
 	lr35902_push_reg regHL
 
 	# regHLへ現在の細胞のアドレスを設定する
-	lr35902_copy_to_regA_from_addr $var_cur_cell_addr_bh
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
 	lr35902_copy_to_from regL regA
-	lr35902_copy_to_regA_from_addr $var_cur_cell_addr_th
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
 	lr35902_copy_to_from regH regA
 
 	# regHLのアドレスをフラグの位置まで進める
@@ -2788,9 +2788,9 @@ f_cell_growth() {
 	lr35902_copy_to_from regD regA
 
 	# regHLへ現在の細胞のアドレスを設定する
-	lr35902_copy_to_regA_from_addr $var_cur_cell_addr_bh
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
 	lr35902_copy_to_from regL regA
-	lr35902_copy_to_regA_from_addr $var_cur_cell_addr_th
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
 	lr35902_copy_to_from regH regA
 
 	# TODO 細胞データ構造が変わったのでオフセットを使用した箇所を修正する
