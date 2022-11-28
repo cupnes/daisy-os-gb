@@ -3064,6 +3064,8 @@ f_cell_growth() {
 	lr35902_copy_to_regA_from_addr $var_cur_cell_addr_th
 	lr35902_copy_to_from regH regA
 
+	# TODO 細胞データ構造が変わったのでオフセットを使用した箇所を修正する
+
 	# regHLのアドレスを機械語バイナリサイズの位置まで進める
 	lr35902_set_reg regBC 0009
 	lr35902_add_to_regHL regBC
@@ -3179,7 +3181,7 @@ f_cell_growth() {
 		lr35902_pop_reg regDE
 
 		# regA != 0 なら、1バイトずつチェックするループを脱出する
-		## TBD
+		## TODO
 	) >src/f_cell_growth.5.o
 	local sz_5=$(stat -c '%s' src/f_cell_growth.5.o)
 	lr35902_rel_jump $(two_comp_d $((sz_5 + 2)))
@@ -3194,14 +3196,14 @@ f_cell_growth() {
 		# regA != 0 の場合
 
 		# regAの値だけregEを右ローテート
-		## TBD
+		## TODO
 	) >src/f_cell_growth.6.o
 	local sz_6=$(stat -c '%s' src/f_cell_growth.6.o)
 	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_6)
 	cat src/f_cell_growth.6.o
 
 	# regEを細胞の機械語バイナリの各バイトの取得フラグへ書き戻す
-	## TBD
+	## TODO
 
 	# pop & return
 	lr35902_pop_reg regHL
