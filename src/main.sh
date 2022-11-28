@@ -3191,17 +3191,17 @@ f_cell_growth() {
 	lr35902_set_reg regA 08
 	lr35902_sub_to_regA regC
 
-	# regA != 0 ?
-	lr35902_compare_regA_and 00
-	(
-		# regA != 0 の場合
+	# # regA != 0 ?
+	# lr35902_compare_regA_and 00
+	# (
+	# 	# regA != 0 の場合
 
-		# regAの値だけregEを右ローテート
-		## TODO
-	) >src/f_cell_growth.6.o
-	local sz_6=$(stat -c '%s' src/f_cell_growth.6.o)
-	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_6)
-	cat src/f_cell_growth.6.o
+	# 	# regAの値だけregEを右ローテート
+	# 	## TODO
+	# ) >src/f_cell_growth.6.o
+	# local sz_6=$(stat -c '%s' src/f_cell_growth.6.o)
+	# lr35902_rel_jump_with_cond Z $(two_digits_d $sz_6)
+	# cat src/f_cell_growth.6.o
 
 	# regEを細胞の機械語バイナリの各バイトの取得フラグへ書き戻す
 	## TODO

@@ -47,3 +47,5 @@ a_get_rnd=1799
 a_tdq_enq=17AC
 a_init_cell_data=17F5
 a_set_vram_addr_to_cell=181C
+a_cell_death=182B
+a_cell_growth=1840
