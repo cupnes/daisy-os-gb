@@ -3884,6 +3884,8 @@ tdq_handler() {
 			lr35902_copy_to_from ptrDE regA
 
 			# タイルミラー領域(0xDC00-)更新
+			# TODO regDEが背景マップ外のアドレスであった場合、
+			#      この処理は飛ばすようにする
 			lr35902_copy_to_from regB regA
 			lr35902_copy_to_from regA regD
 			lr35902_and_to_regA $GBOS_TOFS_MASK_TH
