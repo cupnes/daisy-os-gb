@@ -41,6 +41,7 @@ var_tdq_tail_th=c01a	# tdq.tail[15:8]
 var_tdq_stat=c01b	# tdq.stat
 
 var_app_release_btn=c01c	# アプリ用ボタンリリースフラグ
+
 # 0xc01d: 未使用
 
 # 実行ファイル用変数は使い終わったらゼロクリアすること
@@ -78,18 +79,10 @@ var_timer_handler=c026
 # 　0xc026 - 0xc089 は変数等に使わないこと
 
 # バイナリ生物用変数
-var_cur_cell=c08a	# 現在対象としている細胞番号
-var_cur_cell_addr_bh=c08b	# 現在対象としている細胞アドレス(下位8ビット)
-var_cur_cell_addr_th=c08c	# 現在対象としている細胞アドレス(上位8ビット)
+var_cur_cell_addr_bh=c08a	# 現在対象としている細胞アドレス(下位8ビット)
+var_cur_cell_addr_th=c08b	# 現在対象としている細胞アドレス(上位8ビット)
 
-# 0xc08f : 未使用
-# ※ 念の為、細胞データを2バイト境界に配置する為
-
-# 0xc090 - 0xc161 : 細胞データ1
-# (include/binbio.sh 参照)
-# var_cell_tadr_bh=c092	# 描画アドレス(下位8ビット)
-# var_cell_tadr_th=c093	# 描画アドレス(上位8ビット)
-# TODO 細胞データ初期化関数を追加し↑2つの変数は消す
+# 0xc08c - 0xc2ff : 未使用
 
 # 0xc300 - 0xcefd : TDQ
 # (include/tdq.sh 参照)
