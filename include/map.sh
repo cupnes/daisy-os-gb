@@ -46,5 +46,5 @@ a_get_rnd=170B
 a_tdq_enq=171E
 a_init_cell_data=1767
 a_set_vram_addr_to_cell=178E
-a_cell_death=179D
-a_cell_growth=17B2
+a_binbio_cell_growth=179D
+a_binbio_cell_death=17C6

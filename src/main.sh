@@ -2734,25 +2734,25 @@ f_set_vram_addr_to_cell() {
 	lr35902_return
 }
 
-# 細胞の「死」の振る舞い
+# 細胞の「成長」の振る舞い
 f_set_vram_addr_to_cell >src/f_set_vram_addr_to_cell.o
 fsz=$(to16 $(stat -c '%s' src/f_set_vram_addr_to_cell.o))
 fadr=$(calc16 "${a_set_vram_addr_to_cell}+${fsz}")
-a_cell_death=$(four_digits $fadr)
-echo -e "a_cell_death=$a_cell_death" >>$MAP_FILE_NAME
-f_cell_death() {
-	binbio_cell_death
+a_binbio_cell_growth=$(four_digits $fadr)
+echo -e "a_binbio_cell_growth=$a_binbio_cell_growth" >>$MAP_FILE_NAME
+f_binbio_cell_growth() {
+	binbio_cell_growth
 	lr35902_return
 }
 
-# 細胞の「成長」の振る舞い
-f_cell_death >src/f_cell_death.o
-fsz=$(to16 $(stat -c '%s' src/f_cell_death.o))
-fadr=$(calc16 "${a_cell_death}+${fsz}")
-a_cell_growth=$(four_digits $fadr)
-echo -e "a_cell_growth=$a_cell_growth" >>$MAP_FILE_NAME
-f_cell_growth() {
-	binbio_cell_growth
+# 細胞の「死」の振る舞い
+f_binbio_cell_growth >src/f_binbio_cell_growth.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_growth.o))
+fadr=$(calc16 "${a_binbio_cell_growth}+${fsz}")
+a_binbio_cell_death=$(four_digits $fadr)
+echo -e "a_binbio_cell_death=$a_binbio_cell_death" >>$MAP_FILE_NAME
+f_binbio_cell_death() {
+	binbio_cell_death
 	lr35902_return
 }
 
@@ -2821,8 +2821,8 @@ global_functions() {
 	f_tdq_enq
 	f_init_cell_data
 	f_set_vram_addr_to_cell
-	f_cell_death
-	f_cell_growth
+	f_binbio_cell_growth
+	f_binbio_cell_death
 }
 
 gbos_vec() {
