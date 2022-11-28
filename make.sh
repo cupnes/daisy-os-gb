@@ -224,7 +224,7 @@ build() {
 }
 
 clean_boot_kern() {
-	rm -f boot_kern.bin
+	rm -f src/*.o boot_kern.bin
 }
 
 clean_files_exe() {
