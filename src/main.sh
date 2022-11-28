@@ -3043,6 +3043,7 @@ f_cell_death() {
 # 現在の細胞の機械語バイナリの中に取得したコード化合物と同じものが存在したら、
 # 対応するcollected_flagsのビットをセットする
 # in : regA  - 取得したコード化合物
+# TODO コード化合物は引数で受け取るのではなく、この関数内で取得するようにする
 f_cell_death >src/f_cell_death.o
 fsz=$(to16 $(stat -c '%s' src/f_cell_death.o))
 fadr=$(calc16 "${a_cell_death}+${fsz}")
