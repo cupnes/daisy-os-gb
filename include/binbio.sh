@@ -85,11 +85,11 @@ binbio_cell_growth() {
 
 				# ループ脱出フラグを設定
 				lr35902_inc regA
-			) >src/f_cell_growth.3.o
-			local sz_3=$(stat -c '%s' src/f_cell_growth.3.o)
+			) >src/binbio_cell_growth.3.o
+			local sz_3=$(stat -c '%s' src/binbio_cell_growth.3.o)
 			lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_3)
-			cat src/f_cell_growth.3.o
-		) >src/f_cell_growth.1.o
+			cat src/binbio_cell_growth.3.o
+		) >src/binbio_cell_growth.1.o
 		(
 			# ptrHL != regD の場合
 
@@ -97,13 +97,13 @@ binbio_cell_growth() {
 			lr35902_xor_to_regA regA
 
 			# ptrHL == regD の場合の処理を飛ばす
-			local sz_1=$(stat -c '%s' src/f_cell_growth.1.o)
+			local sz_1=$(stat -c '%s' src/binbio_cell_growth.1.o)
 			lr35902_rel_jump $(two_digits_d $sz_1)
-		) >src/f_cell_growth.2.o
-		local sz_2=$(stat -c '%s' src/f_cell_growth.2.o)
+		) >src/binbio_cell_growth.2.o
+		local sz_2=$(stat -c '%s' src/binbio_cell_growth.2.o)
 		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_2)
-		cat src/f_cell_growth.2.o	# ptrHL != regD
-		cat src/f_cell_growth.1.o	# ptrHL == regD
+		cat src/binbio_cell_growth.2.o	# ptrHL != regD
+		cat src/binbio_cell_growth.1.o	# ptrHL == regD
 
 		# regEを1ビット右ローテート
 		## regBCをスタックへpush
@@ -141,10 +141,10 @@ binbio_cell_growth() {
 
 			# ループ脱出フラグを設定
 			lr35902_inc regA
-		) >src/f_cell_growth.4.o
-		local sz_4=$(stat -c '%s' src/f_cell_growth.4.o)
+		) >src/binbio_cell_growth.4.o
+		local sz_4=$(stat -c '%s' src/binbio_cell_growth.4.o)
 		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_4)
-		cat src/f_cell_growth.4.o
+		cat src/binbio_cell_growth.4.o
 		## regAをregDから復帰
 		lr35902_copy_to_from regA regD
 		## regDEをスタックからpop
@@ -152,8 +152,8 @@ binbio_cell_growth() {
 
 		# regA != 0 なら、1バイトずつチェックするループを脱出する
 		## TODO
-	) >src/f_cell_growth.5.o
-	local sz_5=$(stat -c '%s' src/f_cell_growth.5.o)
+	) >src/binbio_cell_growth.5.o
+	local sz_5=$(stat -c '%s' src/binbio_cell_growth.5.o)
 	lr35902_rel_jump $(two_comp_d $((sz_5 + 2)))
 
 	# regA = 8 - 処理したバイト数(regC)
@@ -167,10 +167,10 @@ binbio_cell_growth() {
 
 	# 	# regAの値だけregEを右ローテート
 	# 	## TODO
-	# ) >src/f_cell_growth.6.o
-	# local sz_6=$(stat -c '%s' src/f_cell_growth.6.o)
+	# ) >src/binbio_cell_growth.6.o
+	# local sz_6=$(stat -c '%s' src/binbio_cell_growth.6.o)
 	# lr35902_rel_jump_with_cond Z $(two_digits_d $sz_6)
-	# cat src/f_cell_growth.6.o
+	# cat src/binbio_cell_growth.6.o
 
 	# regEを細胞の機械語バイナリの各バイトの取得フラグへ書き戻す
 	## TODO
