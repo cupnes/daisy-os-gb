@@ -5,6 +5,8 @@ INCLUDE_GBOS_SH=true
 
 . include/gb.sh
 
+GBOS_NULL=0000
+
 GBOS_WX_DEF=00
 GBOS_WY_DEF=00
 
