@@ -2756,6 +2756,83 @@ f_binbio_cell_death() {
 	lr35902_return
 }
 
+# バイナリ生物環境の初期化
+f_binbio_cell_death >src/f_binbio_cell_death.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_death.o))
+fadr=$(calc16 "${a_binbio_cell_death}+${fsz}")
+a_binbio_init=$(four_digits $fadr)
+echo -e "a_binbio_init=$a_binbio_init" >>$MAP_FILE_NAME
+f_binbio_init() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regBC
+	lr35902_push_reg regDE
+	lr35902_push_reg regHL
+
+	# 初期細胞を生成
+	## 細胞データ領域の最初のアドレスをregHLへ設定
+	lr35902_set_reg regL $(echo $BINBIO_CELL_DATA_AREA_BEGIN | cut -c3-4)
+	lr35902_set_reg regH $(echo $BINBIO_CELL_DATA_AREA_BEGIN | cut -c1-2)
+	## flags = 0x01
+	lr35902_set_reg regA 01
+	lr35902_copyinc_to_ptrHL_from_regA
+	## tile_x = 10
+	lr35902_set_reg regA 0a
+	lr35902_copyinc_to_ptrHL_from_regA
+	## tile_y = 9
+	lr35902_set_reg regA 09
+	lr35902_copyinc_to_ptrHL_from_regA
+	## life_duration = 10
+	lr35902_set_reg regA 0a
+	lr35902_copyinc_to_ptrHL_from_regA
+	## life_left = 10
+	lr35902_copyinc_to_ptrHL_from_regA
+	## fitness = 100
+	lr35902_set_reg regA 64
+	lr35902_copyinc_to_ptrHL_from_regA
+	## tile_num = $GBOS_TILE_NUM_CELL
+	lr35902_set_reg regA $GBOS_TILE_NUM_CELL
+	lr35902_copyinc_to_ptrHL_from_regA
+	## bin_size = 5
+	lr35902_set_reg regA 05
+	lr35902_copyinc_to_ptrHL_from_regA
+	## bin_data = (現在の細胞のtile_numへ細胞タイルを設定する命令列)
+	### ld a,$GBOS_TILE_NUM_CELL => 3e $GBOS_TILE_NUM_CELL
+	lr35902_set_reg regA 3e
+	lr35902_copyinc_to_ptrHL_from_regA
+	lr35902_set_reg regA $GBOS_TILE_NUM_CELL
+	lr35902_copyinc_to_ptrHL_from_regA
+	### call $beef => cd ef be
+	### TODO 関数のアドレスを仮に0xbeefとしているので、
+	###      set_tile_num()ができたらそのアドレスを設定するようにする
+	lr35902_set_reg regA cd
+	lr35902_copyinc_to_ptrHL_from_regA
+	lr35902_set_reg regA ef
+	lr35902_copyinc_to_ptrHL_from_regA
+	lr35902_set_reg regA be
+	lr35902_copyinc_to_ptrHL_from_regA
+	## collected_flags = 0x00
+	lr35902_xor_to_regA regA
+	lr35902_copy_to_from ptrHL regA
+
+	# システム変数へ初期値を設定
+	## cur_cell_addr = $BINBIO_CELL_DATA_AREA_BEGIN
+	lr35902_set_reg regA $(echo $BINBIO_CELL_DATA_AREA_BEGIN | cut -c3-4)
+	lr35902_copy_to_addr_from_regA $var_binbio_cur_cell_addr_bh
+	lr35902_set_reg regA $(echo $BINBIO_CELL_DATA_AREA_BEGIN | cut -c1-2)
+	lr35902_copy_to_addr_from_regA $var_binbio_cur_cell_addr_th
+	## mutation_probability = 50
+	lr35902_set_reg regA 32
+	lr35902_copy_to_addr_from_regA $var_binbio_mutation_probability
+
+	# pop & return
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regDE
+	lr35902_pop_reg regBC
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
 # V-Blankハンドラ
 # f_vblank_hdlr() {
 	# V-Blank/H-Blank時の処理は、
@@ -2823,6 +2900,7 @@ global_functions() {
 	f_set_vram_addr_to_cell
 	f_binbio_cell_growth
 	f_binbio_cell_death
+	f_binbio_init
 }
 
 gbos_vec() {
@@ -3257,6 +3335,9 @@ init() {
 
 	# タイルミラー領域の初期化
 	init_tmrr
+
+	# バイナリ生物環境の初期化
+	lr35902_call $a_binbio_init
 
 	# タイマー設定&開始
 	lr35902_copy_to_regA_from_ioport $GB_IO_TAC
