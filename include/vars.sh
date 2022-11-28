@@ -41,7 +41,7 @@ var_tdq_tail_th=c01a	# tdq.tail[15:8]
 var_tdq_stat=c01b	# tdq.stat
 
 var_app_release_btn=c01c	# アプリ用ボタンリリースフラグ
-var_hidden_com_stat=c01d	# 隠しコマンドステート
+# 0xc01d: 未使用
 
 # 実行ファイル用変数は使い終わったらゼロクリアすること
 # bineditはこの変数が0か否かで、
