@@ -2775,10 +2775,26 @@ f_binbio_cell_metabolism_and_motion() {
 	lr35902_return
 }
 
-# 細胞の「成長」の振る舞い
+# コード化合物取得
+# out: regA - 取得したコード化合物
 f_binbio_cell_metabolism_and_motion >src/f_binbio_cell_metabolism_and_motion.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_metabolism_and_motion.o))
 fadr=$(calc16 "${a_binbio_cell_metabolism_and_motion}+${fsz}")
+a_binbio_get_code_comp=$(four_digits $fadr)
+echo -e "a_binbio_get_code_comp=$a_binbio_get_code_comp" >>$MAP_FILE_NAME
+f_binbio_get_code_comp() {
+	# 0x00〜0xffの間の乱数を生成
+	# 生成した乱数をレジスタAへ設定
+	lr35902_call $a_get_rnd
+
+	# return
+	lr35902_return
+}
+
+# 細胞の「成長」の振る舞い
+f_binbio_get_code_comp >src/f_binbio_get_code_comp.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_get_code_comp.o))
+fadr=$(calc16 "${a_binbio_get_code_comp}+${fsz}")
 a_binbio_cell_growth=$(four_digits $fadr)
 echo -e "a_binbio_cell_growth=$a_binbio_cell_growth" >>$MAP_FILE_NAME
 f_binbio_cell_growth() {
@@ -2953,6 +2969,7 @@ global_functions() {
 	f_binbio_cell_set_tile_num
 	f_binbio_cell_eval
 	f_binbio_cell_metabolism_and_motion
+	f_binbio_get_code_comp
 	f_binbio_cell_growth
 	f_binbio_cell_death
 	f_binbio_init
