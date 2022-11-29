@@ -2686,10 +2686,23 @@ f_binbio_cell_set_tile_num() {
 	lr35902_return
 }
 
-# 細胞の「成長」の振る舞い
+# 現在の細胞を評価する
+# out: regA - 評価結果の適応度(0〜100)
 f_binbio_cell_set_tile_num >src/f_binbio_cell_set_tile_num.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_set_tile_num.o))
 fadr=$(calc16 "${a_binbio_cell_set_tile_num}+${fsz}")
+a_binbio_cell_eval=$(four_digits $fadr)
+echo -e "a_binbio_cell_eval=$a_binbio_cell_eval" >>$MAP_FILE_NAME
+f_binbio_cell_eval() {
+	# TODO ひとまず常に適応度100を返すようにしているので、適宜変更する
+	lr35902_set_reg regA 64
+	lr35902_return
+}
+
+# 細胞の「成長」の振る舞い
+f_binbio_cell_eval >src/f_binbio_cell_eval.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_eval.o))
+fadr=$(calc16 "${a_binbio_cell_eval}+${fsz}")
 a_binbio_cell_growth=$(four_digits $fadr)
 echo -e "a_binbio_cell_growth=$a_binbio_cell_growth" >>$MAP_FILE_NAME
 f_binbio_cell_growth() {
@@ -2862,6 +2875,7 @@ global_functions() {
 	f_get_rnd
 	f_tdq_enq
 	f_binbio_cell_set_tile_num
+	f_binbio_cell_eval
 	f_binbio_cell_growth
 	f_binbio_cell_death
 	f_binbio_init
