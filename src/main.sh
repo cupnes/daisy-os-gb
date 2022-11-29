@@ -2723,17 +2723,20 @@ f_binbio_init() {
 
 	# 初期細胞を生成
 	## 細胞データ領域の最初のアドレスをregHLへ設定
-	lr35902_set_reg regL $(echo $BINBIO_CELL_DATA_AREA_BEGIN | cut -c3-4)
-	lr35902_set_reg regH $(echo $BINBIO_CELL_DATA_AREA_BEGIN | cut -c1-2)
+	lr35902_set_reg regHL $BINBIO_CELL_DATA_AREA_BEGIN
 	## flags = 0x01
 	lr35902_set_reg regA 01
 	lr35902_copyinc_to_ptrHL_from_regA
 	## tile_x = 10
 	lr35902_set_reg regA 0a
 	lr35902_copyinc_to_ptrHL_from_regA
+	### 後のためにregEにも設定
+	lr35902_copy_to_from regE regA
 	## tile_y = 9
 	lr35902_set_reg regA 09
 	lr35902_copyinc_to_ptrHL_from_regA
+	### 後のためにregDにも設定
+	lr35902_copy_to_from regD regA
 	## life_duration = 10
 	lr35902_set_reg regA 0a
 	lr35902_copyinc_to_ptrHL_from_regA
@@ -2745,6 +2748,8 @@ f_binbio_init() {
 	## tile_num = $GBOS_TILE_NUM_CELL
 	lr35902_set_reg regA $GBOS_TILE_NUM_CELL
 	lr35902_copyinc_to_ptrHL_from_regA
+	### 後のためにregBにも設定
+	lr35902_copy_to_from regB regA
 	## bin_size = 5
 	lr35902_set_reg regA 05
 	lr35902_copyinc_to_ptrHL_from_regA
@@ -2754,14 +2759,12 @@ f_binbio_init() {
 	lr35902_copyinc_to_ptrHL_from_regA
 	lr35902_set_reg regA $GBOS_TILE_NUM_CELL
 	lr35902_copyinc_to_ptrHL_from_regA
-	### call $beef => cd ef be
-	### TODO 関数のアドレスを仮に0xbeefとしているので、
-	###      set_tile_num()ができたらそのアドレスを設定するようにする
+	### call $a_binbio_cell_set_tile_num => cd a_binbio_cell_set_tile_num
 	lr35902_set_reg regA cd
 	lr35902_copyinc_to_ptrHL_from_regA
-	lr35902_set_reg regA ef
+	lr35902_set_reg regA $(echo $a_binbio_cell_set_tile_num | cut -c3-4)
 	lr35902_copyinc_to_ptrHL_from_regA
-	lr35902_set_reg regA be
+	lr35902_set_reg regA $(echo $a_binbio_cell_set_tile_num | cut -c1-2)
 	lr35902_copyinc_to_ptrHL_from_regA
 	## collected_flags = 0x00
 	lr35902_xor_to_regA regA
@@ -2776,6 +2779,16 @@ f_binbio_init() {
 	## mutation_probability = 50
 	lr35902_set_reg regA 32
 	lr35902_copy_to_addr_from_regA $var_binbio_mutation_probability
+
+	# 初期細胞をマップへ配置
+	## タイル座標をVRAMアドレスへ変換
+	lr35902_call $a_tcoord_to_addr
+	## VRAMアドレスと細胞のタイル番号をtdqへエンキュー
+	### VRAMアドレスをregDEへ設定
+	lr35902_copy_to_from regD regH
+	lr35902_copy_to_from regE regL
+	### tdqへエンキューする
+	lr35902_call $a_enq_tdq
 
 	# pop & return
 	lr35902_pop_reg regHL
