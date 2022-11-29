@@ -2639,11 +2639,9 @@ f_binbio_cell_set_tile_num() {
 	lr35902_push_reg regDE
 	lr35902_push_reg regHL
 
-	# タイル番号をregBへコピーしpushしておく
-	lr35902_copy_to_from regB regA
-	lr35902_push_reg regBC
-
-	# 現在の細胞のtile_numへregAの値を設定
+	# 現在の細胞のtile_numへ指定されたタイル番号を設定
+	## 指定されたタイル番号をregDへコピー
+	lr35902_copy_to_from regD regA
 	## 現在の細胞のアドレスをregHLへ取得
 	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
 	lr35902_copy_to_from regL regA
@@ -2652,10 +2650,13 @@ f_binbio_cell_set_tile_num() {
 	## アドレスregHLをtile_numまで進める
 	lr35902_set_reg regBC 0006
 	lr35902_add_to_regHL regBC
-	## ptrHLへregAの値を設定
-	lr35902_copy_to_from ptrHL regA
+	## ptrHLへregDの値を設定
+	lr35902_copy_to_from ptrHL regD
 
 	# 設定されたタイルをマップへ描画
+	## 指定されたタイル番号をregBへコピーしpushしておく
+	lr35902_copy_to_from regB regD
+	lr35902_push_reg regBC
 	## 現在の細胞のtile_x,tile_yからVRAMアドレスを算出
 	### アドレスregHLをtile_yまで戻す
 	lr35902_set_reg regBC $(two_comp_4 4)
@@ -2699,10 +2700,85 @@ f_binbio_cell_eval() {
 	lr35902_return
 }
 
-# 細胞の「成長」の振る舞い
+# 細胞の「代謝/運動」の振る舞い
 f_binbio_cell_eval >src/f_binbio_cell_eval.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_eval.o))
 fadr=$(calc16 "${a_binbio_cell_eval}+${fsz}")
+a_binbio_cell_metabolism_and_motion=$(four_digits $fadr)
+echo -e "a_binbio_cell_metabolism_and_motion=$a_binbio_cell_metabolism_and_motion" >>$MAP_FILE_NAME
+f_binbio_cell_metabolism_and_motion() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regBC
+	lr35902_push_reg regDE
+	lr35902_push_reg regHL
+
+	# 実行
+	## 現在の細胞のbin_dataのbin_size分のバイナリをBIN_LOAD_ADDRへロード
+	### 現在の細胞のアドレスをregHLへ取得
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
+	lr35902_copy_to_from regL regA
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
+	lr35902_copy_to_from regH regA
+	### アドレスregHLをbin_sizeまで進める
+	lr35902_set_reg regBC 0007
+	lr35902_add_to_regHL regBC
+	### bin_sizeをregAへ取得し、アドレスregHLをbin_dataまで進める
+	lr35902_copyinc_to_regA_from_ptrHL
+	### regAをregDへコピー
+	lr35902_copy_to_from regD regA
+	### regBCへBIN_LOAD_ADDRを設定
+	lr35902_set_reg regBC $BINBIO_BIN_LOAD_ADDR
+	### bin_dataのバイナリをBIN_LOAD_ADDRへロード
+	(
+		# bin_dataから1バイト取得しつつアドレスを進める
+		lr35902_copyinc_to_regA_from_ptrHL
+
+		# 取得した1バイトをBIN_LOAD_ADDRへロードしアドレスを進める
+		lr35902_copy_to_from ptrBC regA
+		lr35902_inc regBC
+
+		# regD(bin_size)をデクリメント
+		lr35902_dec regD
+	) >src/f_binbio_cell_metabolism_and_motion.1.o
+	cat src/f_binbio_cell_metabolism_and_motion.1.o
+	local sz_1=$(stat -c '%s' src/f_binbio_cell_metabolism_and_motion.1.o)
+	lr35902_rel_jump_with_cond NZ $(two_comp_d $((sz_1 + 2)))
+	## ロードした最終アドレス+1の位置にreturn命令を配置
+	lr35902_set_reg regA c9
+	lr35902_copy_to_from ptrBC regA
+	## BIN_LOAD_ADDRを関数呼び出し
+	lr35902_call $BINBIO_BIN_LOAD_ADDR
+
+	# 評価
+	## 評価関数(eval)を呼び出す
+	lr35902_call $a_binbio_cell_eval
+	## 得られた適応度を細胞へ設定
+	### 得られた適応度をregDへコピーしておく
+	lr35902_copy_to_from regD regA
+	### 現在の細胞のアドレスをregHLへ取得
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
+	lr35902_copy_to_from regL regA
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
+	lr35902_copy_to_from regH regA
+	### アドレスregHLをfitnessまで進める
+	lr35902_set_reg regBC 0005
+	lr35902_add_to_regHL regBC
+	### 現在の細胞のfitnessへ得られた適応度を設定
+	lr35902_copy_to_from ptrHL regD
+
+	# pop & return
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regDE
+	lr35902_pop_reg regBC
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
+# 細胞の「成長」の振る舞い
+f_binbio_cell_metabolism_and_motion >src/f_binbio_cell_metabolism_and_motion.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_metabolism_and_motion.o))
+fadr=$(calc16 "${a_binbio_cell_metabolism_and_motion}+${fsz}")
 a_binbio_cell_growth=$(four_digits $fadr)
 echo -e "a_binbio_cell_growth=$a_binbio_cell_growth" >>$MAP_FILE_NAME
 f_binbio_cell_growth() {
@@ -2876,6 +2952,7 @@ global_functions() {
 	f_tdq_enq
 	f_binbio_cell_set_tile_num
 	f_binbio_cell_eval
+	f_binbio_cell_metabolism_and_motion
 	f_binbio_cell_growth
 	f_binbio_cell_death
 	f_binbio_init
