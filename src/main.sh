@@ -2625,43 +2625,71 @@ f_tdq_enq() {
 	lr35902_return
 }
 
-# 指定されたアドレスの細胞データへ指定されたVRAMアドレスを設定する
-# in : regH  - 細胞データアドレス[15:8]
-#      regL  - 細胞データアドレス[7:0]
-#      regD  - VRAMアドレス[15:8]
-#      regE  - VRAMアドレス[7:0]
+# 現在の細胞に指定されたタイル番号を設定する
+# in : regA  - タイル番号
 f_tdq_enq >src/f_tdq_enq.o
 fsz=$(to16 $(stat -c '%s' src/f_tdq_enq.o))
 fadr=$(calc16 "${a_tdq_enq}+${fsz}")
-a_set_vram_addr_to_cell=$(four_digits $fadr)
-echo -e "a_set_vram_addr_to_cell=$a_set_vram_addr_to_cell" >>$MAP_FILE_NAME
-f_set_vram_addr_to_cell() {
+a_binbio_cell_set_tile_num=$(four_digits $fadr)
+echo -e "a_binbio_cell_set_tile_num=$a_binbio_cell_set_tile_num" >>$MAP_FILE_NAME
+f_binbio_cell_set_tile_num() {
 	# push
 	lr35902_push_reg regAF
 	lr35902_push_reg regBC
+	lr35902_push_reg regDE
 	lr35902_push_reg regHL
 
-	# regHL += VRAMアドレスへのオフセット(2バイト)
-	lr35902_set_reg regBC 0002
-	lr35902_add_to_regHL regBC
+	# タイル番号をregBへコピーしpushしておく
+	lr35902_copy_to_from regB regA
+	lr35902_push_reg regBC
 
-	# *regHL = regDE
-	lr35902_copy_to_ptrHL_from regE
-	lr35902_dec regBC
+	# 現在の細胞のtile_numへregAの値を設定
+	## 現在の細胞のアドレスをregHLへ取得
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
+	lr35902_copy_to_from regL regA
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
+	lr35902_copy_to_from regH regA
+	## アドレスregHLをtile_numまで進める
+	lr35902_set_reg regBC 0006
 	lr35902_add_to_regHL regBC
-	lr35902_copy_to_ptrHL_from regD
+	## ptrHLへregAの値を設定
+	lr35902_copy_to_from ptrHL regA
+
+	# 設定されたタイルをマップへ描画
+	## 現在の細胞のtile_x,tile_yからVRAMアドレスを算出
+	### アドレスregHLをtile_yまで戻す
+	lr35902_set_reg regBC $(two_comp_4 4)
+	lr35902_add_to_regHL regBC
+	### tile_yをregDへ設定
+	lr35902_copy_to_from regD ptrHL
+	### アドレスregHLをtile_xまで戻す
+	lr35902_set_reg regBC $(two_comp_4 1)
+	lr35902_add_to_regHL regBC
+	### tile_xをregEへ設定
+	lr35902_copy_to_from regE ptrHL
+	### タイル座標をアドレスへ変換
+	lr35902_call $a_tcoord_to_addr
+	## 算出したVRAMアドレスと細胞のタイル番号をtdqへエンキュー
+	### タイル番号をregBへpopしてくる
+	lr35902_pop_reg regBC
+	### VRAMアドレスをregDEへ設定
+	lr35902_copy_to_from regD regH
+	lr35902_copy_to_from regE regL
+	### tdqへエンキューする
+	lr35902_call $a_enq_tdq
 
 	# pop & return
 	lr35902_pop_reg regHL
+	lr35902_pop_reg regDE
 	lr35902_pop_reg regBC
 	lr35902_pop_reg regAF
 	lr35902_return
 }
 
 # 細胞の「成長」の振る舞い
-f_set_vram_addr_to_cell >src/f_set_vram_addr_to_cell.o
-fsz=$(to16 $(stat -c '%s' src/f_set_vram_addr_to_cell.o))
-fadr=$(calc16 "${a_set_vram_addr_to_cell}+${fsz}")
+f_binbio_cell_set_tile_num >src/f_binbio_cell_set_tile_num.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_set_tile_num.o))
+fadr=$(calc16 "${a_binbio_cell_set_tile_num}+${fsz}")
 a_binbio_cell_growth=$(four_digits $fadr)
 echo -e "a_binbio_cell_growth=$a_binbio_cell_growth" >>$MAP_FILE_NAME
 f_binbio_cell_growth() {
@@ -2820,7 +2848,7 @@ global_functions() {
 	f_tile_to_byte
 	f_get_rnd
 	f_tdq_enq
-	f_set_vram_addr_to_cell
+	f_binbio_cell_set_tile_num
 	f_binbio_cell_growth
 	f_binbio_cell_death
 	f_binbio_init
