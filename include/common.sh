@@ -91,6 +91,10 @@ to16() {
 	echo "obase=16;$val" | bc
 }
 
+busy_loop() {
+	lr35902_rel_jump $(two_comp 02)
+}
+
 infinite_halt() {
 	lr35902_halt
 	lr35902_rel_jump $(two_comp 04)
