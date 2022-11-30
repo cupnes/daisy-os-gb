@@ -1107,6 +1107,19 @@ lr35902_complement_regA() {
 #       rl側をrotate_left_through_carryという名前で実装する
 #       ∵ 振る舞いからしてrl側がCarryを通してシフトしている
 
+# 0x17 (rla)
+# 動作イメージ:
+# ... ← [b0] ← [carry] ← [b7] ← ...
+# 動作例:
+#   0x55(carry=0) -> 0xaa(carry=0)
+#   0xaa(carry=0) -> 0x54(carry=1)
+#   0x55(carry=1) -> 0xab(carry=0)
+#   0xaa(carry=1) -> 0x55(carry=1)
+lr35902_rot_regA_left_th_carry() {
+	echo -en '\x17'	# rla
+	echo -e 'rla\t;4' >>$ASM_LIST_FILE
+}
+
 # 0x0f (rrca)
 # 動作イメージ:
 #       [carry]
