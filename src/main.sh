@@ -3003,10 +3003,98 @@ f_binbio_cell_growth() {
 	lr35902_return
 }
 
-# 細胞の「死」の振る舞い
+# 分裂可能か？
+# out: regA - 分裂可能なら1、そうでないなら0
 f_binbio_cell_growth >src/f_binbio_cell_growth.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_growth.o))
 fadr=$(calc16 "${a_binbio_cell_growth}+${fsz}")
+a_binbio_cell_is_dividable=$(four_digits $fadr)
+echo -e "a_binbio_cell_is_dividable=$a_binbio_cell_is_dividable" >>$MAP_FILE_NAME
+f_binbio_cell_is_dividable() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regBC
+	lr35902_push_reg regDE
+	lr35902_push_reg regHL
+
+	# regHLへ現在の細胞のアドレスを設定する
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
+	lr35902_copy_to_from regL regA
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
+	lr35902_copy_to_from regH regA
+
+	# regHLのアドレスをcollected_flagsまで進める
+	lr35902_set_reg regBC 000d
+	lr35902_add_to_regHL regBC
+
+	# collected_flagsをregDへ取得
+	lr35902_copy_to_from regD ptrHL
+
+	# regHLのアドレスをbin_sizeまで戻す
+	lr35902_set_reg regBC $(two_comp_4 6)
+	lr35902_add_to_regHL regBC
+
+	# bin_sizeをregBへ取得
+	lr35902_copy_to_from regB ptrHL
+
+	# regAをゼロクリア
+	lr35902_xor_to_regA regA
+
+	# regBの数だけregAの下位からビットを立てていく
+	(
+		# regAを1ビット左ローテート
+		lr35902_rot_regA_left_th_carry
+
+		# regAをインクリメント(LSBをセットする)
+		lr35902_inc regA
+
+		# regBをデクリメント
+		lr35902_dec regB
+	) >src/f_binbio_cell_is_dividable.1.o
+	cat src/f_binbio_cell_is_dividable.1.o
+	local sz_1=$(stat -c '%s' src/f_binbio_cell_is_dividable.1.o)
+	lr35902_rel_jump_with_cond NZ $(two_comp_d $((sz_1 + 2)))
+
+	# regD == regA ?
+	lr35902_compare_regA_and regD
+	(
+		# regD != regA の場合
+
+		# pop
+		lr35902_pop_reg regHL
+		lr35902_pop_reg regDE
+		lr35902_pop_reg regBC
+		lr35902_pop_reg regAF
+
+		# regAをゼロクリア
+		lr35902_xor_to_regA regA
+
+		# return
+		lr35902_return
+	) >src/f_binbio_cell_is_dividable.2.o
+	local sz_2=$(stat -c '%s' src/f_binbio_cell_is_dividable.2.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_2)
+	cat src/f_binbio_cell_is_dividable.2.o
+
+	# regD == regA の場合
+
+	# pop
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regDE
+	lr35902_pop_reg regBC
+	lr35902_pop_reg regAF
+
+	# regAへ1を設定
+	lr35902_set_reg regA 01
+
+	# return
+	lr35902_return
+}
+
+# 細胞の「死」の振る舞い
+f_binbio_cell_is_dividable >src/f_binbio_cell_is_dividable.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_is_dividable.o))
+fadr=$(calc16 "${a_binbio_cell_is_dividable}+${fsz}")
 a_binbio_cell_death=$(four_digits $fadr)
 echo -e "a_binbio_cell_death=$a_binbio_cell_death" >>$MAP_FILE_NAME
 f_binbio_cell_death() {
@@ -3172,6 +3260,7 @@ global_functions() {
 	f_binbio_cell_metabolism_and_motion
 	f_binbio_get_code_comp
 	f_binbio_cell_growth
+	f_binbio_cell_is_dividable
 	f_binbio_cell_death
 	f_binbio_init
 }
