@@ -3091,10 +3091,60 @@ f_binbio_cell_is_dividable() {
 	lr35902_return
 }
 
-# 細胞の「死」の振る舞い
+# 細胞データ領域を確保
+# out: regHL - 確保した領域のアドレス(確保できなかった場合はNULL)
 f_binbio_cell_is_dividable >src/f_binbio_cell_is_dividable.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_is_dividable.o))
 fadr=$(calc16 "${a_binbio_cell_is_dividable}+${fsz}")
+a_binbio_cell_alloc=$(four_digits $fadr)
+echo -e "a_binbio_cell_alloc=$a_binbio_cell_alloc" >>$MAP_FILE_NAME
+f_binbio_cell_alloc() {
+	# push
+	lr35902_push_reg regAF
+
+	# CELL_DATA_AREA_BEGINからCELL_DATA_SIZEバイト毎に
+	# flags.aliveが0の場所を探す
+	## CELL_DATA_AREA_BEGINをregHLへ設定
+	lr35902_set_reg regHL $BINBIO_CELL_DATA_AREA_BEGIN
+	## flags.aliveが0の場所を探す
+	(
+		# flags.alive == 0 ?
+		lr35902_test_bitN_of_reg 0 ptrHL
+		(
+			# flags.alive == 0 の場合
+
+			# 現在のregHLを返す
+			## pop & return
+			lr35902_pop_reg regAF
+			lr35902_return
+		) >src/f_binbio_cell_alloc.1.o
+		(
+			# flags.alive != 0 の場合
+
+			# TODO
+
+			# flags.alive == 0 の場合の処理を飛ばす
+			local sz_1=$(stat -c '%s' src/f_binbio_cell_alloc.1.o)
+			lr35902_rel_jump $(two_digits_d $sz_1)
+		) >src/f_binbio_cell_alloc.2.o
+		local sz_2=$(stat -c '%s' src/f_binbio_cell_alloc.2.o)
+		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_2)
+		cat src/f_binbio_cell_alloc.2.o	# flags.alive != 0 の場合
+		cat src/f_binbio_cell_alloc.1.o	# flags.alive == 0 の場合
+
+		# TODO
+	) >src/f_binbio_cell_alloc.3.o
+	# TODO
+
+	# pop & return
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
+# 細胞の「死」の振る舞い
+f_binbio_cell_alloc >src/f_binbio_cell_alloc.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_alloc.o))
+fadr=$(calc16 "${a_binbio_cell_alloc}+${fsz}")
 a_binbio_cell_death=$(four_digits $fadr)
 echo -e "a_binbio_cell_death=$a_binbio_cell_death" >>$MAP_FILE_NAME
 f_binbio_cell_death() {
@@ -3261,6 +3311,7 @@ global_functions() {
 	f_binbio_get_code_comp
 	f_binbio_cell_growth
 	f_binbio_cell_is_dividable
+	f_binbio_cell_alloc
 	f_binbio_cell_death
 	f_binbio_init
 }
