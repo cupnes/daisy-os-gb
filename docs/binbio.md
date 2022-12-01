@@ -121,11 +121,11 @@
 - 戻り値
   | レジスタ | 内容 |
   | --- | --- |
-  | A | 確保した領域のアドレス(確保できなかった場合は`NULL`) |
+  | HL | 確保した領域のアドレス(確保できなかった場合は`NULL`) |
 - 処理内容
   1. `CELL_DATA_AREA_BEGIN`から`CELL_DATA_SIZE`バイト毎に`flags`.`alive`が0の場所を探す
-  2. 見つけた領域のアドレスをレジスタAへ設定しreturn
-  3. `CELL_DATA_AREA_END`まで到達しても見つからなかった場合、レジスタAへ`NULL`を設定しreturn
+  2. 見つけた領域のアドレスをレジスタHLへ設定しreturn
+  3. `CELL_DATA_AREA_END`まで到達しても見つからなかった場合、レジスタHLへ`NULL`を設定しreturn
 
 ### `find_free_neighbor`: 近傍の空き座標を探す
 - 戻り値
