@@ -1,6 +1,9 @@
 if [ "${INCLUDE_BINBIO_SH+is_defined}" ]; then
 	return
 fi
+
+. include/common.sh
+
 INCLUDE_BINBIO_SH=true
 
 # 細胞データ構造のサイズ[バイト]
@@ -12,6 +15,7 @@ BINBIO_BIN_LOAD_ADDR=c007
 # 細胞データ領域
 BINBIO_CELL_DATA_AREA_BEGIN=c090	# 最初のアドレス
 BINBIO_CELL_DATA_AREA_END=c2ff	# 最後のアドレス
+BINBIO_CELL_DATA_AREA_SIZE=$(four_digits $(calc16 "${BINBIO_CELL_DATA_AREA_END}-${BINBIO_CELL_DATA_AREA_BEGIN}+1"))
 
 # 細胞の「死」の振る舞い
 # 現在の細胞の`alive`フラグをクリアする

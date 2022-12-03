@@ -3236,11 +3236,58 @@ f_binbio_cell_is_dividable() {
 	lr35902_return
 }
 
-# 細胞データ領域を確保
-# out: regHL - 確保した領域のアドレス(確保できなかった場合はNULL)
+# 細胞データ領域をゼロクリア
 f_binbio_cell_is_dividable >src/f_binbio_cell_is_dividable.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_is_dividable.o))
 fadr=$(calc16 "${a_binbio_cell_is_dividable}+${fsz}")
+a_binbio_clear_cell_data_area=$(four_digits $fadr)
+echo -e "a_binbio_clear_cell_data_area=$a_binbio_clear_cell_data_area" >>$MAP_FILE_NAME
+f_binbio_clear_cell_data_area() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regBC
+	lr35902_push_reg regHL
+
+	# 細胞データ領域の最初のアドレスをregHLへ設定
+	lr35902_set_reg regHL $BINBIO_CELL_DATA_AREA_BEGIN
+
+	# 細胞データ領域のサイズをregBCへ設定
+	lr35902_set_reg regBC $BINBIO_CELL_DATA_AREA_SIZE
+
+	# 細胞データ領域を0x00で上書き
+	(
+		# regAへ0x00を設定
+		lr35902_xor_to_regA regA
+
+		# ptrHL = regA, regHL++
+		lr35902_copyinc_to_ptrHL_from_regA
+
+		# regBCをデクリメント
+		lr35902_dec regBC
+
+		# regBC == 0 ?
+		## regA |= regB | regC
+		lr35902_or_to_regA regB
+		lr35902_or_to_regA regC
+		## regA == 0 ?
+		lr35902_compare_regA_and 00
+	) >src/f_binbio_clear_cell_data_area.1.o
+	cat src/f_binbio_clear_cell_data_area.1.o
+	local sz_1=$(stat -c '%s' src/f_binbio_clear_cell_data_area.1.o)
+	lr35902_rel_jump_with_cond NZ $(two_comp_d $((sz_1 + 2)))
+
+	# pop & return
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regBC
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
+# 細胞データ領域を確保
+# out: regHL - 確保した領域のアドレス(確保できなかった場合はNULL)
+f_binbio_clear_cell_data_area >src/f_binbio_clear_cell_data_area.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_clear_cell_data_area.o))
+fadr=$(calc16 "${a_binbio_clear_cell_data_area}+${fsz}")
 a_binbio_cell_alloc=$(four_digits $fadr)
 echo -e "a_binbio_cell_alloc=$a_binbio_cell_alloc" >>$MAP_FILE_NAME
 f_binbio_cell_alloc() {
@@ -3326,6 +3373,9 @@ f_binbio_init() {
 	lr35902_push_reg regBC
 	lr35902_push_reg regDE
 	lr35902_push_reg regHL
+
+	# 細胞データ領域をゼロクリア
+	lr35902_call $a_binbio_clear_cell_data_area
 
 	# 初期細胞を生成
 	## 細胞データ領域の最初のアドレスをregHLへ設定
@@ -3474,6 +3524,7 @@ global_functions() {
 	f_binbio_get_code_comp
 	f_binbio_cell_growth
 	f_binbio_cell_is_dividable
+	f_binbio_clear_cell_data_area
 	f_binbio_cell_alloc
 	f_binbio_cell_death
 	f_binbio_init
