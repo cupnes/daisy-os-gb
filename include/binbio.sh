@@ -14,7 +14,9 @@ BINBIO_BIN_LOAD_ADDR=c007
 
 # 細胞データ領域
 BINBIO_CELL_DATA_AREA_BEGIN=c090	# 最初のアドレス
-BINBIO_CELL_DATA_AREA_END=c2ff	# 最後のアドレス
+BINBIO_CELL_DATA_AREA_END=c2f7	# 最後のアドレス
+## ※ 「(最後のアドレス + 1) - 最初のアドレス」が
+## 　 細胞データ構造のサイズの倍数であること
 BINBIO_CELL_DATA_AREA_SIZE=$(four_digits $(calc16 "${BINBIO_CELL_DATA_AREA_END}-${BINBIO_CELL_DATA_AREA_BEGIN}+1"))
 
 # 細胞の「死」の振る舞い
