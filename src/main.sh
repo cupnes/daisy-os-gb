@@ -3246,6 +3246,7 @@ echo -e "a_binbio_cell_alloc=$a_binbio_cell_alloc" >>$MAP_FILE_NAME
 f_binbio_cell_alloc() {
 	# push
 	lr35902_push_reg regAF
+	lr35902_push_reg regDE
 
 	# CELL_DATA_AREA_BEGINからCELL_DATA_SIZEバイト毎に
 	# flags.aliveが0の場所を探す
@@ -3260,43 +3261,44 @@ f_binbio_cell_alloc() {
 
 			# 現在のregHLを返す
 			## pop & return
+			lr35902_pop_reg regDE
 			lr35902_pop_reg regAF
 			lr35902_return
 		) >src/f_binbio_cell_alloc.1.o
-		(
-			# flags.alive != 0 の場合
-
-			# 特にやることなし
-			# TODO この条件自体、無くても良いかも
-
-			# flags.alive == 0 の場合の処理を飛ばす
-			local sz_1=$(stat -c '%s' src/f_binbio_cell_alloc.1.o)
-			lr35902_rel_jump $(two_digits_d $sz_1)
-		) >src/f_binbio_cell_alloc.2.o
-		local sz_2=$(stat -c '%s' src/f_binbio_cell_alloc.2.o)
-		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_2)
-		cat src/f_binbio_cell_alloc.2.o	# flags.alive != 0 の場合
-		cat src/f_binbio_cell_alloc.1.o	# flags.alive == 0 の場合
+		local sz_1=$(stat -c '%s' src/f_binbio_cell_alloc.1.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_1)
+		cat src/f_binbio_cell_alloc.1.o
 
 		# regHL += 細胞データ構造サイズ
-		lr35902_set_reg regBC $(four_digits $BINBIO_CELL_DATA_SIZE)
-		lr35902_add_to_regHL regBC
+		lr35902_set_reg regDE $(four_digits $BINBIO_CELL_DATA_SIZE)
+		lr35902_add_to_regHL regDE
 
 		# regHL > 細胞データ領域最終アドレス ?
-		# ## 細胞データ領域最終アドレスをregBCへ設定
-		# lr35902_set_reg regBC $BINBIO_CELL_DATA_AREA_END
-		# ## regHLをスワップへ退避
-		# lr35902_push_reg regHL
-		# lr35902_compare_regA_and
-		# ## もしそうなら、regHLへNULLを設定してreturn
-		# ## regHLをスワップから復帰
-		# lr35902_pop_reg regHL
-		# TODO
+		## 細胞データ領域最終アドレスをregDEへ設定
+		lr35902_set_reg regDE $BINBIO_CELL_DATA_AREA_END
+		## regHLとregDEを比較
+		lr35902_call $a_compare_regHL_and_regDE
+		lr35902_test_bitN_of_reg 7 regA
+		(
+			# regHL >= regDE の場合
+
+			# ループを脱出
+			lr35902_rel_jump $(two_digits_d 2)
+		) >src/f_binbio_cell_alloc.2.o
+		local sz_2=$(stat -c '%s' src/f_binbio_cell_alloc.2.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_2)
+		cat src/f_binbio_cell_alloc.2.o
 	) >src/f_binbio_cell_alloc.3.o
+	cat src/f_binbio_cell_alloc.3.o
 	# (sz_3 + 2)のサイズ分、上方へ無条件ジャンプ
-	# TODO
+	local sz_3=$(stat -c '%s' src/f_binbio_cell_alloc.3.o)
+	lr35902_rel_jump $(two_comp_d $((sz_3 + 2)))	# 2
+
+	# regHLへNULLを設定
+	lr35902_set_reg regHL $GBOS_NULL
 
 	# pop & return
+	lr35902_pop_reg regDE
 	lr35902_pop_reg regAF
 	lr35902_return
 }

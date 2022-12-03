@@ -52,5 +52,5 @@ a_binbio_get_code_comp=1800
 a_binbio_cell_growth=1804
 a_binbio_cell_is_dividable=1871
 a_binbio_cell_alloc=189D
-a_binbio_cell_death=18A3
-a_binbio_init=18B8
+a_binbio_cell_death=18C1
+a_binbio_init=18D6
