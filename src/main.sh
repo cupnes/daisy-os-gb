@@ -3350,10 +3350,49 @@ f_binbio_cell_alloc() {
 	lr35902_return
 }
 
-# 細胞の「死」の振る舞い
+# 近傍の空き座標を探す
+# out: regD - 見つけたY座標(見つからなかった場合は0xff)
+#      regE - 見つけたX座標(見つからなかった場合は0xff)
 f_binbio_cell_alloc >src/f_binbio_cell_alloc.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_alloc.o))
 fadr=$(calc16 "${a_binbio_cell_alloc}+${fsz}")
+a_binbio_cell_find_free_neighbor=$(four_digits $fadr)
+echo -e "a_binbio_cell_find_free_neighbor=$a_binbio_cell_find_free_neighbor" >>$MAP_FILE_NAME
+f_binbio_cell_find_free_neighbor() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regBC
+	lr35902_push_reg regDE
+	lr35902_push_reg regHL
+
+	# cur_cell_addrから現在の細胞データを参照しtile_x・tile_yを取得
+	## 現在の細胞のアドレスをregHLへ取得
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
+	lr35902_copy_to_from regL regA
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
+	lr35902_copy_to_from regH regA
+	## tile_xをregCへ取得
+	lr35902_inc regHL
+	lr35902_copy_to_from regC ptrHL
+	## tile_yをregBへ取得
+	lr35902_inc regHL
+	lr35902_copy_to_from regB ptrHL
+
+	# 現在の細胞の8近傍を左上から順に時計回りでチェック
+
+
+	# pop & return
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regDE
+	lr35902_pop_reg regBC
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
+# 細胞の「死」の振る舞い
+f_binbio_cell_find_free_neighbor >src/f_binbio_cell_find_free_neighbor.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_find_free_neighbor.o))
+fadr=$(calc16 "${a_binbio_cell_find_free_neighbor}+${fsz}")
 a_binbio_cell_death=$(four_digits $fadr)
 echo -e "a_binbio_cell_death=$a_binbio_cell_death" >>$MAP_FILE_NAME
 f_binbio_cell_death() {
@@ -3526,6 +3565,7 @@ global_functions() {
 	f_binbio_cell_is_dividable
 	f_binbio_clear_cell_data_area
 	f_binbio_cell_alloc
+	f_binbio_cell_find_free_neighbor
 	f_binbio_cell_death
 	f_binbio_init
 }
