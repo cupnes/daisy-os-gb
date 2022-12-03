@@ -84,11 +84,156 @@ GBOS_TMRR_BASE_BH=00	# タイルミラー領域ベースアドレス(下位8ビ�
 GBOS_TMRR_BASE_TH=dc	# タイルミラー領域ベースアドレス(上位8ビット)
 GBOS_TOFS_MASK_TH=03	# タイルアドレスオフセット部マスク(上位8ビット)
 
+# 符号なしの2バイト値同士の比較
+# in  : regHL - 引かれる値
+#     : regDE - 引く値
+# out : regA  - regHL < regDEの時、負の値
+#               regHL == regDEの時、0
+#               regHL > regDEの時、正の値
+# ※ フラグレジスタは破壊される
+a_compare_regHL_and_regDE=$GBOS_GFUNC_START
+echo -e "a_compare_regHL_and_regDE=$a_compare_regHL_and_regDE" >>$MAP_FILE_NAME
+f_compare_regHL_and_regDE() {
+	# regHのMSBで分岐
+	# ※ sub命令はMSBを符号ビットとして扱ってしまうので
+	# 　 regHとregDでMSBが異なる場合の処理を先に行う
+	#    (後のregLとregEも同様)
+	lr35902_test_bitN_of_reg 7 regH
+	(
+		# regHのMSBが0の場合
+
+		# regDのMSBは1か?
+		lr35902_test_bitN_of_reg 7 regD
+		(
+			# regDのMSBが1の場合
+			# → regHL < regDE
+
+			# regAへ負の値を設定してreturn
+			lr35902_set_reg regA ff
+			lr35902_return
+		) >src/f_compare_regHL_and_regDE.5.o
+		local sz_5=$(stat -c '%s' src/f_compare_regHL_and_regDE.5.o)
+		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_5)
+		cat src/f_compare_regHL_and_regDE.5.o
+	) >src/f_compare_regHL_and_regDE.3.o
+	(
+		# regHのMSBが1の場合
+
+		# regDのMSBは0か?
+		lr35902_test_bitN_of_reg 7 regD
+		(
+			# regDのMSBが0の場合
+			# → regHL > regDE
+
+			# regAへ正の値を設定してreturn
+			lr35902_set_reg regA 01
+			lr35902_return
+		) >src/f_compare_regHL_and_regDE.6.o
+		local sz_6=$(stat -c '%s' src/f_compare_regHL_and_regDE.6.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_6)
+		cat src/f_compare_regHL_and_regDE.6.o
+
+		# regHのMSBが0の場合の処理を飛ばす
+		local sz_3=$(stat -c '%s' src/f_compare_regHL_and_regDE.3.o)
+		lr35902_rel_jump $(two_digits_d $sz_3)
+	) >src/f_compare_regHL_and_regDE.4.o
+	local sz_4=$(stat -c '%s' src/f_compare_regHL_and_regDE.4.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_4)
+	cat src/f_compare_regHL_and_regDE.4.o	# regHのMSBが1の場合
+	cat src/f_compare_regHL_and_regDE.3.o	# regHのMSBが0の場合
+
+	# regH - regD
+	lr35902_copy_to_from regA regH
+	lr35902_sub_to_regA regD	# regA - regD
+	## Cがセットされるのは、regA < regD の時
+	(
+		# regA(regH) < regD の場合
+		# → regHL < regDE
+
+		# 結果のregAをreturn
+		lr35902_return
+	) >src/f_compare_regHL_and_regDE.1.o
+	local sz_1=$(stat -c '%s' src/f_compare_regHL_and_regDE.1.o)
+	lr35902_rel_jump_with_cond NC $(two_digits_d $sz_1)
+	cat src/f_compare_regHL_and_regDE.1.o
+
+	# regH >= regD の場合
+
+	# Zフラグで分岐
+	(
+		# regA(regH) == regD の場合
+
+		# regLのMSBで分岐
+		lr35902_test_bitN_of_reg 7 regL
+		(
+			# regLのMSBが0の場合
+
+			# regEのMSBは1か?
+			lr35902_test_bitN_of_reg 7 regE
+			(
+				# regEのMSBが1の場合
+				# → regHL < regDE
+
+				# regAへ負の値を設定してreturn
+				lr35902_set_reg regA ff
+				lr35902_return
+			) >src/f_compare_regHL_and_regDE.9.o
+			local sz_9=$(stat -c '%s' src/f_compare_regHL_and_regDE.9.o)
+			lr35902_rel_jump_with_cond Z $(two_digits_d $sz_9)
+			cat src/f_compare_regHL_and_regDE.9.o
+		) >src/f_compare_regHL_and_regDE.7.o
+		(
+			# regLのMSBが1の場合
+
+			# regEのMSBは0か?
+			lr35902_test_bitN_of_reg 7 regE
+			(
+				# regEのMSBが0の場合
+				# → regHL > regDE
+
+				# regAへ正の値を設定してreturn
+				lr35902_set_reg regA 01
+				lr35902_return
+			) >src/f_compare_regHL_and_regDE.10.o
+			local sz_10=$(stat -c '%s' src/f_compare_regHL_and_regDE.10.o)
+			lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_10)
+			cat src/f_compare_regHL_and_regDE.10.o
+
+			# regHのMSBが0の場合の処理を飛ばす
+			local sz_7=$(stat -c '%s' src/f_compare_regHL_and_regDE.7.o)
+			lr35902_rel_jump $(two_digits_d $sz_7)
+		) >src/f_compare_regHL_and_regDE.8.o
+		local sz_8=$(stat -c '%s' src/f_compare_regHL_and_regDE.8.o)
+		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_8)
+		cat src/f_compare_regHL_and_regDE.8.o	# regHのMSBが1の場合
+		cat src/f_compare_regHL_and_regDE.7.o	# regLのMSBが0の場合
+
+		# regL - regE
+		lr35902_copy_to_from regA regL
+		lr35902_sub_to_regA regE	# regA - regE
+
+		# 結果のregAをreturn
+		lr35902_return
+	) >src/f_compare_regHL_and_regDE.2.o
+	local sz_2=$(stat -c '%s' src/f_compare_regHL_and_regDE.2.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_2)
+	cat src/f_compare_regHL_and_regDE.2.o
+
+	# regH > regD の場合
+	# → regHL > regDE
+
+	# 結果のregAをreturn
+	lr35902_return
+}
+
 # タイル座標をアドレスへ変換
 # in : regD  - タイル座標Y
 #      regE  - タイル座標X
 # out: regHL - 9800h〜のアドレスを格納
-a_tcoord_to_addr=$GBOS_GFUNC_START
+f_compare_regHL_and_regDE >src/f_compare_regHL_and_regDE.o
+fsz=$(to16 $(stat -c '%s' src/f_compare_regHL_and_regDE.o))
+fadr=$(calc16 "${a_compare_regHL_and_regDE}+${fsz}")
+a_tcoord_to_addr=$(four_digits $fadr)
 echo -e "a_tcoord_to_addr=$a_tcoord_to_addr" >>$MAP_FILE_NAME
 f_tcoord_to_addr() {
 	local sz
@@ -3121,7 +3266,8 @@ f_binbio_cell_alloc() {
 		(
 			# flags.alive != 0 の場合
 
-			# TODO
+			# 特にやることなし
+			# TODO この条件自体、無くても良いかも
 
 			# flags.alive == 0 の場合の処理を飛ばす
 			local sz_1=$(stat -c '%s' src/f_binbio_cell_alloc.1.o)
@@ -3132,8 +3278,22 @@ f_binbio_cell_alloc() {
 		cat src/f_binbio_cell_alloc.2.o	# flags.alive != 0 の場合
 		cat src/f_binbio_cell_alloc.1.o	# flags.alive == 0 の場合
 
+		# regHL += 細胞データ構造サイズ
+		lr35902_set_reg regBC $(four_digits $BINBIO_CELL_DATA_SIZE)
+		lr35902_add_to_regHL regBC
+
+		# regHL > 細胞データ領域最終アドレス ?
+		# ## 細胞データ領域最終アドレスをregBCへ設定
+		# lr35902_set_reg regBC $BINBIO_CELL_DATA_AREA_END
+		# ## regHLをスワップへ退避
+		# lr35902_push_reg regHL
+		# lr35902_compare_regA_and
+		# ## もしそうなら、regHLへNULLを設定してreturn
+		# ## regHLをスワップから復帰
+		# lr35902_pop_reg regHL
 		# TODO
 	) >src/f_binbio_cell_alloc.3.o
+	# (sz_3 + 2)のサイズ分、上方へ無条件ジャンプ
 	# TODO
 
 	# pop & return
@@ -3259,6 +3419,7 @@ f_binbio_init() {
 
 # 1000h〜の領域に配置される
 global_functions() {
+	f_compare_regHL_and_regDE
 	f_tcoord_to_addr
 	f_wtcoord_to_tcoord
 	f_tcoord_to_mrraddr
