@@ -967,6 +967,21 @@ lr35902_add_to_regHL() {
 	esac
 }
 
+# regA - (引数で指定された要素) を行い、結果をregAへ格納する
+# フラグレジスタへの影響：
+#   Z - 結果が0の時(regA == (引数で指定された要素)の時)にセットされる
+#   N - 無条件でセットされる
+#   H - 除算の際、ビット4からの桁借りが発生した場合にセットされる
+#   C - A < (引数で指定された要素)の時にセットされる
+# 動作例：
+#   regA=0x01,regB=0x00 -> Z=0,N=1,H=0,C=0 regA=0x01
+#   regA=0x0f,regB=0x01 -> Z=0,N=1,H=0,C=0 regA=0x0e
+#   regA=0x10,regB=0x00 -> Z=0,N=1,H=0,C=0 regA=0x10
+#   regA=0x10,regB=0x01 -> Z=0,N=1,H=1,C=0 regA=0x0f
+#   regA=0x00,regB=0xff -> Z=0,N=1,H=1,C=1 regA=0x01
+#   regA=0xff,regB=0xfe -> Z=0,N=1,H=0,C=0 regA=0x01
+#   ↑2つの結果から、フラグレジスタはMSBを符号ビットと扱わない挙動(cp命令と同じ)
+#   　を示すが、計算結果はMSBを符号ビットとして扱った結果となる模様
 lr35902_sub_to_regA() {
 	local reg_or_val=$1
 	case $reg_or_val in
