@@ -54,5 +54,5 @@ a_binbio_cell_is_dividable=1871
 a_binbio_clear_cell_data_area=189D
 a_binbio_cell_alloc=18B3
 a_binbio_cell_find_free_neighbor=18D7
-a_binbio_cell_death=18EC
-a_binbio_init=1901
+a_binbio_cell_death=19A1
+a_binbio_init=19B6

@@ -3362,7 +3362,6 @@ f_binbio_cell_find_free_neighbor() {
 	# push
 	lr35902_push_reg regAF
 	lr35902_push_reg regBC
-	lr35902_push_reg regDE
 	lr35902_push_reg regHL
 
 	# cur_cell_addrから現在の細胞データを参照しtile_x・tile_yを取得
@@ -3371,19 +3370,324 @@ f_binbio_cell_find_free_neighbor() {
 	lr35902_copy_to_from regL regA
 	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
 	lr35902_copy_to_from regH regA
-	## tile_xをregCへ取得
+	## tile_xをregEへ取得
 	lr35902_inc regHL
-	lr35902_copy_to_from regC ptrHL
-	## tile_yをregBへ取得
+	lr35902_copy_to_from regE ptrHL
+	## tile_yをregDへ取得
 	lr35902_inc regHL
-	lr35902_copy_to_from regB ptrHL
+	lr35902_copy_to_from regD ptrHL
 
 	# 現在の細胞の8近傍を左上から順に時計回りでチェック
 
+	# 現在の細胞のタイルのタイルミラー領域上のアドレスをregHLへ設定
+	lr35902_call $a_tcoord_to_mrraddr
+
+	# regD(tile_y) == 0 ?
+	lr35902_copy_to_from regA regD
+	lr35902_compare_regA_and 00
+	(
+		# tile_y != 0 の場合
+
+		# regE(tile_x) == 0 ?
+		lr35902_copy_to_from regA regE
+		lr35902_compare_regA_and 00
+		(
+			# tile_x != 0 の場合
+
+			# 左上座標は空か?
+			## アドレスregHLへ左上座標のアドレスを設定
+			lr35902_set_reg regBC $(two_comp_4 21)
+			lr35902_add_to_regHL regBC
+			## 空(0x00)か?
+			lr35902_copy_to_from regA ptrHL
+			lr35902_compare_regA_and $GBOS_TILE_NUM_SPC
+			(
+				# 空の場合
+
+				# (regE, regD)へ左上座標を設定
+				## regE--
+				lr35902_dec regE
+				## regD--
+				lr35902_dec regD
+
+				# pop & return
+				lr35902_pop_reg regHL
+				lr35902_pop_reg regBC
+				lr35902_pop_reg regAF
+				lr35902_return
+			) >src/f_binbio_cell_find_free_neighbor.1.o
+			local sz_1=$(stat -c '%s' src/f_binbio_cell_find_free_neighbor.1.o)
+			lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_1)
+			cat src/f_binbio_cell_find_free_neighbor.1.o
+			## アドレスregHLへ現在の細胞のタイル座標アドレスを設定
+			lr35902_set_reg regBC 0021
+			lr35902_add_to_regHL regBC
+		) >src/f_binbio_cell_find_free_neighbor.2.o
+		local sz_2=$(stat -c '%s' src/f_binbio_cell_find_free_neighbor.2.o)
+		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_2)
+		cat src/f_binbio_cell_find_free_neighbor.2.o
+
+		# 上座標は空か?
+		## アドレスregHLへ上座標のアドレスを設定
+		lr35902_set_reg regBC $(two_comp_4 20)
+		lr35902_add_to_regHL regBC
+		## 空(0x00)か?
+		lr35902_copy_to_from regA ptrHL
+		lr35902_compare_regA_and $GBOS_TILE_NUM_SPC
+		(
+			# 空の場合
+
+			# (regE, regD)へ上座標を設定
+			## regD--
+			lr35902_dec regD
+
+			# pop & return
+			lr35902_pop_reg regHL
+			lr35902_pop_reg regBC
+			lr35902_pop_reg regAF
+			lr35902_return
+		) >src/f_binbio_cell_find_free_neighbor.3.o
+		local sz_3=$(stat -c '%s' src/f_binbio_cell_find_free_neighbor.3.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_3)
+		cat src/f_binbio_cell_find_free_neighbor.3.o
+		## アドレスregHLへ現在の細胞のタイル座標アドレスを設定
+		lr35902_set_reg regBC 0020
+		lr35902_add_to_regHL regBC
+
+		# regE(tile_x) == 表示範囲の右端 ?
+		lr35902_copy_to_from regA regE
+		lr35902_compare_regA_and $(calc16_2 "${GB_DISP_WIDTH_T}-1")
+		(
+			# tile_x != 表示範囲の右端 の場合
+
+			# 右上座標は空か?
+			## アドレスregHLへ右上座標のアドレスを設定
+			lr35902_set_reg regBC $(two_comp_4 1f)
+			lr35902_add_to_regHL regBC
+			## 空(0x00)か?
+			lr35902_copy_to_from regA ptrHL
+			lr35902_compare_regA_and $GBOS_TILE_NUM_SPC
+			(
+				# 空の場合
+
+				# (regE, regD)へ右上座標を設定
+				## regE++
+				lr35902_inc regE
+				## regD--
+				lr35902_dec regD
+
+				# pop & return
+				lr35902_pop_reg regHL
+				lr35902_pop_reg regBC
+				lr35902_pop_reg regAF
+				lr35902_return
+			) >src/f_binbio_cell_find_free_neighbor.4.o
+			local sz_4=$(stat -c '%s' src/f_binbio_cell_find_free_neighbor.4.o)
+			lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_4)
+			cat src/f_binbio_cell_find_free_neighbor.4.o
+			## アドレスregHLへ現在の細胞のタイル座標アドレスを設定
+			lr35902_set_reg regBC 001f
+			lr35902_add_to_regHL regBC
+		) >src/f_binbio_cell_find_free_neighbor.5.o
+		local sz_5=$(stat -c '%s' src/f_binbio_cell_find_free_neighbor.5.o)
+		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_5)
+		cat src/f_binbio_cell_find_free_neighbor.5.o
+	) >src/f_binbio_cell_find_free_neighbor.6.o
+	local sz_6=$(stat -c '%s' src/f_binbio_cell_find_free_neighbor.6.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_6)
+	cat src/f_binbio_cell_find_free_neighbor.6.o
+
+	# regE(tile_x) == 表示範囲の右端 ?
+	lr35902_copy_to_from regA regE
+	lr35902_compare_regA_and $(calc16_2 "${GB_DISP_WIDTH_T}-1")
+	(
+		# tile_x != 表示範囲の右端 の場合
+
+		# 右座標は空か?
+		## アドレスregHLへ右座標のアドレスを設定
+		lr35902_inc regHL
+		## 空(0x00)か?
+		lr35902_copy_to_from regA ptrHL
+		lr35902_compare_regA_and $GBOS_TILE_NUM_SPC
+		(
+			# 空の場合
+
+			# (regE, regD)へ右座標を設定
+			## regE++
+			lr35902_inc regE
+
+			# pop & return
+			lr35902_pop_reg regHL
+			lr35902_pop_reg regBC
+			lr35902_pop_reg regAF
+			lr35902_return
+		) >src/f_binbio_cell_find_free_neighbor.7.o
+		local sz_7=$(stat -c '%s' src/f_binbio_cell_find_free_neighbor.7.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_7)
+		cat src/f_binbio_cell_find_free_neighbor.7.o
+		## アドレスregHLへ現在の細胞のタイル座標アドレスを設定
+		lr35902_dec regHL
+	) >src/f_binbio_cell_find_free_neighbor.8.o
+	local sz_8=$(stat -c '%s' src/f_binbio_cell_find_free_neighbor.8.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_8)
+	cat src/f_binbio_cell_find_free_neighbor.8.o
+
+	# regD(tile_y) == 表示範囲の下端 ?
+	lr35902_copy_to_from regA regD
+	lr35902_compare_regA_and $(calc16_2 "${GB_DISP_HEIGHT_T}-1")
+	(
+		# tile_y != 表示範囲の下端 の場合
+
+		# regE(tile_x) == 表示範囲の右端 ?
+		lr35902_copy_to_from regA regE
+		lr35902_compare_regA_and $(calc16_2 "${GB_DISP_WIDTH_T}-1")
+		(
+			# tile_x != 表示範囲の右端 の場合
+
+			# 右下座標は空か?
+			## アドレスregHLへ右下座標のアドレスを設定
+			lr35902_set_reg regBC 0021
+			lr35902_add_to_regHL regBC
+			## 空(0x00)か?
+			lr35902_copy_to_from regA ptrHL
+			lr35902_compare_regA_and $GBOS_TILE_NUM_SPC
+			(
+				# 空の場合
+
+				# (regE, regD)へ右下座標を設定
+				## regE++
+				lr35902_inc regE
+				## regD++
+				lr35902_inc regD
+
+				# pop & return
+				lr35902_pop_reg regHL
+				lr35902_pop_reg regBC
+				lr35902_pop_reg regAF
+				lr35902_return
+			) >src/f_binbio_cell_find_free_neighbor.9.o
+			local sz_9=$(stat -c '%s' src/f_binbio_cell_find_free_neighbor.9.o)
+			lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_9)
+			cat src/f_binbio_cell_find_free_neighbor.9.o
+			## アドレスregHLへ現在の細胞のタイル座標アドレスを設定
+			lr35902_set_reg regBC $(two_comp_4 21)
+			lr35902_add_to_regHL regBC
+		) >src/f_binbio_cell_find_free_neighbor.10.o
+		local sz_10=$(stat -c '%s' src/f_binbio_cell_find_free_neighbor.10.o)
+		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_10)
+		cat src/f_binbio_cell_find_free_neighbor.10.o
+
+		# 下座標は空か?
+		## アドレスregHLへ下座標のアドレスを設定
+		lr35902_set_reg regBC 0020
+		lr35902_add_to_regHL regBC
+		## 空(0x00)か?
+		lr35902_copy_to_from regA ptrHL
+		lr35902_compare_regA_and $GBOS_TILE_NUM_SPC
+		(
+			# 空の場合
+
+			# (regE, regD)へ下座標を設定
+			## regD++
+			lr35902_inc regD
+
+			# pop & return
+			lr35902_pop_reg regHL
+			lr35902_pop_reg regBC
+			lr35902_pop_reg regAF
+			lr35902_return
+		) >src/f_binbio_cell_find_free_neighbor.11.o
+		local sz_11=$(stat -c '%s' src/f_binbio_cell_find_free_neighbor.11.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_11)
+		cat src/f_binbio_cell_find_free_neighbor.11.o
+		## アドレスregHLへ現在の細胞のタイル座標アドレスを設定
+		lr35902_set_reg regBC $(two_comp_4 20)
+		lr35902_add_to_regHL regBC
+
+		# regE(tile_x) == 0 ?
+		lr35902_copy_to_from regA regE
+		lr35902_compare_regA_and 00
+		(
+			# tile_x != 0 の場合
+
+			# 左下座標は空か?
+			## アドレスregHLへ左下座標のアドレスを設定
+			lr35902_set_reg regBC 001f
+			lr35902_add_to_regHL regBC
+			## 空(0x00)か?
+			lr35902_copy_to_from regA ptrHL
+			lr35902_compare_regA_and $GBOS_TILE_NUM_SPC
+			(
+				# 空の場合
+
+				# (regE, regD)へ左下座標を設定
+				## regE--
+				lr35902_dec regE
+				## regD++
+				lr35902_inc regD
+
+				# pop & return
+				lr35902_pop_reg regHL
+				lr35902_pop_reg regBC
+				lr35902_pop_reg regAF
+				lr35902_return
+			) >src/f_binbio_cell_find_free_neighbor.12.o
+			local sz_12=$(stat -c '%s' src/f_binbio_cell_find_free_neighbor.12.o)
+			lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_12)
+			cat src/f_binbio_cell_find_free_neighbor.12.o
+			## アドレスregHLへ現在の細胞のタイル座標アドレスを設定
+			lr35902_set_reg regBC $(two_comp_4 1f)
+			lr35902_add_to_regHL regBC
+		) >src/f_binbio_cell_find_free_neighbor.13.o
+		local sz_13=$(stat -c '%s' src/f_binbio_cell_find_free_neighbor.13.o)
+		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_13)
+		cat src/f_binbio_cell_find_free_neighbor.13.o
+	) >src/f_binbio_cell_find_free_neighbor.14.o
+	local sz_14=$(stat -c '%s' src/f_binbio_cell_find_free_neighbor.14.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_14)
+	cat src/f_binbio_cell_find_free_neighbor.14.o
+
+	# regE(tile_x) == 0 ?
+	lr35902_copy_to_from regA regE
+	lr35902_compare_regA_and 00
+	(
+		# tile_x != 0 の場合
+
+		# 左座標は空か?
+		## アドレスregHLへ左座標のアドレスを設定
+		lr35902_dec regHL
+		## 空(0x00)か?
+		lr35902_copy_to_from regA ptrHL
+		lr35902_compare_regA_and $GBOS_TILE_NUM_SPC
+		(
+			# 空の場合
+
+			# (regE, regD)へ左座標を設定
+			## regE--
+			lr35902_dec regE
+
+			# pop & return
+			lr35902_pop_reg regHL
+			lr35902_pop_reg regBC
+			lr35902_pop_reg regAF
+			lr35902_return
+		) >src/f_binbio_cell_find_free_neighbor.15.o
+		local sz_15=$(stat -c '%s' src/f_binbio_cell_find_free_neighbor.15.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_15)
+		cat src/f_binbio_cell_find_free_neighbor.15.o
+		## アドレスregHLへ現在の細胞のタイル座標アドレスを設定
+		lr35902_inc regHL
+	) >src/f_binbio_cell_find_free_neighbor.16.o
+	local sz_16=$(stat -c '%s' src/f_binbio_cell_find_free_neighbor.16.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_16)
+	cat src/f_binbio_cell_find_free_neighbor.16.o
+
+	# (regE, regD)へ共に0xffを設定
+	lr35902_set_reg regE ff
+	lr35902_set_reg regD ff
 
 	# pop & return
 	lr35902_pop_reg regHL
-	lr35902_pop_reg regDE
 	lr35902_pop_reg regBC
 	lr35902_pop_reg regAF
 	lr35902_return
