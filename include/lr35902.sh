@@ -742,6 +742,21 @@ lr35902_copy_to_ioport_from_regA() {
 	echo -e "ld [\$ff00+\$$ioport],a\t;12" >>$ASM_LIST_FILE
 }
 
+# regA - (引数で指定された要素) が行われ、結果はフラグレジスタにだけ反映される
+# フラグレジスタへの影響：
+#   Z - 結果が0の時(regA == (引数で指定された要素)の時)にセットされる
+#   N - 無条件でセットされる
+#   H - 除算の際、ビット4からの桁借りが発生した場合にセットされる
+#   C - A < (引数で指定された要素)の時にセットされる
+# 動作例：
+#   regA=0x01,regB=0x00 -> Z=0,N=1,H=0,C=0
+#   regA=0x0f,regB=0x01 -> Z=0,N=1,H=0,C=0
+#   regA=0x10,regB=0x00 -> Z=0,N=1,H=0,C=0
+#   regA=0x10,regB=0x01 -> Z=0,N=1,H=1,C=0
+#   regA=0x00,regB=0xff -> Z=0,N=1,H=1,C=1
+#   regA=0xff,regB=0xfe -> Z=0,N=1,H=0,C=0
+#   ↑2つの結果から、MSBを符号ビットとは扱われない模様
+#   　(「0x00 - 0xff」が「0 - (-1)」という扱いにはならない)
 lr35902_compare_regA_and() {
 	local reg_or_val=$1
 	case $reg_or_val in
