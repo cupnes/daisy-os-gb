@@ -3693,10 +3693,58 @@ f_binbio_cell_find_free_neighbor() {
 	lr35902_return
 }
 
-# 細胞の「死」の振る舞い
+# 突然変異
+# in : regHL - 対象の細胞のアドレス
 f_binbio_cell_find_free_neighbor >src/f_binbio_cell_find_free_neighbor.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_find_free_neighbor.o))
 fadr=$(calc16 "${a_binbio_cell_find_free_neighbor}+${fsz}")
+a_binbio_cell_mutation=$(four_digits $fadr)
+echo -e "a_binbio_cell_mutation=$a_binbio_cell_mutation" >>$MAP_FILE_NAME
+f_binbio_cell_mutation() {
+	# push
+	lr35902_push_reg regAF
+
+	# 0x01〜0x8b(使用可能な最後のタイル番号)の間で乱数を生成
+	## 0x00〜0xffの乱数生成
+	lr35902_call $a_get_rnd
+	## regA(生成された乱数) < 0x8b ?
+	## (細胞のタイル番号として使用する値は0x01〜0x8bの139種)
+	lr35902_compare_regA_and 8b
+	(
+		# regA >= 0x8b の場合
+
+		# 「突然変異しなかった」として、そのままpop&return
+		lr35902_pop_reg regAF
+		lr35902_return
+	) >src/f_binbio_cell_mutation.1.o
+	local sz_1=$(stat -c '%s' src/f_binbio_cell_mutation.1.o)
+	lr35902_rel_jump_with_cond C $(two_digits_d $sz_1)
+	cat src/f_binbio_cell_mutation.1.o
+	## regAを0x01〜0x8bの値にする
+	lr35902_inc regA
+
+	# push
+	lr35902_push_reg regBC
+	lr35902_push_reg regHL
+
+	# アドレスregHLをbin_dataの2バイト目(タイル番号)まで進める
+	lr35902_set_reg regBC 0009
+	lr35902_add_to_regHL regBC
+
+	# ptrHLへ生成した乱数を設定
+	lr35902_copy_to_from ptrHL regA
+
+	# pop & return
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regBC
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
+# 細胞の「死」の振る舞い
+f_binbio_cell_mutation >src/f_binbio_cell_mutation.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_mutation.o))
+fadr=$(calc16 "${a_binbio_cell_mutation}+${fsz}")
 a_binbio_cell_death=$(four_digits $fadr)
 echo -e "a_binbio_cell_death=$a_binbio_cell_death" >>$MAP_FILE_NAME
 f_binbio_cell_death() {
@@ -3870,6 +3918,7 @@ global_functions() {
 	f_binbio_clear_cell_data_area
 	f_binbio_cell_alloc
 	f_binbio_cell_find_free_neighbor
+	f_binbio_cell_mutation
 	f_binbio_cell_death
 	f_binbio_init
 }
