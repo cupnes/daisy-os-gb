@@ -3741,10 +3741,180 @@ f_binbio_cell_mutation() {
 	lr35902_return
 }
 
-# 細胞の「死」の振る舞い
+# 細胞の「分裂」の振る舞い
 f_binbio_cell_mutation >src/f_binbio_cell_mutation.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_mutation.o))
 fadr=$(calc16 "${a_binbio_cell_mutation}+${fsz}")
+a_binbio_cell_division=$(four_digits $fadr)
+echo -e "a_binbio_cell_division=$a_binbio_cell_division" >>$MAP_FILE_NAME
+f_binbio_cell_division() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regHL
+
+	# 細胞データ領域を確保
+	## 関数呼び出し
+	lr35902_call $a_binbio_cell_alloc
+	## 戻り値チェック
+	lr35902_copy_to_from regA regH
+	lr35902_or_to_regA regL
+	lr35902_compare_regA_and 00
+	(
+		# regA == 0x00 の場合
+
+		# pop & return
+		lr35902_pop_reg regHL
+		lr35902_pop_reg regAF
+		lr35902_return
+	) >src/f_binbio_cell_division.1.o
+	local sz_1=$(stat -c '%s' src/f_binbio_cell_division.1.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_1)
+	cat src/f_binbio_cell_division.1.o
+
+	# push
+	lr35902_push_reg regDE
+
+	# 近傍の空き座標を探す
+	## 関数呼び出し
+	lr35902_call $a_binbio_cell_find_free_neighbor
+	## 戻り値チェック
+	lr35902_copy_to_from regA regD
+	lr35902_and_to_regA regE
+	lr35902_compare_regA_and ff
+	(
+		# regA == 0xff の場合
+
+		# pop & return
+		lr35902_pop_reg regDE
+		lr35902_pop_reg regHL
+		lr35902_pop_reg regAF
+		lr35902_return
+	) >src/f_binbio_cell_division.2.o
+	local sz_2=$(stat -c '%s' src/f_binbio_cell_division.2.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_2)
+	cat src/f_binbio_cell_division.2.o
+
+	# push
+	lr35902_push_reg regBC
+
+	# 現在の細胞のアドレスをregBCへ取得
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
+	lr35902_copy_to_from regC regA
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
+	lr35902_copy_to_from regB regA
+
+	# 確保した領域へ細胞データを設定
+	## flags = 0x01
+	lr35902_set_reg regA 01
+	lr35902_copyinc_to_ptrHL_from_regA
+	lr35902_inc regBC
+	## (tile_x, tile_y) = (regE, regD)
+	lr35902_copy_to_from regA regE
+	lr35902_copyinc_to_ptrHL_from_regA
+	lr35902_inc regBC
+	lr35902_copy_to_from regA regD
+	lr35902_copyinc_to_ptrHL_from_regA
+	lr35902_inc regBC
+	## life_duration = 親のlife_duration
+	lr35902_copy_to_from regA ptrBC
+	lr35902_copyinc_to_ptrHL_from_regA
+	lr35902_inc regBC
+	## life_left = 親のlife_duration
+	lr35902_copyinc_to_ptrHL_from_regA
+	lr35902_inc regBC
+	## fitness = 親のfitness
+	lr35902_copy_to_from regA ptrBC
+	lr35902_copyinc_to_ptrHL_from_regA
+	lr35902_inc regBC
+	## tile_num = 親のtile_num
+	lr35902_copy_to_from regA ptrBC
+	lr35902_copyinc_to_ptrHL_from_regA
+	lr35902_inc regBC
+	### 後のためにpush
+	lr35902_push_reg regAF
+	## bin_size = 親のbin_size
+	lr35902_copy_to_from regA ptrBC
+	lr35902_copyinc_to_ptrHL_from_regA
+	lr35902_inc regBC
+	## bin_data = 親のbin_data
+	for i in $(seq $BINBIO_CELL_BIN_DATA_AREA_SIZE); do
+		lr35902_copy_to_from regA ptrBC
+		lr35902_copyinc_to_ptrHL_from_regA
+		lr35902_inc regBC
+	done
+	## collected_flags = 0x00
+	lr35902_xor_to_regA regA
+	lr35902_copy_to_from ptrHL regA
+
+	# mutation_probabilityに応じて突然変異
+	## mutation_probabilityをregBへ取得
+	lr35902_copy_to_regA_from_addr $var_binbio_mutation_probability
+	lr35902_copy_to_from regB regA
+	## 0x00〜0xffの間の乱数を生成
+	lr35902_call $a_get_rnd
+	## regA(生成した乱数) < mutation_probability ?
+	lr35902_compare_regA_and regB
+	(
+		# regA < mutation_probability の場合
+
+		# regHLへ子細胞データの先頭アドレスを設定
+		lr35902_set_reg regBC $(two_comp_4 $(calc16 "${BINBIO_CELL_DATA_SIZE}-1"))
+		lr35902_add_to_regHL regBC
+
+		# 突然変異
+		lr35902_call $a_binbio_cell_mutation
+	) >src/f_binbio_cell_division.3.o
+	local sz_3=$(stat -c '%s' src/f_binbio_cell_division.3.o)
+	lr35902_rel_jump_with_cond NC $(two_digits_d $sz_3)
+	cat src/f_binbio_cell_division.3.o
+
+	# 生まれた細胞をマップへ描画
+	## 生まれた細胞のtile_x,tile_yからVRAMアドレスを算出
+	lr35902_call $a_tcoord_to_addr
+	## 算出したVRAMアドレスと細胞のタイル番号をtdqへエンキュー
+	### regB = 配置するタイル番号
+	#### pushしていた親のtile_numをpop
+	lr35902_pop_reg regBC
+	### regDE = VRAMアドレス
+	#### regDEを上書きする前に後のためにpush
+	lr35902_push_reg regDE
+	lr35902_copy_to_from regE regL
+	lr35902_copy_to_from regD regH
+	### 関数呼び出し
+	lr35902_call $a_enq_tdq
+	## この時点でタイルミラー領域へも手動で反映
+	### pushしていたregDEをpop
+	lr35902_pop_reg regDE
+	### 生まれた細胞のtile_x,tile_yからタイルミラーアドレスを算出
+	lr35902_call $a_tcoord_to_mrraddr
+	### ミラー領域へタイル番号を書き込み
+	lr35902_copy_to_from ptrHL regB
+
+	# 親細胞のcollected_flagsを0x00にする
+	## 現在の細胞のアドレスをregHLへ取得
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
+	lr35902_copy_to_from regL regA
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
+	lr35902_copy_to_from regH regA
+	## regHLのアドレスをcollected_flagsまで進める
+	lr35902_set_reg regBC 000d
+	lr35902_add_to_regHL regBC
+	## ptrHL = 0x00
+	lr35902_xor_to_regA regA
+	lr35902_copy_to_from ptrHL regA
+
+	# pop & return
+	lr35902_pop_reg regBC
+	lr35902_pop_reg regDE
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
+# 細胞の「死」の振る舞い
+f_binbio_cell_division >src/f_binbio_cell_division.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_division.o))
+fadr=$(calc16 "${a_binbio_cell_division}+${fsz}")
 a_binbio_cell_death=$(four_digits $fadr)
 echo -e "a_binbio_cell_death=$a_binbio_cell_death" >>$MAP_FILE_NAME
 f_binbio_cell_death() {
@@ -3823,8 +3993,8 @@ f_binbio_init() {
 	lr35902_copy_to_addr_from_regA $var_binbio_cur_cell_addr_bh
 	lr35902_set_reg regA $(echo $BINBIO_CELL_DATA_AREA_BEGIN | cut -c1-2)
 	lr35902_copy_to_addr_from_regA $var_binbio_cur_cell_addr_th
-	## mutation_probability = 50
-	lr35902_set_reg regA 32
+	## mutation_probability = 255
+	lr35902_set_reg regA ff
 	lr35902_copy_to_addr_from_regA $var_binbio_mutation_probability
 
 	# 初期細胞をマップへ配置
@@ -3919,6 +4089,7 @@ global_functions() {
 	f_binbio_cell_alloc
 	f_binbio_cell_find_free_neighbor
 	f_binbio_cell_mutation
+	f_binbio_cell_division
 	f_binbio_cell_death
 	f_binbio_init
 }
