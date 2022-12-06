@@ -3918,7 +3918,68 @@ fadr=$(calc16 "${a_binbio_cell_division}+${fsz}")
 a_binbio_cell_death=$(four_digits $fadr)
 echo -e "a_binbio_cell_death=$a_binbio_cell_death" >>$MAP_FILE_NAME
 f_binbio_cell_death() {
-	binbio_cell_death
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regBC
+	lr35902_push_reg regDE
+	lr35902_push_reg regHL
+
+	# regHLへ現在の細胞のアドレスを設定する
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
+	lr35902_copy_to_from regL regA
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
+	lr35902_copy_to_from regH regA
+
+	# 現在の細胞(のflags)のアドレスは後でも使うのでpushしておく
+	lr35902_push_reg regHL
+
+	# マップに描画されているタイルを消去
+	## 現在の細胞のtile_x,tile_yからVRAMアドレスを算出
+	### regE = tile_x
+	lr35902_inc regHL
+	lr35902_copy_to_from regE ptrHL
+	### regD = tile_y
+	lr35902_inc regHL
+	lr35902_copy_to_from regD ptrHL
+	### タイル座標をVRAMアドレスへ変換
+	lr35902_call $a_tcoord_to_addr
+	## 算出したVRAMアドレスと空白タイル(GBOS_TILE_NUM_SPC)をtdqへエンキュー
+	### regDEへVRAMアドレス(regHL)を設定
+	### ※ regDEの値(tile_y,tile_x)は後で使うのでregDEへの上書きではなく、
+	### 　 regHLと入れ替える
+	#### regEとregLを入れ替え
+	lr35902_copy_to_from regA regE
+	lr35902_copy_to_from regE regL
+	lr35902_copy_to_from regL regA
+	#### regDとregHを入れ替え
+	lr35902_copy_to_from regA regD
+	lr35902_copy_to_from regD regH
+	lr35902_copy_to_from regH regA
+	### regB = 空白タイル
+	lr35902_set_reg regB $GBOS_TILE_NUM_SPC
+	### エンキュー
+	lr35902_call $a_enq_tdq
+	## この時点でタイルミラー領域へも手動で反映
+	### 現在の細胞のtile_x,tile_yからミラーアドレスを算出
+	#### regDEへtile_y,tile_xを設定(regHLから復帰)
+	lr35902_copy_to_from regE regL
+	lr35902_copy_to_from regD regH
+	#### タイル座標をミラーアドレスへ変換
+	lr35902_call $a_tcoord_to_mrraddr
+	### ミラー領域へタイル番号を書き込み
+	lr35902_copy_to_from ptrHL regB
+
+	# 現在の細胞のaliveフラグをクリアする
+	## 現在の細胞のflagsのアドレスをregHLへpop
+	lr35902_pop_reg regHL
+	## aliveフラグをクリア
+	lr35902_res_bitN_of_reg 0 ptrHL
+
+	# pop & return
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regDE
+	lr35902_pop_reg regBC
+	lr35902_pop_reg regAF
 	lr35902_return
 }
 
