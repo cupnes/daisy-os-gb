@@ -4161,6 +4161,72 @@ f_binbio_init() {
 	lr35902_return
 }
 
+# バイナリ生物環境の初期化
+f_binbio_init >src/f_binbio_init.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_init.o))
+fadr=$(calc16 "${a_binbio_init}+${fsz}")
+a_binbio_do_cycle=$(four_digits $fadr)
+echo -e "a_binbio_do_cycle=$a_binbio_do_cycle" >>$MAP_FILE_NAME
+f_binbio_do_cycle() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regBC
+	lr35902_push_reg regHL
+
+	# 代謝/運動を実施
+	lr35902_call $a_binbio_cell_metabolism_and_motion
+
+	# 成長を実施
+	lr35902_call $a_binbio_cell_growth
+
+	# 分裂可能か?
+	lr35902_call $a_binbio_cell_is_dividable
+	lr35902_compare_regA_and 01
+	(
+		# 分裂可能な場合
+
+		# 分裂を実施
+		lr35902_call $a_binbio_cell_division
+	) >src/f_binbio_do_cycle.1.o
+	local sz_1=$(stat -c '%s' src/f_binbio_do_cycle.1.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_1)
+	cat src/f_binbio_do_cycle.1.o
+
+	# 細胞の余命をデクリメント
+	## 現在の細胞のアドレスをregHLへ取得
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
+	lr35902_copy_to_from regL regA
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
+	lr35902_copy_to_from regH regA
+	## regHLのアドレスをlife_leftまで進める
+	lr35902_set_reg regBC 0004
+	lr35902_add_to_regHL regBC
+	## life_left--
+	lr35902_dec ptrHL
+
+	# 余命が0になったか?
+	lr35902_copy_to_from regA ptrHL
+	lr35902_compare_regA_and 00
+	(
+		# 余命 == 0 の場合
+
+		# 死を実施
+		lr35902_call $a_binbio_cell_death
+	) >src/f_binbio_do_cycle.2.o
+	local sz_2=$(stat -c '%s' src/f_binbio_do_cycle.2.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_2)
+	cat src/f_binbio_do_cycle.2.o
+
+	# 次の細胞を選択
+	lr35902_call $a_binbio_select_next_cell
+
+	# pop & return
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regBC
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
 # V-Blankハンドラ
 # f_vblank_hdlr() {
 	# V-Blank/H-Blank時の処理は、
@@ -4239,6 +4305,7 @@ global_functions() {
 	f_binbio_cell_death
 	f_binbio_select_next_cell
 	f_binbio_init
+	f_binbio_do_cycle
 }
 
 gbos_vec() {
@@ -5033,8 +5100,7 @@ event_driven() {
 
 
 	# [バイナリ生物周期処理]
-
-	# TODO
+	lr35902_call $a_binbio_do_cycle
 
 
 	# [キー入力処理]
