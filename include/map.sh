@@ -57,4 +57,5 @@ a_binbio_cell_find_free_neighbor=18D7
 a_binbio_cell_mutation=19A1
 a_binbio_cell_division=19B7
 a_binbio_cell_death=1A39
-a_binbio_init=1A66
+a_binbio_select_next_cell=1A66
+a_binbio_init=1A9C

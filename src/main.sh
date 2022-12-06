@@ -3983,10 +3983,95 @@ f_binbio_cell_death() {
 	lr35902_return
 }
 
-# バイナリ生物環境の初期化
+# 次の細胞を選択
 f_binbio_cell_death >src/f_binbio_cell_death.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_death.o))
 fadr=$(calc16 "${a_binbio_cell_death}+${fsz}")
+a_binbio_select_next_cell=$(four_digits $fadr)
+echo -e "a_binbio_select_next_cell=$a_binbio_select_next_cell" >>$MAP_FILE_NAME
+f_binbio_select_next_cell() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regBC
+	lr35902_push_reg regDE
+	lr35902_push_reg regHL
+
+	# cur_cell_addr以降でflags.aliveがセットされている細胞を探す
+	## regHLへcur_cell_addrを設定する
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
+	lr35902_copy_to_from regL regA
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
+	lr35902_copy_to_from regH regA
+	## flags.aliveがセットされている細胞を探す
+	(
+		# regHL += 細胞データ構造のサイズ
+		lr35902_set_reg regBC $(four_digits $BINBIO_CELL_DATA_SIZE)
+		lr35902_add_to_regHL regBC
+
+		# regHL > 細胞データ領域最終アドレス ?
+		## regDE = 細胞データ領域最終アドレス
+		lr35902_set_reg regDE $BINBIO_CELL_DATA_AREA_END
+		## regHLとregDEを比較
+		lr35902_call $a_compare_regHL_and_regDE
+		## 戻り値 > 0 ?
+		### 戻り値は負の値か?
+		lr35902_test_bitN_of_reg 7 regA
+		(
+			# 負の値でない場合
+
+			# 戻り値は0と等しいか?
+			lr35902_compare_regA_and 00
+			(
+				# 0と等しくない場合
+				# (戻り値 > 0 であり、
+				#  regHL > 細胞データ領域最終アドレス
+				#  である場合)
+
+				# regHLへ細胞データ領域の最初のアドレスを設定する
+				lr35902_set_reg regHL $BINBIO_CELL_DATA_AREA_BEGIN
+			) >src/f_binbio_select_next_cell.1.o
+			local sz_1=$(stat -c '%s' src/f_binbio_select_next_cell.1.o)
+			lr35902_rel_jump_with_cond Z $(two_digits_d $sz_1)
+			cat src/f_binbio_select_next_cell.1.o
+		) >src/f_binbio_select_next_cell.4.o
+		local sz_4=$(stat -c '%s' src/f_binbio_select_next_cell.4.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_4)
+		cat src/f_binbio_select_next_cell.4.o
+
+		# flags.aliveはセットされているか?
+		lr35902_test_bitN_of_reg 0 ptrHL
+		(
+			# flags.alive == 1 の場合
+
+			# ループを脱出
+			lr35902_rel_jump $(two_digits_d 2)
+		) >src/f_binbio_select_next_cell.2.o
+		local sz_2=$(stat -c '%s' src/f_binbio_select_next_cell.2.o)
+		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_2)
+		cat src/f_binbio_select_next_cell.2.o
+	) >src/f_binbio_select_next_cell.3.o
+	cat src/f_binbio_select_next_cell.3.o
+	local sz_3=$(stat -c '%s' src/f_binbio_select_next_cell.3.o)
+	lr35902_rel_jump $(two_comp_d $((sz_3 + 2)))	# 2
+
+	# 見つけた細胞のアドレスをcur_cell_addrへ設定
+	lr35902_copy_to_from regA regL
+	lr35902_copy_to_addr_from_regA $var_binbio_cur_cell_addr_bh
+	lr35902_copy_to_from regA regH
+	lr35902_copy_to_addr_from_regA $var_binbio_cur_cell_addr_th
+
+	# pop & return
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regDE
+	lr35902_pop_reg regBC
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
+# バイナリ生物環境の初期化
+f_binbio_select_next_cell >src/f_binbio_select_next_cell.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_select_next_cell.o))
+fadr=$(calc16 "${a_binbio_select_next_cell}+${fsz}")
 a_binbio_init=$(four_digits $fadr)
 echo -e "a_binbio_init=$a_binbio_init" >>$MAP_FILE_NAME
 f_binbio_init() {
@@ -4152,6 +4237,7 @@ global_functions() {
 	f_binbio_cell_mutation
 	f_binbio_cell_division
 	f_binbio_cell_death
+	f_binbio_select_next_cell
 	f_binbio_init
 }
 
