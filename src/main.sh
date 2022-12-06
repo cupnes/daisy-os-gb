@@ -2932,6 +2932,62 @@ f_binbio_get_code_comp() {
 	# 生成した乱数をレジスタAへ設定
 	lr35902_call $a_get_rnd
 
+	# regAの下位3ビットを抽出
+	lr35902_and_to_regA 07
+
+	# regA == 0 ?
+	lr35902_compare_regA_and 00
+	(
+		lr35902_set_reg regA 3e
+		lr35902_return
+	) >src/f_binbio_get_code_comp.1.o
+	local sz_1=$(stat -c '%s' src/f_binbio_get_code_comp.1.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_1)
+	cat src/f_binbio_get_code_comp.1.o
+
+	# regA == 1 ?
+	lr35902_compare_regA_and 01
+	(
+		lr35902_set_reg regA $GBOS_TILE_NUM_CELL
+		lr35902_return
+	) >src/f_binbio_get_code_comp.2.o
+	local sz_2=$(stat -c '%s' src/f_binbio_get_code_comp.2.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_2)
+	cat src/f_binbio_get_code_comp.2.o
+
+	# regA == 2 ?
+	lr35902_compare_regA_and 02
+	(
+		lr35902_set_reg regA cd
+		lr35902_return
+	) >src/f_binbio_get_code_comp.3.o
+	local sz_3=$(stat -c '%s' src/f_binbio_get_code_comp.3.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_3)
+	cat src/f_binbio_get_code_comp.3.o
+
+	# regA == 3 ?
+	lr35902_compare_regA_and 03
+	(
+		lr35902_set_reg regA $(echo $a_binbio_cell_set_tile_num | cut -c3-4)
+		lr35902_return
+	) >src/f_binbio_get_code_comp.4.o
+	local sz_4=$(stat -c '%s' src/f_binbio_get_code_comp.4.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_4)
+	cat src/f_binbio_get_code_comp.4.o
+
+	# regA == 4 ?
+	lr35902_compare_regA_and 04
+	(
+		lr35902_set_reg regA $(echo $a_binbio_cell_set_tile_num | cut -c1-2)
+		lr35902_return
+	) >src/f_binbio_get_code_comp.5.o
+	local sz_5=$(stat -c '%s' src/f_binbio_get_code_comp.5.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_5)
+	cat src/f_binbio_get_code_comp.5.o
+
+	# 5 <= regA <= 7
+	lr35902_call $a_get_rnd
+
 	# return
 	lr35902_return
 }
