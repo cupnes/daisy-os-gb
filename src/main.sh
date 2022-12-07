@@ -4156,10 +4156,10 @@ f_binbio_init() {
 	lr35902_copyinc_to_ptrHL_from_regA
 	### 後のためにregDにも設定
 	lr35902_copy_to_from regD regA
-	## life_duration = 255
-	lr35902_set_reg regA ff
+	## life_duration = 64
+	lr35902_set_reg regA 40
 	lr35902_copyinc_to_ptrHL_from_regA
-	## life_left = 255
+	## life_left = 64
 	lr35902_copyinc_to_ptrHL_from_regA
 	## fitness = 100
 	lr35902_set_reg regA 64
@@ -4195,8 +4195,8 @@ f_binbio_init() {
 	lr35902_copy_to_addr_from_regA $var_binbio_cur_cell_addr_bh
 	lr35902_set_reg regA $(echo $BINBIO_CELL_DATA_AREA_BEGIN | cut -c1-2)
 	lr35902_copy_to_addr_from_regA $var_binbio_cur_cell_addr_th
-	## mutation_probability = 255
-	lr35902_set_reg regA ff
+	## mutation_probability = 77
+	lr35902_set_reg regA 4d
 	lr35902_copy_to_addr_from_regA $var_binbio_mutation_probability
 
 	# 初期細胞をマップへ配置
