@@ -58,5 +58,5 @@ a_binbio_cell_mutation=19C9
 a_binbio_cell_division=19DF
 a_binbio_cell_death=1A61
 a_binbio_select_next_cell=1A8E
-a_binbio_init=1AC4
-a_binbio_do_cycle=1B14
+a_binbio_init=1ADF
+a_binbio_do_cycle=1B2F

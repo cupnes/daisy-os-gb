@@ -4058,6 +4058,8 @@ f_binbio_select_next_cell() {
 	lr35902_copy_to_from regL regA
 	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
 	lr35902_copy_to_from regH regA
+	## 現在の細胞のアドレスは後にも使うのでpushしておく
+	lr35902_push_reg regHL
 	## flags.aliveがセットされている細胞を探す
 	(
 		# regHL += 細胞データ構造のサイズ
@@ -4097,14 +4099,58 @@ f_binbio_select_next_cell() {
 		# flags.aliveはセットされているか?
 		lr35902_test_bitN_of_reg 0 ptrHL
 		(
+			# flags.alive == 0 の場合
+
+			# 現在の細胞のアドレスをregDEへpop
+			lr35902_pop_reg regDE
+
+			# regHL == regDE ?
+			## regB = regH XOR regD
+			## (regH == regD なら regB = 0)
+			lr35902_copy_to_from regA regH
+			lr35902_xor_to_regA regD
+			lr35902_copy_to_from regB regA
+			## regA = regL XOR regE
+			## (regL == regE なら regA = 0)
+			lr35902_copy_to_from regA regL
+			lr35902_xor_to_regA regE
+			## regA |= regB
+			## (regHL == regDE なら regA = 0)
+			lr35902_or_to_regA regB
+			## regA == 0 ?
+			lr35902_compare_regA_and 00
+			(
+				# regA == 0 (regHL == regDE) の場合
+
+				# 変数errorへ1を設定
+				lr35902_inc regA
+				lr35902_copy_to_addr_from_regA $var_error
+
+				# pop & return
+				lr35902_pop_reg regHL
+				lr35902_pop_reg regDE
+				lr35902_pop_reg regBC
+				lr35902_pop_reg regAF
+				lr35902_return
+			) >src/f_binbio_select_next_cell.6.o
+			local sz_6=$(stat -c '%s' src/f_binbio_select_next_cell.6.o)
+			lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_6)
+			cat src/f_binbio_select_next_cell.6.o
+
+			# 現在の細胞のアドレスを再びpush
+			lr35902_push_reg regDE
+		) >src/f_binbio_select_next_cell.5.o
+		(
 			# flags.alive == 1 の場合
 
-			# ループを脱出
-			lr35902_rel_jump $(two_digits_d 2)
+			# flags.alive == 0 の場合の処理を飛ばし、ループも脱出
+			local sz_5=$(stat -c '%s' src/f_binbio_select_next_cell.5.o)
+			lr35902_rel_jump $(two_digits_d $((sz_5 + 2)))
 		) >src/f_binbio_select_next_cell.2.o
 		local sz_2=$(stat -c '%s' src/f_binbio_select_next_cell.2.o)
 		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_2)
-		cat src/f_binbio_select_next_cell.2.o
+		cat src/f_binbio_select_next_cell.2.o	# flags.alive == 1 の場合
+		cat src/f_binbio_select_next_cell.5.o	# flags.alive == 0 の場合
 	) >src/f_binbio_select_next_cell.3.o
 	cat src/f_binbio_select_next_cell.3.o
 	local sz_3=$(stat -c '%s' src/f_binbio_select_next_cell.3.o)
@@ -4116,7 +4162,12 @@ f_binbio_select_next_cell() {
 	lr35902_copy_to_from regA regH
 	lr35902_copy_to_addr_from_regA $var_binbio_cur_cell_addr_th
 
+	# 変数errorへ0を設定
+	lr35902_xor_to_regA regA
+	lr35902_copy_to_addr_from_regA $var_error
+
 	# pop & return
+	lr35902_pop_reg regHL	# pushしていた細胞アドレス
 	lr35902_pop_reg regHL
 	lr35902_pop_reg regDE
 	lr35902_pop_reg regBC
@@ -4274,7 +4325,20 @@ f_binbio_do_cycle() {
 	cat src/f_binbio_do_cycle.2.o
 
 	# 次の細胞を選択
+	## 関数呼び出し
 	lr35902_call $a_binbio_select_next_cell
+	## エラーの有無を確認
+	lr35902_copy_to_regA_from_addr $var_error
+	lr35902_compare_regA_and 00
+	(
+		# regA != 0 の場合
+
+		# 初期化を実施
+		lr35902_call $a_binbio_init
+	) >src/f_binbio_do_cycle.3.o
+	local sz_3=$(stat -c '%s' src/f_binbio_do_cycle.3.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_3)
+	cat src/f_binbio_do_cycle.3.o
 
 	# pop & return
 	lr35902_pop_reg regHL
@@ -4772,6 +4836,8 @@ init() {
 	lr35902_copy_to_addr_from_regA $var_prv_btn
 	# - アプリ用ボタンリリースフラグをゼロクリア
 	lr35902_copy_to_addr_from_regA $var_app_release_btn
+	# - 関数実行のエラー状態をゼロクリア
+	lr35902_copy_to_addr_from_regA $var_error
 	# - 実行ファイル用変数をゼロクリア
 	lr35902_copy_to_addr_from_regA $var_exe_1
 	lr35902_copy_to_addr_from_regA $var_exe_2

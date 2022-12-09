@@ -46,7 +46,7 @@ var_tdq_stat=c01b	# tdq.stat
 
 var_app_release_btn=c01c	# アプリ用ボタンリリースフラグ
 
-# 0xc01d : 未使用
+var_error=c01d	# 関数実行のエラー状態
 
 # 実行ファイル用変数は使い終わったらゼロクリアすること
 # bineditはこの変数が0か否かで、
