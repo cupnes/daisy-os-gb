@@ -3174,14 +3174,7 @@ f_binbio_cell_growth() {
 	# push
 	lr35902_push_reg regAF
 	lr35902_push_reg regBC
-	lr35902_push_reg regDE
 	lr35902_push_reg regHL
-
-	# コード化合物を取得
-	lr35902_call $a_binbio_get_code_comp
-
-	# 取得したコード化合物をregDへコピー
-	lr35902_copy_to_from regD regA
 
 	# regHLへ現在の細胞のアドレスを設定する
 	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
@@ -3189,24 +3182,58 @@ f_binbio_cell_growth() {
 	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
 	lr35902_copy_to_from regH regA
 
-	# regHLのアドレスを機械語バイナリサイズの位置まで進める
-	lr35902_set_reg regBC 0007
+	# regHLのアドレスをfitnessの位置まで進める
+	lr35902_set_reg regBC 0005
 	lr35902_add_to_regHL regBC
 
-	# 機械語バイナリサイズをregBへコピー
+	# regBへ現在の細胞の適応度を取得
+	lr35902_copy_to_from regB ptrHL
+
+	# regAへ乱数を取得
+	lr35902_call $a_get_rnd
+
+	# regA(乱数) < regB(現在の細胞の適応度) ?
+	lr35902_compare_regA_and regB
+	(
+		# regA(乱数) >= regB(現在の細胞の適応度) の場合
+
+		# pop & return
+		lr35902_pop_reg regHL
+		lr35902_pop_reg regBC
+		lr35902_pop_reg regAF
+		lr35902_return
+	) >src/f_binbio_cell_growth.9.o
+	local sz_9=$(stat -c '%s' src/f_binbio_cell_growth.9.o)
+	lr35902_rel_jump_with_cond C $(two_digits_d $sz_9)
+	cat src/f_binbio_cell_growth.9.o
+
+	# push
+	lr35902_push_reg regDE
+
+	# コード化合物を取得
+	lr35902_call $a_binbio_get_code_comp
+
+	# 取得したコード化合物をregDへコピー
+	lr35902_copy_to_from regD regA
+
+	# regHLのアドレスをbin_sizeの位置まで進める
+	lr35902_inc regHL
+	lr35902_inc regHL
+
+	# bin_sizeをregBへコピー
 	lr35902_copy_to_from regB ptrHL
 
 	# regBCをスタックへpush
 	lr35902_push_reg regBC
 
-	# regHLのアドレスを機械語バイナリの各バイトの取得フラグの位置まで進める
+	# regHLのアドレスをcollected_flagsの位置まで進める
 	lr35902_set_reg regBC 0006
 	lr35902_add_to_regHL regBC
 
 	# 取得フラグをregEへコピー
 	lr35902_copy_to_from regE ptrHL
 
-	# regHLのアドレスを機械語バイナリの位置まで戻す
+	# regHLのアドレスをbin_dataの位置まで戻す
 	lr35902_set_reg regBC $(two_comp_4 5)
 	lr35902_add_to_regHL regBC
 
@@ -3216,7 +3243,7 @@ f_binbio_cell_growth() {
 	# regCをゼロクリア(処理したバイト数のカウンタにする)
 	lr35902_set_reg regC 00
 
-	# 機械語バイナリを1バイトずつチェック
+	# bin_dataを1バイトずつチェック
 	## regE(取得フラグ)を1ビットずつ右ローテートさせながらチェックする
 	(
 		# ptrHL == regD ?
@@ -3280,7 +3307,7 @@ f_binbio_cell_growth() {
 		# 処理したバイト数カウンタ(regC)をインクリメント
 		lr35902_inc regC
 
-		# regBの機械語バイナリサイズをデクリメント
+		# regBのbin_sizeをデクリメント
 		lr35902_dec regB
 
 		# regB == 0 ?
@@ -3354,21 +3381,21 @@ f_binbio_cell_growth() {
 	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_6)
 	cat src/f_binbio_cell_growth.6.o
 
-	# regEを細胞の機械語バイナリの各バイトの取得フラグへ書き戻す
+	# regEを細胞のcollected_flagsへ書き戻す
 	## regHLへ現在の細胞のアドレスを設定する
 	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
 	lr35902_copy_to_from regL regA
 	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
 	lr35902_copy_to_from regH regA
-	## regHLのアドレスを機械語バイナリの各バイトの取得フラグの位置まで進める
+	## regHLのアドレスをcollected_flagsの位置まで進める
 	lr35902_set_reg regBC 000d
 	lr35902_add_to_regHL regBC
 	## ptrHLへregEの値を設定
 	lr35902_copy_to_from ptrHL regE
 
 	# pop & return
-	lr35902_pop_reg regHL
 	lr35902_pop_reg regDE
+	lr35902_pop_reg regHL
 	lr35902_pop_reg regBC
 	lr35902_pop_reg regAF
 	lr35902_return
