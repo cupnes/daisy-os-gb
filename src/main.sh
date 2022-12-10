@@ -4675,10 +4675,10 @@ f_binbio_init() {
 	lr35902_copyinc_to_ptrHL_from_regA
 	### 後のためにregDにも設定
 	lr35902_copy_to_from regD regA
-	## life_duration = 64
-	lr35902_set_reg regA 40
+	## life_duration
+	lr35902_set_reg regA $BINBIO_CELL_LIFE_DURATION_INIT
 	lr35902_copyinc_to_ptrHL_from_regA
-	## life_left = 64
+	## life_left
 	lr35902_copyinc_to_ptrHL_from_regA
 	## fitness
 	lr35902_set_reg regA $BINBIO_CELL_FITNESS_INIT
