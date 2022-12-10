@@ -2984,15 +2984,34 @@ f_binbio_cell_set_tile_num() {
 }
 
 # 現在の細胞を評価する
-# out: regA - 評価結果の適応度(0〜100)
+# out: regA - 評価結果の適応度(0x00〜0xff)
 f_binbio_cell_set_tile_num >src/f_binbio_cell_set_tile_num.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_set_tile_num.o))
 fadr=$(calc16 "${a_binbio_cell_set_tile_num}+${fsz}")
 a_binbio_cell_eval=$(four_digits $fadr)
 echo -e "a_binbio_cell_eval=$a_binbio_cell_eval" >>$MAP_FILE_NAME
 f_binbio_cell_eval() {
-	# TODO ひとまず常に適応度100を返すようにしているので、適宜変更する
-	lr35902_set_reg regA 64
+	# push
+	lr35902_push_reg regBC
+	lr35902_push_reg regAF
+	lr35902_push_reg regDE
+	lr35902_push_reg regHL
+
+	# 最低ラインの適応度(128)をregBへ設定
+	lr35902_set_reg regB 80
+
+	# TODO
+
+	# pop
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regDE
+	lr35902_pop_reg regAF
+
+	# regBへ反映していた適応度をregAへコピー
+	lr35902_copy_to_from regA regB
+
+	# pop & return
+	lr35902_pop_reg regBC
 	lr35902_return
 }
 
