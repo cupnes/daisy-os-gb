@@ -2994,21 +2994,272 @@ f_binbio_cell_eval() {
 	# push
 	lr35902_push_reg regBC
 	lr35902_push_reg regAF
-	lr35902_push_reg regDE
 	lr35902_push_reg regHL
 
-	# 最低ラインの適応度(128)をregBへ設定
-	lr35902_set_reg regB 80
+	# 現在の細胞のアドレスをregHLへ取得
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
+	lr35902_copy_to_from regL regA
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
+	lr35902_copy_to_from regH regA
 
-	# TODO
+	# アドレスregHLをtile_numまで進める
+	lr35902_set_reg regBC 0006
+	lr35902_add_to_regHL regBC
+
+	# regAへ自身のタイル属性番号を取得
+	## regAへtile_numを取得
+	lr35902_copy_to_from regA ptrHL
+	## regAへタイル属性番号を取得
+	lr35902_call $a_binbio_get_tile_family_num
+
+	# regA(タイル属性番号) == 属性なし ?
+	lr35902_compare_regA_and $BINBIO_TILE_FAMILY_NUM_NONE
+	(
+		# regA == 属性なし の場合
+
+		# pop
+		lr35902_pop_reg regHL
+		lr35902_pop_reg regAF
+		lr35902_pop_reg regBC
+
+		# regAへ適応度のベース値を設定
+		lr35902_set_reg regA $BINBIO_CELL_EVAL_BASE_FITNESS
+
+		# return
+		lr35902_return
+	) >src/f_binbio_cell_eval.1.o
+	local sz_1=$(stat -c '%s' src/f_binbio_cell_eval.1.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_1)
+	cat src/f_binbio_cell_eval.1.o
+
+	# push
+	lr35902_push_reg regDE
+
+	# regBへregA(現在の細胞のタイル属性番号)を設定し、
+	# regCへ適応度のベース値を設定し、push
+	lr35902_copy_to_from regB regA
+	lr35902_set_reg regC $BINBIO_CELL_EVAL_BASE_FITNESS
+	lr35902_push_reg regBC
+
+	# (regE, regD)へ(tile_x, tile_y)を取得
+	## アドレスregHLをtile_xまで戻す
+	lr35902_set_reg regBC $(two_comp_4 5)
+	lr35902_add_to_regHL regBC
+	## regEへtile_xを取得
+	lr35902_copy_to_from regE ptrHL
+	## アドレスregHLをtile_yまで進める
+	lr35902_inc regHL
+	## regDへtile_yを取得
+	lr35902_copy_to_from regD ptrHL
+
+	# 現在の細胞の8近傍を左上から順に時計回りでチェック
+
+	# 現在の細胞のタイルのタイルミラー領域上のアドレスをregHLへ設定
+	lr35902_call $a_tcoord_to_mrraddr
+
+	# 繰り返し使用する処理をファイル書き出し/マクロ定義
+	## 対象の座標のタイル属性番号 == 現在の細胞のタイル属性番号 の場合の処理
+	(
+		# regC += 単位量
+		lr35902_copy_to_from regA regC
+		lr35902_add_to_regA $BINBIO_CELL_EVAL_ADD_UNIT
+		lr35902_copy_to_from regC regA
+	) >src/f_binbio_cell_eval.add.o
+	local sz_add=$(stat -c '%s' src/f_binbio_cell_eval.add.o)
+	## アドレスregHLのタイル属性が現在の細胞と等しければ適応度へ単位量を加算する処理
+	(
+		# regAへ対象座標のタイル属性番号を取得
+		## regAへ対象座標のタイル番号を取得
+		lr35902_copy_to_from regA ptrHL
+		## タイル番号からタイル属性番号を取得
+		lr35902_call $a_binbio_get_tile_family_num
+
+		# 現在の細胞のタイル属性番号と適応度をpop
+		lr35902_pop_reg regBC
+
+		# regA(対象座標のタイル属性番号) == regB(現在の細胞のタイル属性番号) ?
+		lr35902_compare_regA_and regB
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_add)
+		cat src/f_binbio_cell_eval.add.o
+
+		# 現在の細胞のタイル属性番号と適応度を再びpush
+		lr35902_push_reg regBC
+	) >src/f_binbio_cell_eval.chkadd.o
+
+	# regD(tile_y) == 0 ?
+	lr35902_copy_to_from regA regD
+	lr35902_compare_regA_and 00
+	(
+		# tile_y != 0 の場合
+
+		# regE(tile_x) == 0 ?
+		lr35902_copy_to_from regA regE
+		lr35902_compare_regA_and 00
+		(
+			# tile_x != 0 の場合
+
+			# 左上座標をチェックし、
+			# タイル属性が現在の細胞と等しければ適応度へ単位量を加算
+			## アドレスregHLを対象座標へ移動
+			lr35902_set_reg regBC $(two_comp_4 21)
+			lr35902_add_to_regHL regBC
+			## アドレスregHLのタイル属性が現在の細胞と等しければ適応度へ単位量を加算
+			cat src/f_binbio_cell_eval.chkadd.o
+			## アドレスregHLを元に戻す
+			lr35902_set_reg regBC 0021
+			lr35902_add_to_regHL regBC
+		) >src/f_binbio_cell_eval.2.o
+		local sz_2=$(stat -c '%s' src/f_binbio_cell_eval.2.o)
+		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_2)
+		cat src/f_binbio_cell_eval.2.o
+
+		# 上座標をチェックし、
+		# タイル属性が現在の細胞と等しければ適応度へ単位量を加算
+		## アドレスregHLを対象座標へ移動
+		lr35902_set_reg regBC $(two_comp_4 20)
+		lr35902_add_to_regHL regBC
+		## アドレスregHLのタイル属性が現在の細胞と等しければ適応度へ単位量を加算
+		cat src/f_binbio_cell_eval.chkadd.o
+		## アドレスregHLを元に戻す
+		lr35902_set_reg regBC 0020
+		lr35902_add_to_regHL regBC
+
+		# regE(tile_x) == 表示範囲の右端 ?
+		lr35902_copy_to_from regA regE
+		lr35902_compare_regA_and $(calc16_2 "${GB_DISP_WIDTH_T}-1")
+		(
+			# tile_x != 表示範囲の右端 の場合
+
+			# 右上座標をチェックし、
+			# タイル属性が現在の細胞と等しければ適応度へ単位量を加算
+			## アドレスregHLを対象座標へ移動
+			lr35902_set_reg regBC $(two_comp_4 1f)
+			lr35902_add_to_regHL regBC
+			## アドレスregHLのタイル属性が現在の細胞と等しければ適応度へ単位量を加算
+			cat src/f_binbio_cell_eval.chkadd.o
+			## アドレスregHLを元に戻す
+			lr35902_set_reg regBC 001f
+			lr35902_add_to_regHL regBC
+		) >src/f_binbio_cell_eval.3.o
+		local sz_3=$(stat -c '%s' src/f_binbio_cell_eval.3.o)
+		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_3)
+		cat src/f_binbio_cell_eval.3.o
+	) >src/f_binbio_cell_eval.4.o
+	local sz_4=$(stat -c '%s' src/f_binbio_cell_eval.4.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_4)
+	cat src/f_binbio_cell_eval.4.o
+
+	# regE(tile_x) == 表示範囲の右端 ?
+	lr35902_copy_to_from regA regE
+	lr35902_compare_regA_and $(calc16_2 "${GB_DISP_WIDTH_T}-1")
+	(
+		# tile_x != 表示範囲の右端 の場合
+
+		# 右座標をチェックし、
+		# タイル属性が現在の細胞と等しければ適応度へ単位量を加算
+		## アドレスregHLを対象座標へ移動
+		lr35902_inc regHL
+		## アドレスregHLのタイル属性が現在の細胞と等しければ適応度へ単位量を加算
+		cat src/f_binbio_cell_eval.chkadd.o
+		## アドレスregHLを元に戻す
+		lr35902_dec regHL
+	) >src/f_binbio_cell_eval.5.o
+	local sz_5=$(stat -c '%s' src/f_binbio_cell_eval.5.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_5)
+	cat src/f_binbio_cell_eval.5.o
+
+	# regD(tile_y) == 表示範囲の下端 ?
+	lr35902_copy_to_from regA regD
+	lr35902_compare_regA_and $(calc16_2 "${GB_DISP_HEIGHT_T}-1")
+	(
+		# tile_y != 表示範囲の下端 の場合
+
+		# regE(tile_x) == 表示範囲の右端 ?
+		lr35902_copy_to_from regA regE
+		lr35902_compare_regA_and $(calc16_2 "${GB_DISP_WIDTH_T}-1")
+		(
+			# tile_x != 表示範囲の右端 の場合
+
+			# 右下座標をチェックし、
+			# タイル属性が現在の細胞と等しければ適応度へ単位量を加算
+			## アドレスregHLを対象座標へ移動
+			lr35902_set_reg regBC 0021
+			lr35902_add_to_regHL regBC
+			## アドレスregHLのタイル属性が現在の細胞と等しければ適応度へ単位量を加算
+			cat src/f_binbio_cell_eval.chkadd.o
+			## アドレスregHLを元に戻す
+			lr35902_set_reg regBC $(two_comp_4 21)
+			lr35902_add_to_regHL regBC
+		) >src/f_binbio_cell_eval.6.o
+		local sz_6=$(stat -c '%s' src/f_binbio_cell_eval.6.o)
+		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_6)
+		cat src/f_binbio_cell_eval.6.o
+
+		# 下座標をチェックし、
+		# タイル属性が現在の細胞と等しければ適応度へ単位量を加算
+		## アドレスregHLを対象座標へ移動
+		lr35902_set_reg regBC 0020
+		lr35902_add_to_regHL regBC
+		## アドレスregHLのタイル属性が現在の細胞と等しければ適応度へ単位量を加算
+		cat src/f_binbio_cell_eval.chkadd.o
+		## アドレスregHLを元に戻す
+		lr35902_set_reg regBC $(two_comp_4 20)
+		lr35902_add_to_regHL regBC
+
+		# regE(tile_x) == 0 ?
+		lr35902_copy_to_from regA regE
+		lr35902_compare_regA_and 00
+		(
+			# tile_x != 0 の場合
+
+			# 左下座標をチェックし、
+			# タイル属性が現在の細胞と等しければ適応度へ単位量を加算
+			## アドレスregHLを対象座標へ移動
+			lr35902_set_reg regBC 001f
+			lr35902_add_to_regHL regBC
+			## アドレスregHLのタイル属性が現在の細胞と等しければ適応度へ単位量を加算
+			cat src/f_binbio_cell_eval.chkadd.o
+			## アドレスregHLを元に戻す
+			lr35902_set_reg regBC $(two_comp_4 1f)
+			lr35902_add_to_regHL regBC
+		) >src/f_binbio_cell_eval.7.o
+		local sz_7=$(stat -c '%s' src/f_binbio_cell_eval.7.o)
+		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_7)
+		cat src/f_binbio_cell_eval.7.o
+	) >src/f_binbio_cell_eval.8.o
+	local sz_8=$(stat -c '%s' src/f_binbio_cell_eval.8.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_8)
+	cat src/f_binbio_cell_eval.8.o
+
+	# regE(tile_x) == 0 ?
+	lr35902_copy_to_from regA regE
+	lr35902_compare_regA_and 00
+	(
+		# tile_x != 0 の場合
+
+		# 左座標をチェックし、
+		# タイル属性が現在の細胞と等しければ適応度へ単位量を加算
+		## アドレスregHLを対象座標へ移動
+		lr35902_dec regHL
+		## アドレスregHLのタイル属性が現在の細胞と等しければ適応度へ単位量を加算
+		cat src/f_binbio_cell_eval.chkadd.o
+		## アドレスregHLを元に戻す
+		lr35902_inc regHL
+	) >src/f_binbio_cell_eval.9.o
+	local sz_9=$(stat -c '%s' src/f_binbio_cell_eval.9.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_9)
+	cat src/f_binbio_cell_eval.9.o
+
+	# 現在の細胞のタイル属性番号と適応度をpop
+	lr35902_pop_reg regBC
 
 	# pop
-	lr35902_pop_reg regHL
 	lr35902_pop_reg regDE
+	lr35902_pop_reg regHL
 	lr35902_pop_reg regAF
 
-	# regBへ反映していた適応度をregAへコピー
-	lr35902_copy_to_from regA regB
+	# regCへ反映していた適応度をregAへコピー
+	lr35902_copy_to_from regA regC
 
 	# pop & return
 	lr35902_pop_reg regBC

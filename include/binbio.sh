@@ -31,3 +31,7 @@ BINBIO_TILE_FAMILY_NUM_ICON=03	# アイコン
 # 初期値
 ## 初期細胞
 BINBIO_CELL_FITNESS_INIT=80	# 適応度
+
+# 関数のチューニングパラメータ
+BINBIO_CELL_EVAL_BASE_FITNESS=80	# 適応度のベース値
+BINBIO_CELL_EVAL_ADD_UNIT=06	# 同種1タイルあたりの適応度の加算単位
