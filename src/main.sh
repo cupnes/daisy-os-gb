@@ -4409,8 +4409,8 @@ f_binbio_init() {
 	lr35902_copyinc_to_ptrHL_from_regA
 	## life_left = 64
 	lr35902_copyinc_to_ptrHL_from_regA
-	## fitness = 100
-	lr35902_set_reg regA 64
+	## fitness
+	lr35902_set_reg regA $BINBIO_CELL_FITNESS_INIT
 	lr35902_copyinc_to_ptrHL_from_regA
 	## tile_num = $GBOS_TILE_NUM_CELL
 	lr35902_set_reg regA $GBOS_TILE_NUM_CELL
