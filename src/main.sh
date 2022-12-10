@@ -2770,11 +2770,162 @@ f_tdq_enq() {
 	lr35902_return
 }
 
-# 現在の細胞に指定されたタイル番号を設定する
+# 指定されたタイルのタイル属性番号を返す
 # in : regA  - タイル番号
+# out: regA  - タイル属性番号
 f_tdq_enq >src/f_tdq_enq.o
 fsz=$(to16 $(stat -c '%s' src/f_tdq_enq.o))
 fadr=$(calc16 "${a_tdq_enq}+${fsz}")
+a_binbio_get_tile_family_num=$(four_digits $fadr)
+echo -e "a_binbio_get_tile_family_num=$a_binbio_get_tile_family_num" >>$MAP_FILE_NAME
+f_binbio_get_tile_family_num() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regBC
+
+	# 渡されたタイル番号をregBへコピーしておく
+	lr35902_copy_to_from regB regA
+
+	# タイル番号 > 0x00 ?
+	lr35902_xor_to_regA regA
+	lr35902_compare_regA_and regB
+	(
+		# タイル番号 > 0x00 の場合
+
+		# タイル番号 < 0x0e ?
+		lr35902_copy_to_from regA regB
+		lr35902_set_reg regC 0e
+		lr35902_compare_regA_and regC
+		(
+			# タイル番号 < 0x0e の場合
+
+			# pop
+			lr35902_pop_reg regBC
+			lr35902_pop_reg regAF
+
+			# regA(戻り値)へ「ウィンドウ」を設定
+			lr35902_set_reg regA $BINBIO_TILE_FAMILY_NUM_WIN
+
+			# return
+			lr35902_return
+		) >src/f_binbio_get_tile_family_num.1.o
+		local sz_1=$(stat -c '%s' src/f_binbio_get_tile_family_num.1.o)
+		lr35902_rel_jump_with_cond NC $(two_digits_d $sz_1)
+		cat src/f_binbio_get_tile_family_num.1.o
+	) >src/f_binbio_get_tile_family_num.2.o
+	local sz_2=$(stat -c '%s' src/f_binbio_get_tile_family_num.2.o)
+	lr35902_rel_jump_with_cond NC $(two_digits_d $sz_2)
+	cat src/f_binbio_get_tile_family_num.2.o
+
+	# タイル番号 > 0x11 ?
+	lr35902_set_reg regA 11
+	lr35902_compare_regA_and regB
+	(
+		# タイル番号 > 0x11 の場合
+
+		# タイル番号 < 0x38 ?
+		lr35902_copy_to_from regA regB
+		lr35902_set_reg regC 38
+		lr35902_compare_regA_and regC
+		(
+			# タイル番号 < 0x38 の場合
+
+			# pop
+			lr35902_pop_reg regBC
+			lr35902_pop_reg regAF
+
+			# regA(戻り値)へ「文字」を設定
+			lr35902_set_reg regA $BINBIO_TILE_FAMILY_NUM_CHAR
+
+			# return
+			lr35902_return
+		) >src/f_binbio_get_tile_family_num.3.o
+		local sz_3=$(stat -c '%s' src/f_binbio_get_tile_family_num.3.o)
+		lr35902_rel_jump_with_cond NC $(two_digits_d $sz_3)
+		cat src/f_binbio_get_tile_family_num.3.o
+	) >src/f_binbio_get_tile_family_num.4.o
+	local sz_4=$(stat -c '%s' src/f_binbio_get_tile_family_num.4.o)
+	lr35902_rel_jump_with_cond NC $(two_digits_d $sz_4)
+	cat src/f_binbio_get_tile_family_num.4.o
+
+	# タイル番号 > 0x37 ?
+	lr35902_set_reg regA 37
+	lr35902_compare_regA_and regB
+	(
+		# タイル番号 > 0x37 の場合
+
+		# タイル番号 < 0x48 ?
+		lr35902_copy_to_from regA regB
+		lr35902_set_reg regC 48
+		lr35902_compare_regA_and regC
+		(
+			# タイル番号 < 0x48 の場合
+
+			# pop
+			lr35902_pop_reg regBC
+			lr35902_pop_reg regAF
+
+			# regA(戻り値)へ「アイコン」を設定
+			lr35902_set_reg regA $BINBIO_TILE_FAMILY_NUM_ICON
+
+			# return
+			lr35902_return
+		) >src/f_binbio_get_tile_family_num.5.o
+		local sz_5=$(stat -c '%s' src/f_binbio_get_tile_family_num.5.o)
+		lr35902_rel_jump_with_cond NC $(two_digits_d $sz_5)
+		cat src/f_binbio_get_tile_family_num.5.o
+	) >src/f_binbio_get_tile_family_num.6.o
+	local sz_6=$(stat -c '%s' src/f_binbio_get_tile_family_num.6.o)
+	lr35902_rel_jump_with_cond NC $(two_digits_d $sz_6)
+	cat src/f_binbio_get_tile_family_num.6.o
+
+	# タイル番号 > 0x47 ?
+	lr35902_set_reg regA 47
+	lr35902_compare_regA_and regB
+	(
+		# タイル番号 > 0x47 の場合
+
+		# タイル番号 < 0x8b ?
+		lr35902_copy_to_from regA regB
+		lr35902_set_reg regC 8b
+		lr35902_compare_regA_and regC
+		(
+			# タイル番号 < 0x8b の場合
+
+			# pop
+			lr35902_pop_reg regBC
+			lr35902_pop_reg regAF
+
+			# regA(戻り値)へ「文字」を設定
+			lr35902_set_reg regA $BINBIO_TILE_FAMILY_NUM_CHAR
+
+			# return
+			lr35902_return
+		) >src/f_binbio_get_tile_family_num.7.o
+		local sz_7=$(stat -c '%s' src/f_binbio_get_tile_family_num.7.o)
+		lr35902_rel_jump_with_cond NC $(two_digits_d $sz_7)
+		cat src/f_binbio_get_tile_family_num.7.o
+	) >src/f_binbio_get_tile_family_num.8.o
+	local sz_8=$(stat -c '%s' src/f_binbio_get_tile_family_num.8.o)
+	lr35902_rel_jump_with_cond NC $(two_digits_d $sz_8)
+	cat src/f_binbio_get_tile_family_num.8.o
+
+	# pop
+	lr35902_pop_reg regBC
+	lr35902_pop_reg regAF
+
+	# regA(戻り値)へ「属性なし」を設定
+	lr35902_set_reg regA $BINBIO_TILE_FAMILY_NUM_NONE
+
+	# return
+	lr35902_return
+}
+
+# 現在の細胞に指定されたタイル番号を設定する
+# in : regA  - タイル番号
+f_binbio_get_tile_family_num >src/f_binbio_get_tile_family_num.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_get_tile_family_num.o))
+fadr=$(calc16 "${a_binbio_get_tile_family_num}+${fsz}")
 a_binbio_cell_set_tile_num=$(four_digits $fadr)
 echo -e "a_binbio_cell_set_tile_num=$a_binbio_cell_set_tile_num" >>$MAP_FILE_NAME
 f_binbio_cell_set_tile_num() {
@@ -4411,6 +4562,7 @@ global_functions() {
 	f_tile_to_byte
 	f_get_rnd
 	f_tdq_enq
+	f_binbio_get_tile_family_num
 	f_binbio_cell_set_tile_num
 	f_binbio_cell_eval
 	f_binbio_cell_metabolism_and_motion
