@@ -2781,6 +2781,26 @@ echo -e "a_binbio_get_tile_family_num=$a_binbio_get_tile_family_num" >>$MAP_FILE
 f_binbio_get_tile_family_num() {
 	# push
 	lr35902_push_reg regAF
+
+	# タイル番号 == 細胞タイル ?
+	lr35902_compare_regA_and $GBOS_TILE_NUM_CELL
+	(
+		# タイル番号 == 細胞タイル の場合
+
+		# pop
+		lr35902_pop_reg regAF
+
+		# regA(戻り値)へ「細胞」を設定
+		lr35902_set_reg regA $BINBIO_TILE_FAMILY_NUM_CELL
+
+		# return
+		lr35902_return
+	) >src/f_binbio_get_tile_family_num.9.o
+	local sz_9=$(stat -c '%s' src/f_binbio_get_tile_family_num.9.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_9)
+	cat src/f_binbio_get_tile_family_num.9.o
+
+	# push
 	lr35902_push_reg regBC
 
 	# 渡されたタイル番号をregBへコピーしておく
