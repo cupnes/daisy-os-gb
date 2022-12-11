@@ -5,6 +5,8 @@ INCLUDE_VARS_SH=true
 
 var_mouse_x=c000	# マウスカーソルX座標
 var_mouse_y=c001	# マウスカーソルY座標
+# ※ OBJ座標系は右下原点なので
+# 　 マウスカーソル座標はカーソル先端(左上)から(X,Y)=(+8,+16)ピクセル
 var_btn_stat=c002	# 現在のキー状態を示す変数
 var_win_xt=c003	# ウィンドウのX座標(タイル番目)
 var_win_yt=c004	# ウィンドウのY座標(タイル番目)
