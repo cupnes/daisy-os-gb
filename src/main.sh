@@ -4945,31 +4945,111 @@ echo -e "a_binbio_event_btn_b_release=$a_binbio_event_btn_b_release" >>$MAP_FILE
 f_binbio_event_btn_b_release() {
 	# push
 	lr35902_push_reg regAF
-	lr35902_push_reg regBC
+	lr35902_push_reg regDE
 	lr35902_push_reg regHL
 
 	# マウスカーソル(X,Y)をタイル座標へ変換し(regE,regD)へ設定
-	## TODO ピクセル座標(X,Y)をタイル座標へ変換し(regE,regD)へ設定
+	## regEへマウスカーソル先端のX座標を取得
+	lr35902_copy_to_regA_from_addr $var_mouse_x
+	lr35902_sub_to_regA 08
+	lr35902_copy_to_from regE regA
+	## regEを3ビット右シフト
+	lr35902_shift_right_logical regE
+	lr35902_shift_right_logical regE
+	lr35902_shift_right_logical regE
+	## regDへマウスカーソル先端のY座標を取得
+	lr35902_copy_to_regA_from_addr $var_mouse_y
+	lr35902_sub_to_regA 10
+	lr35902_copy_to_from regD regA
+	## regEを3ビット右シフト
+	lr35902_shift_right_logical regD
+	lr35902_shift_right_logical regD
+	lr35902_shift_right_logical regD
 
 	# タイル座標(regE,regD)の細胞アドレスをregHLへ取得
-	# lr35902_call $a_binbio_find_cell_data_by_tile_xy
+	lr35902_call $a_binbio_find_cell_data_by_tile_xy
 
-	## 見つからなかった場合(regHL == NULL)は pop&return
-	### TODO
+	# 見つかった(regHL != NULL)か?
+	lr35902_xor_to_regA regA
+	lr35902_or_to_regA regL
+	lr35902_or_to_regA regH
+	lr35902_compare_regA_and 00
+	(
+		# 見つからなかった(regHL == NULL)場合
+
+		# pop & return
+		lr35902_pop_reg regHL
+		lr35902_pop_reg regDE
+		lr35902_pop_reg regAF
+		lr35902_return
+	) >src/f_binbio_event_btn_b_release.1.o
+	local sz_1=$(stat -c '%s' src/f_binbio_event_btn_b_release.1.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_1)
+	cat src/f_binbio_event_btn_b_release.1.o
 
 	# アドレスregHLの細胞に対して死を実施する
 	## 変数cur_cell_addrの値をregDEへ退避
-	### TODO
-	## 変数cur_cell_addrへregHLを設定
-	### TODO
-	## 死の振る舞いを実施
-	# lr35902_call $a_binbio_cell_death
-	## regDEへ退避していた値を変数cur_cell_addrへ復帰
-	### TODO
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
+	lr35902_copy_to_from regE regA
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
+	lr35902_copy_to_from regD regA
+	## アドレスregHLの細胞は現在対象とされている細胞か?
+	## (regHL == regDE ?)
+	lr35902_call $a_compare_regHL_and_regDE
+	lr35902_compare_regA_and 00
+	(
+		# regA == 0 の場合
+		# (regHL == regDE)
+
+		# 死の振る舞いを実施
+		lr35902_call $a_binbio_cell_death
+
+		# 次の細胞を選択
+		## 関数呼び出し
+		lr35902_call $a_binbio_select_next_cell
+		## エラーの有無を確認
+		lr35902_copy_to_regA_from_addr $var_error
+		lr35902_compare_regA_and 00
+		(
+			# regA != 0 の場合
+
+			# 初期化を実施
+			lr35902_call $a_binbio_init
+		) >src/f_binbio_event_btn_b_release.4.o
+		local sz_4=$(stat -c '%s' src/f_binbio_event_btn_b_release.4.o)
+		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_4)
+		cat src/f_binbio_event_btn_b_release.4.o
+	) >src/f_binbio_event_btn_b_release.2.o
+	(
+		# regA != 0 の場合
+		# (regHL != regDE)
+
+		# 変数cur_cell_addrへregHLを設定
+		lr35902_copy_to_from regA regL
+		lr35902_copy_to_addr_from_regA $var_binbio_cur_cell_addr_bh
+		lr35902_copy_to_from regA regH
+		lr35902_copy_to_addr_from_regA $var_binbio_cur_cell_addr_th
+
+		# 死の振る舞いを実施
+		lr35902_call $a_binbio_cell_death
+
+		# regDEへ退避していた値を変数cur_cell_addrへ復帰
+		lr35902_copy_to_from regA regE
+		lr35902_copy_to_addr_from_regA $var_binbio_cur_cell_addr_bh
+		lr35902_copy_to_from regA regD
+		lr35902_copy_to_addr_from_regA $var_binbio_cur_cell_addr_th
+
+		# regA == 0 の場合の処理を飛ばす
+		local sz_2=$(stat -c '%s' src/f_binbio_event_btn_b_release.2.o)
+		lr35902_rel_jump $(two_digits_d $sz_2)
+	) >src/f_binbio_event_btn_b_release.3.o
+	local sz_3=$(stat -c '%s' src/f_binbio_event_btn_b_release.3.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_3)
+	cat src/f_binbio_event_btn_b_release.3.o	# regA != 0 の場合
+	cat src/f_binbio_event_btn_b_release.2.o	# regA == 0 の場合
 
 	# pop & return
 	lr35902_pop_reg regHL
-	lr35902_pop_reg regBC
 	lr35902_pop_reg regAF
 	lr35902_return
 }
