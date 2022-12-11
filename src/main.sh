@@ -4436,36 +4436,67 @@ f_binbio_cell_division() {
 	cat src/f_binbio_cell_division.1.o
 
 	# push
-	lr35902_push_reg regDE
-
-	# 近傍の空き座標を探す
-	## 関数呼び出し
-	lr35902_call $a_binbio_cell_find_free_neighbor
-	## 戻り値チェック
-	lr35902_copy_to_from regA regD
-	lr35902_and_to_regA regE
-	lr35902_compare_regA_and ff
-	(
-		# regA == 0xff の場合
-
-		# pop & return
-		lr35902_pop_reg regDE
-		lr35902_pop_reg regHL
-		lr35902_pop_reg regAF
-		lr35902_return
-	) >src/f_binbio_cell_division.2.o
-	local sz_2=$(stat -c '%s' src/f_binbio_cell_division.2.o)
-	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_2)
-	cat src/f_binbio_cell_division.2.o
-
-	# push
 	lr35902_push_reg regBC
+	lr35902_push_reg regDE
 
 	# 現在の細胞のアドレスをregBCへ取得
 	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
 	lr35902_copy_to_from regC regA
 	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
 	lr35902_copy_to_from regB regA
+
+	# flags.fix == 0 ?
+	lr35902_copy_to_from regA ptrBC
+	lr35902_test_bitN_of_reg $BINBIO_CELL_FLAGS_BIT_FIX regA
+	(
+		# flags.fix == 0 の場合
+
+		# 近傍の空き座標を探す
+		## 関数呼び出し
+		lr35902_call $a_binbio_cell_find_free_neighbor
+		## 戻り値チェック
+		lr35902_copy_to_from regA regD
+		lr35902_and_to_regA regE
+		lr35902_compare_regA_and ff
+		(
+			# regA == 0xff の場合
+
+			# pop & return
+			lr35902_pop_reg regDE
+			lr35902_pop_reg regBC
+			lr35902_pop_reg regHL
+			lr35902_pop_reg regAF
+			lr35902_return
+		) >src/f_binbio_cell_division.2.o
+		local sz_2=$(stat -c '%s' src/f_binbio_cell_division.2.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_2)
+		cat src/f_binbio_cell_division.2.o
+	) >src/f_binbio_cell_division.4.o
+	(
+		# flags.fix == 1 の場合
+
+		# タイル座標(regE, regD)へ現在の細胞の座標を設定
+		## アドレスregBCをtile_xまで進める
+		lr35902_inc regBC
+		## regE = tile_x
+		lr35902_copy_to_from regE ptrBC
+		## アドレスregBCをtile_yまで進める
+		lr35902_inc regBC
+		## regD = tile_y
+		lr35902_copy_to_from regD ptrBC
+
+		# アドレスregBCの進めた分を戻す
+		lr35902_dec regBC
+		lr35902_dec regBC
+
+		# flags.fix == 0 の場合の処理を飛ばす
+		local sz_4=$(stat -c '%s' src/f_binbio_cell_division.4.o)
+		lr35902_rel_jump $(two_digits_d $sz_4)
+	) >src/f_binbio_cell_division.5.o
+	local sz_5=$(stat -c '%s' src/f_binbio_cell_division.5.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_5)
+	cat src/f_binbio_cell_division.5.o	# flags.fix == 1 の場合
+	cat src/f_binbio_cell_division.4.o	# flags.fix == 0 の場合
 
 	# 確保した領域へ細胞データを設定
 	## flags = 0x01
@@ -4509,6 +4540,12 @@ f_binbio_cell_division() {
 	## collected_flags = 0x00
 	lr35902_xor_to_regA regA
 	lr35902_copy_to_from ptrHL regA
+
+	# TODO
+	# flags.fix == 0 ?
+	## plan A アドレスをflagsの位置まで戻す
+	## plan B 再度変数から現在の細胞のアドレスを取得する
+	## plan C 過去にflagsを取得した結果をpushしておいてpopしてくる
 
 	# mutation_probabilityに応じて突然変異
 	## mutation_probabilityをregBへ取得
@@ -4568,8 +4605,8 @@ f_binbio_cell_division() {
 	lr35902_copy_to_from ptrHL regA
 
 	# pop & return
-	lr35902_pop_reg regBC
 	lr35902_pop_reg regDE
+	lr35902_pop_reg regBC
 	lr35902_pop_reg regHL
 	lr35902_pop_reg regAF
 	lr35902_return
