@@ -4936,7 +4936,6 @@ f_binbio_do_cycle() {
 }
 
 # バイナリ生物環境用のBボタンリリースイベントハンドラ
-# in : regA - リリースされたボタン(上位4ビット)
 f_binbio_do_cycle >src/f_binbio_do_cycle.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_do_cycle.o))
 fadr=$(calc16 "${a_binbio_do_cycle}+${fsz}")
