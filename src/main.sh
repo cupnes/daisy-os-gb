@@ -4815,6 +4815,51 @@ f_binbio_do_cycle() {
 	lr35902_return
 }
 
+# バイナリ生物環境用のBボタンリリースイベントハンドラ
+# in : regA - リリースされたボタン(上位4ビット)
+f_binbio_do_cycle >src/f_binbio_do_cycle.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_do_cycle.o))
+fadr=$(calc16 "${a_binbio_do_cycle}+${fsz}")
+a_binbio_event_btn_b_release=$(four_digits $fadr)
+echo -e "a_binbio_event_btn_b_release=$a_binbio_event_btn_b_release" >>$MAP_FILE_NAME
+f_binbio_event_btn_b_release() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regBC
+	lr35902_push_reg regHL
+
+	# マウスカーソル(X,Y)をタイル座標へ変換し(regE,regD)へ設定
+	## TODO ピクセル座標(X,Y)をタイル座標へ変換し(regE,regD)へ設定
+
+	# タイル座標(regE,regD)の細胞アドレスをregHLへ取得
+	## TODO 以下のような関数を追加する
+	## 1. まずタイル座標(regE,regD)に細胞は存在するかを確認
+	##    1. タイル座標(regE,regD)のタイルミラーアドレスをregHLへ取得
+	##    2. ptrHL == 空白タイル($GBOS_TILE_NUM_SPC) なら
+	##       regHLへNULLを設定し、pop&return
+	## 2. タイル座標に対応する細胞を細胞データ領域から探す
+	## 3. 見つけた細胞アドレスをregHLへ設定し、pop&return
+
+	## 見つからなかった場合(regHL == NULL)は pop&return
+	### TODO
+
+	# アドレスregHLの細胞に対して死を実施する
+	## 変数cur_cell_addrの値をregDEへ退避
+	### TODO
+	## 変数cur_cell_addrへregHLを設定
+	### TODO
+	## 死の振る舞いを実施
+	lr35902_call $a_binbio_cell_death
+	## regDEへ退避していた値を変数cur_cell_addrへ復帰
+	### TODO
+
+	# pop & return
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regBC
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
 # V-Blankハンドラ
 # f_vblank_hdlr() {
 	# V-Blank/H-Blank時の処理は、
@@ -4895,6 +4940,7 @@ global_functions() {
 	f_binbio_select_next_cell
 	f_binbio_init
 	f_binbio_do_cycle
+	f_binbio_event_btn_b_release
 }
 
 gbos_vec() {
@@ -5426,7 +5472,7 @@ btn_release_handler() {
 	# Bボタンの確認
 	lr35902_test_bitN_of_reg $GBOS_B_KEY_BITNUM regA
 	(
-		lr35902_call $a_click_event
+		lr35902_call $a_binbio_event_btn_b_release
 	) >src/btn_release_handler.1.o
 	sz=$(stat -c '%s' src/btn_release_handler.1.o)
 	lr35902_rel_jump_with_cond Z $(two_digits_d $sz)
