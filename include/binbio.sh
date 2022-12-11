@@ -9,6 +9,9 @@ INCLUDE_BINBIO_SH=true
 # 細胞データ構造のサイズ[バイト]
 BINBIO_CELL_DATA_SIZE=0e
 
+# 細胞のデータ構造のフラグ
+BINBIO_CELL_FLAGS_BIT_FIX=1
+
 # 細胞データ構造の機械語バイナリ領域のサイズ[バイト]
 BINBIO_CELL_BIN_DATA_AREA_SIZE=05
 

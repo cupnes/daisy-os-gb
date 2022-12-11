@@ -3022,6 +3022,26 @@ f_binbio_cell_eval() {
 	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
 	lr35902_copy_to_from regH regA
 
+	# flags.fix == 1 ?
+	lr35902_test_bitN_of_reg $BINBIO_CELL_FLAGS_BIT_FIX ptrHL
+	(
+		# flags.fix == 1 の場合
+
+		# pop
+		lr35902_pop_reg regHL
+		lr35902_pop_reg regAF
+		lr35902_pop_reg regBC
+
+		# 戻り値に適応度0xffを設定
+		lr35902_set_reg regA ff
+
+		# return
+		lr35902_return
+	) >src/f_binbio_cell_eval.10.o
+	local sz_10=$(stat -c '%s' src/f_binbio_cell_eval.10.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_10)
+	cat src/f_binbio_cell_eval.10.o
+
 	# アドレスregHLをtile_numまで進める
 	lr35902_set_reg regBC 0006
 	lr35902_add_to_regHL regBC
