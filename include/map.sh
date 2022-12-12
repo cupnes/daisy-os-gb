@@ -63,4 +63,5 @@ a_binbio_cell_death=1C28
 a_binbio_select_next_cell=1C55
 a_binbio_init=1CA6
 a_binbio_do_cycle=1CF6
-a_binbio_event_btn_b_release=1D45
+a_binbio_event_btn_a_release=1D45
+a_binbio_event_btn_b_release=1D7C

@@ -5064,10 +5064,91 @@ f_binbio_do_cycle() {
 	lr35902_return
 }
 
-# バイナリ生物環境用のBボタンリリースイベントハンドラ
+# バイナリ生物環境用のAボタンリリースイベントハンドラ
 f_binbio_do_cycle >src/f_binbio_do_cycle.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_do_cycle.o))
 fadr=$(calc16 "${a_binbio_do_cycle}+${fsz}")
+a_binbio_event_btn_a_release=$(four_digits $fadr)
+echo -e "a_binbio_event_btn_a_release=$a_binbio_event_btn_a_release" >>$MAP_FILE_NAME
+f_binbio_event_btn_a_release() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regDE
+	lr35902_push_reg regHL
+
+	# マウスカーソル(X,Y)をタイル座標へ変換し(regE,regD)へ設定
+	## regEへマウスカーソル先端のX座標を取得
+	lr35902_copy_to_regA_from_addr $var_mouse_x
+	lr35902_sub_to_regA 08
+	lr35902_copy_to_from regE regA
+	## regEを3ビット右シフト
+	lr35902_shift_right_logical regE
+	lr35902_shift_right_logical regE
+	lr35902_shift_right_logical regE
+	## regDへマウスカーソル先端のY座標を取得
+	lr35902_copy_to_regA_from_addr $var_mouse_y
+	lr35902_sub_to_regA 10
+	lr35902_copy_to_from regD regA
+	## regEを3ビット右シフト
+	lr35902_shift_right_logical regD
+	lr35902_shift_right_logical regD
+	lr35902_shift_right_logical regD
+
+	# タイル座標(regE,regD)の細胞アドレスをregHLへ取得
+	lr35902_call $a_binbio_find_cell_data_by_tile_xy
+
+	# 見つかった(regHL != NULL)か?
+	lr35902_xor_to_regA regA
+	lr35902_or_to_regA regL
+	lr35902_or_to_regA regH
+	lr35902_compare_regA_and 00
+	(
+		# 見つからなかった(regHL == NULL)場合
+
+		# pop & return
+		lr35902_pop_reg regHL
+		lr35902_pop_reg regDE
+		lr35902_pop_reg regAF
+		lr35902_return
+	) >src/f_binbio_event_btn_a_release.1.o
+	local sz_1=$(stat -c '%s' src/f_binbio_event_btn_a_release.1.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_1)
+	cat src/f_binbio_event_btn_a_release.1.o
+
+	# 取得した細胞のflags.fixをトグルする
+	lr35902_test_bitN_of_reg $BINBIO_CELL_FLAGS_BIT_FIX ptrHL
+	(
+		# flags.fix == 0 の場合
+
+		# flags.fixをセットする
+		lr35902_set_bitN_of_reg $BINBIO_CELL_FLAGS_BIT_FIX ptrHL
+	) >src/f_binbio_event_btn_a_release.2.o
+	(
+		# flags.fix == 1 の場合
+
+		# flags.fixをクリアする
+		lr35902_res_bitN_of_reg $BINBIO_CELL_FLAGS_BIT_FIX ptrHL
+
+		# flags.fix == 0 の場合の処理を飛ばす
+		local sz_2=$(stat -c '%s' src/f_binbio_event_btn_a_release.2.o)
+		lr35902_rel_jump $(two_digits_d $sz_2)
+	) >src/f_binbio_event_btn_a_release.3.o
+	local sz_3=$(stat -c '%s' src/f_binbio_event_btn_a_release.3.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_3)
+	cat src/f_binbio_event_btn_a_release.3.o	# flags.fix == 1 の場合
+	cat src/f_binbio_event_btn_a_release.2.o	# flags.fix == 0 の場合
+
+	# pop & return
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regDE
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
+# バイナリ生物環境用のBボタンリリースイベントハンドラ
+f_binbio_event_btn_a_release >src/f_binbio_event_btn_a_release.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_event_btn_a_release.o))
+fadr=$(calc16 "${a_binbio_event_btn_a_release}+${fsz}")
 a_binbio_event_btn_b_release=$(four_digits $fadr)
 echo -e "a_binbio_event_btn_b_release=$a_binbio_event_btn_b_release" >>$MAP_FILE_NAME
 f_binbio_event_btn_b_release() {
@@ -5265,6 +5346,7 @@ global_functions() {
 	f_binbio_select_next_cell
 	f_binbio_init
 	f_binbio_do_cycle
+	f_binbio_event_btn_a_release
 	f_binbio_event_btn_b_release
 }
 
@@ -5806,7 +5888,7 @@ btn_release_handler() {
 	# Aボタンの確認
 	lr35902_test_bitN_of_reg $GBOS_A_KEY_BITNUM regA
 	(
-		lr35902_call $a_right_click_event
+		lr35902_call $a_binbio_event_btn_a_release
 	) >src/btn_release_handler.2.o
 	sz=$(stat -c '%s' src/btn_release_handler.2.o)
 	lr35902_rel_jump_with_cond Z $(two_digits_d $sz)
