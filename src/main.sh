@@ -5178,6 +5178,7 @@ f_binbio_event_btn_b_release() {
 
 	# pop & return
 	lr35902_pop_reg regHL
+	lr35902_pop_reg regDE
 	lr35902_pop_reg regAF
 	lr35902_return
 }
