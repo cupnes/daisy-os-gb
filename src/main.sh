@@ -4961,32 +4961,42 @@ f_binbio_do_cycle() {
 	lr35902_push_reg regBC
 	lr35902_push_reg regHL
 
+	# 現在の細胞のアドレスをregHLへ取得
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
+	lr35902_copy_to_from regL regA
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
+	lr35902_copy_to_from regH regA
+
 	# 代謝/運動を実施
 	lr35902_call $a_binbio_cell_metabolism_and_motion
 
 	# 成長を実施
 	lr35902_call $a_binbio_cell_growth
 
-	# 分裂可能か?
-	lr35902_call $a_binbio_cell_is_dividable
-	lr35902_compare_regA_and 01
+	# flags.fix == 0 ?
+	lr35902_test_bitN_of_reg $BINBIO_CELL_FLAGS_BIT_FIX ptrHL
 	(
-		# 分裂可能な場合
+		# flags.fix == 0 の場合
 
-		# 分裂を実施
-		lr35902_call $a_binbio_cell_division
-	) >src/f_binbio_do_cycle.1.o
-	local sz_1=$(stat -c '%s' src/f_binbio_do_cycle.1.o)
-	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_1)
-	cat src/f_binbio_do_cycle.1.o
+		# 分裂可能か?
+		lr35902_call $a_binbio_cell_is_dividable
+		lr35902_compare_regA_and 01
+		(
+			# 分裂可能な場合
+
+			# 分裂を実施
+			lr35902_call $a_binbio_cell_division
+		) >src/f_binbio_do_cycle.1.o
+		local sz_1=$(stat -c '%s' src/f_binbio_do_cycle.1.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_1)
+		cat src/f_binbio_do_cycle.1.o
+	) >src/f_binbio_do_cycle.4.o
+	local sz_4=$(stat -c '%s' src/f_binbio_do_cycle.4.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_4)
+	cat src/f_binbio_do_cycle.4.o
 
 	# 細胞の余命をデクリメント
-	## 現在の細胞のアドレスをregHLへ取得
-	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
-	lr35902_copy_to_from regL regA
-	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
-	lr35902_copy_to_from regH regA
-	## regHLのアドレスをlife_leftまで進める
+	## アドレスregHLをlife_leftまで進める
 	lr35902_set_reg regBC 0004
 	lr35902_add_to_regHL regBC
 	## life_left--
@@ -5000,6 +5010,32 @@ f_binbio_do_cycle() {
 
 		# 死を実施
 		lr35902_call $a_binbio_cell_death
+
+		# flags.fix == 1 ?
+		## アドレスregHLをflagsまで戻す
+		lr35902_set_reg regBC $(two_comp_4 4)
+		lr35902_add_to_regHL regBC
+		## flagsのfixビットを確認
+		lr35902_test_bitN_of_reg $BINBIO_CELL_FLAGS_BIT_FIX ptrHL
+		(
+			# flags.fix == 1 の場合
+
+			# 分裂可能か?
+			lr35902_call $a_binbio_cell_is_dividable
+			lr35902_compare_regA_and 01
+			(
+				# 分裂可能な場合
+
+				# 分裂を実施
+				lr35902_call $a_binbio_cell_division_fix
+			) >src/f_binbio_do_cycle.5.o
+			local sz_5=$(stat -c '%s' src/f_binbio_do_cycle.5.o)
+			lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_5)
+			cat src/f_binbio_do_cycle.5.o
+		) >src/f_binbio_do_cycle.6.o
+		local sz_6=$(stat -c '%s' src/f_binbio_do_cycle.6.o)
+		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_6)
+		cat src/f_binbio_do_cycle.6.o
 	) >src/f_binbio_do_cycle.2.o
 	local sz_2=$(stat -c '%s' src/f_binbio_do_cycle.2.o)
 	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_2)
