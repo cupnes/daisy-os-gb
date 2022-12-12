@@ -4479,13 +4479,11 @@ f_binbio_cell_division() {
 		## アドレスregBCをtile_xまで進める
 		lr35902_inc regBC
 		## regE = tile_x
-		lr35902_copy_to_from regA ptrBC
-		lr35902_copy_to_from regE regA
+		lr35902_copy_to_from regE ptrBC
 		## アドレスregBCをtile_yまで進める
 		lr35902_inc regBC
 		## regD = tile_y
-		lr35902_copy_to_from regA ptrBC
-		lr35902_copy_to_from regD regA
+		lr35902_copy_to_from regD ptrBC
 
 		# アドレスregBCの進めた分を戻す
 		lr35902_dec regBC
@@ -4543,43 +4541,33 @@ f_binbio_cell_division() {
 	lr35902_xor_to_regA regA
 	lr35902_copy_to_from ptrHL regA
 
-	# 現在の細胞のアドレスをregBCへ取得
-	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
-	lr35902_copy_to_from regC regA
-	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
-	lr35902_copy_to_from regB regA
-
+	# TODO
 	# flags.fix == 0 ?
-	lr35902_copy_to_from regA ptrBC
-	lr35902_test_bitN_of_reg $BINBIO_CELL_FLAGS_BIT_FIX regA
+	## plan A アドレスをflagsの位置まで戻す
+	## plan B 再度変数から現在の細胞のアドレスを取得する
+	## plan C 過去にflagsを取得した結果をpushしておいてpopしてくる
+
+	# mutation_probabilityに応じて突然変異
+	## mutation_probabilityをregBへ取得
+	lr35902_copy_to_regA_from_addr $var_binbio_mutation_probability
+	lr35902_copy_to_from regB regA
+	## 0x00〜0xffの間の乱数を生成
+	lr35902_call $a_get_rnd
+	## regA(生成した乱数) < mutation_probability ?
+	lr35902_compare_regA_and regB
 	(
-		# flags.fix == 0 の場合
+		# regA < mutation_probability の場合
 
-		# mutation_probabilityに応じて突然変異
-		## mutation_probabilityをregBへ取得
-		lr35902_copy_to_regA_from_addr $var_binbio_mutation_probability
-		lr35902_copy_to_from regB regA
-		## 0x00〜0xffの間の乱数を生成
-		lr35902_call $a_get_rnd
-		## regA(生成した乱数) < mutation_probability ?
-		lr35902_compare_regA_and regB
-		(
-			# regA < mutation_probability の場合
+		# regHLへ子細胞データの先頭アドレスを設定
+		lr35902_set_reg regBC $(two_comp_4 $(calc16 "${BINBIO_CELL_DATA_SIZE}-1"))
+		lr35902_add_to_regHL regBC
 
-			# regHLへ子細胞データの先頭アドレスを設定
-			lr35902_set_reg regBC $(two_comp_4 $(calc16 "${BINBIO_CELL_DATA_SIZE}-1"))
-			lr35902_add_to_regHL regBC
-
-			# 突然変異
-			lr35902_call $a_binbio_cell_mutation
-		) >src/f_binbio_cell_division.3.o
-		local sz_3=$(stat -c '%s' src/f_binbio_cell_division.3.o)
-		lr35902_rel_jump_with_cond NC $(two_digits_d $sz_3)
-		cat src/f_binbio_cell_division.3.o
-	) >src/f_binbio_cell_division.6.o
-	local sz_6=$(stat -c '%s' src/f_binbio_cell_division.6.o)
-	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_6)
-	cat src/f_binbio_cell_division.6.o
+		# 突然変異
+		lr35902_call $a_binbio_cell_mutation
+	) >src/f_binbio_cell_division.3.o
+	local sz_3=$(stat -c '%s' src/f_binbio_cell_division.3.o)
+	lr35902_rel_jump_with_cond NC $(two_digits_d $sz_3)
+	cat src/f_binbio_cell_division.3.o
 
 	# 生まれた細胞をマップへ描画
 	## 生まれた細胞のtile_x,tile_yからVRAMアドレスを算出
