@@ -3383,74 +3383,119 @@ f_binbio_cell_metabolism_and_motion() {
 
 # コード化合物取得
 # out: regA - 取得したコード化合物
+# ※ フラグレジスタは破壊される
 f_binbio_cell_metabolism_and_motion >src/f_binbio_cell_metabolism_and_motion.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_metabolism_and_motion.o))
 fadr=$(calc16 "${a_binbio_cell_metabolism_and_motion}+${fsz}")
 a_binbio_get_code_comp=$(four_digits $fadr)
 echo -e "a_binbio_get_code_comp=$a_binbio_get_code_comp" >>$MAP_FILE_NAME
 f_binbio_get_code_comp() {
+	# push
+	lr35902_push_reg regBC
+	lr35902_push_reg regDE
+	lr35902_push_reg regHL
+
 	# 0x00〜0xffの間の乱数を生成
-	# 生成した乱数をレジスタAへ設定
+	# 生成した乱数をregCへ設定
 	lr35902_call $a_get_rnd
+	lr35902_copy_to_from regC regA
 
-	# regAの下位3ビットを抽出
-	lr35902_and_to_regA 07
+	# regHLへ現在の細胞のアドレスを設定する
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
+	lr35902_copy_to_from regL regA
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
+	lr35902_copy_to_from regH regA
 
-	# regA == 0 ?
-	lr35902_compare_regA_and 00
+	# 生きている細胞のbin_dataを1バイトずつ調べながら
+	# 取得した乱数をカウンタとしてデクリメントしていく
+	# カウンタが0になったタイミングの1バイトを返す
 	(
-		lr35902_set_reg regA 3e
-		lr35902_return
-	) >src/f_binbio_get_code_comp.1.o
-	local sz_1=$(stat -c '%s' src/f_binbio_get_code_comp.1.o)
-	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_1)
-	cat src/f_binbio_get_code_comp.1.o
+		# flags.alive == 1 ?
+		lr35902_test_bitN_of_reg 0 ptrHL
+		(
+			# flags.alive == 0 の場合
 
-	# regA == 1 ?
-	lr35902_compare_regA_and 01
-	(
-		lr35902_set_reg regA $GBOS_TILE_NUM_CELL
-		lr35902_return
-	) >src/f_binbio_get_code_comp.2.o
-	local sz_2=$(stat -c '%s' src/f_binbio_get_code_comp.2.o)
-	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_2)
-	cat src/f_binbio_get_code_comp.2.o
+			# regHL += 細胞データ構造のサイズ
+			lr35902_set_reg regDE $(four_digits $BINBIO_CELL_DATA_SIZE)
+			lr35902_add_to_regHL regDE
+		) >src/f_binbio_get_code_comp.1.o
+		(
+			# flags.alive == 1 の場合
 
-	# regA == 2 ?
-	lr35902_compare_regA_and 02
-	(
-		lr35902_set_reg regA cd
-		lr35902_return
-	) >src/f_binbio_get_code_comp.3.o
-	local sz_3=$(stat -c '%s' src/f_binbio_get_code_comp.3.o)
-	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_3)
-	cat src/f_binbio_get_code_comp.3.o
+			# アドレスregHLをbin_sizeまで進める
+			lr35902_set_reg regDE 0007
+			lr35902_add_to_regHL regDE
 
-	# regA == 3 ?
-	lr35902_compare_regA_and 03
-	(
-		lr35902_set_reg regA $(echo $a_binbio_cell_set_tile_num | cut -c3-4)
-		lr35902_return
+			# bin_sizeをregBへ取得
+			lr35902_copy_to_from regB ptrHL
+
+			# regC(カウンタ残数)をregAへコピー
+			lr35902_copy_to_from regA regC
+
+			# regA(カウンタ残数) < regB(bin_size) ?
+			lr35902_compare_regA_and regB
+			(
+				# regA < regB の場合
+
+				# アドレスregHLをbin_dataまで進める
+				lr35902_inc regHL
+
+				# regB = 0x00
+				lr35902_set_reg regB 00
+
+				# regHL += regBC
+				lr35902_add_to_regHL regBC
+
+				# regA = ptrHL
+				lr35902_copy_to_from regA ptrHL
+
+				# pop & return
+				lr35902_pop_reg regHL
+				lr35902_pop_reg regDE
+				lr35902_pop_reg regBC
+				lr35902_return
+			) >src/f_binbio_get_code_comp.3.o
+			local sz_3=$(stat -c '%s' src/f_binbio_get_code_comp.3.o)
+			lr35902_rel_jump_with_cond NC $(two_digits_d $sz_3)
+			cat src/f_binbio_get_code_comp.3.o
+
+			# regA >= regB の場合
+
+			# regC -= regB
+			lr35902_sub_to_regA regB
+			lr35902_copy_to_from regC regA
+
+			# アドレスregHLを次の細胞まで進める
+			lr35902_set_reg regDE 0007
+			lr35902_add_to_regHL regDE
+
+			# flags.alive == 0 の場合の処理を飛ばす
+			local sz_1=$(stat -c '%s' src/f_binbio_get_code_comp.1.o)
+			lr35902_rel_jump $(two_digits_d $sz_1)
+		) >src/f_binbio_get_code_comp.2.o
+		local sz_2=$(stat -c '%s' src/f_binbio_get_code_comp.2.o)
+		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_2)
+		cat src/f_binbio_get_code_comp.2.o	# flags.alive == 1 の場合
+		cat src/f_binbio_get_code_comp.1.o	# flags.alive == 0 の場合
+
+		# regHL > 細胞データ構造の最終アドレス ?
+		lr35902_set_reg regDE $BINBIO_CELL_DATA_AREA_END
+		lr35902_call $a_compare_regHL_and_regDE
+		lr35902_test_bitN_of_reg 7 regA
+		(
+			# regAが正の値(regHL > 細胞データ構造の最終アドレス)の場合
+			# ※ 等しいことはありえないので考慮に含めていない
+
+			# アドレスregHLへ細胞データ領域の開始アドレスを設定
+			lr35902_set_reg regHL $BINBIO_CELL_DATA_AREA_BEGIN
+		) >src/f_binbio_get_code_comp.5.o
+		local sz_5=$(stat -c '%s' src/f_binbio_get_code_comp.5.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_5)
+		cat src/f_binbio_get_code_comp.5.o
 	) >src/f_binbio_get_code_comp.4.o
-	local sz_4=$(stat -c '%s' src/f_binbio_get_code_comp.4.o)
-	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_4)
 	cat src/f_binbio_get_code_comp.4.o
-
-	# regA == 4 ?
-	lr35902_compare_regA_and 04
-	(
-		lr35902_set_reg regA $(echo $a_binbio_cell_set_tile_num | cut -c1-2)
-		lr35902_return
-	) >src/f_binbio_get_code_comp.5.o
-	local sz_5=$(stat -c '%s' src/f_binbio_get_code_comp.5.o)
-	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_5)
-	cat src/f_binbio_get_code_comp.5.o
-
-	# 5 <= regA <= 7
-	lr35902_call $a_get_rnd
-
-	# return
-	lr35902_return
+	local sz_4=$(stat -c '%s' src/f_binbio_get_code_comp.4.o)
+	lr35902_rel_jump $(two_comp_d $((sz_4 + 2)))
 }
 
 # 細胞の「成長」の振る舞い
