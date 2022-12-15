@@ -5899,10 +5899,15 @@ init() {
 	# バイナリ生物環境の初期化
 	lr35902_call $a_binbio_init
 
-	# タイマー設定&開始
+	# 現状、タイマーは使っていないので明示的に止めておく
 	lr35902_copy_to_regA_from_ioport $GB_IO_TAC
-	lr35902_or_to_regA $(calc16_2 "$GB_TAC_BIT_START+$GB_TAC_BIT_HZ_262144")
+	lr35902_and_to_regA $GB_TAC_MASK_START
 	lr35902_copy_to_ioport_from_regA $GB_IO_TAC
+
+	# # タイマー設定&開始
+	# lr35902_copy_to_regA_from_ioport $GB_IO_TAC
+	# lr35902_or_to_regA $(calc16_2 "$GB_TAC_BIT_START+$GB_TAC_BIT_HZ_262144")
+	# lr35902_copy_to_ioport_from_regA $GB_IO_TAC
 
 	# サウンドの初期化
 	# - サウンド無効化(使う時にONにする)
