@@ -88,8 +88,7 @@ var_timer_handler=c026
 var_binbio_cur_cell_addr_bh=c08a	# 現在対象としている細胞アドレス(下位8ビット)
 var_binbio_cur_cell_addr_th=c08b	# 現在対象としている細胞アドレス(上位8ビット)
 var_binbio_mutation_probability=c08c	# 突然変異確率
-
-# 0xc08d : 未使用
+var_binbio_get_code_comp_counter=c08d	# get_code_comp()で使用するカウンタ
 
 # 乱数(線形合同法)
 var_lgcs_xn=c08e	# 線形合同法(LGCs)のX_n
