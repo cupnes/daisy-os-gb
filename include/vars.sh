@@ -89,7 +89,11 @@ var_binbio_cur_cell_addr_bh=c08a	# 現在対象としている細胞アドレス
 var_binbio_cur_cell_addr_th=c08b	# 現在対象としている細胞アドレス(上位8ビット)
 var_binbio_mutation_probability=c08c	# 突然変異確率
 
-# 0xc08d - 0xc08f : 未使用
+# 0xc08d : 未使用
+
+# 乱数(線形合同法)
+var_lgcs_xn=c08e	# 線形合同法(LGCs)のX_n
+var_lgcs_tile_sum=c08f	# 前回の乱数取得時のマウスカーソルのX座標とY座標の和
 
 # 0xc090 - 0xc2ff : 細胞データ領域
 # (include/binbio.sh 参照)

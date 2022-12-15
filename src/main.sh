@@ -2634,6 +2634,18 @@ f_tile_to_byte() {
 }
 
 # 乱数を返す
+# 乱数生成には線形合同法を用いる
+# 定数は、A=5・B=3・M=256なので、
+# X_{n+1} = (5 * X_n + 3) % 256
+# レジスタ幅8ビットより、256の剰余は計算しなくても同じなので
+# X_{n+1} = 5 * X_n + 3
+# X_{n+1} = (2^2 + 1) * X_n + 3
+# X_{n+1} = (2^2 * X_n) + (1 * X_n) + 3
+# X_{n+1} = (X_n << 2) + X_n + 3
+# なお、初期値(X_0)はマウスカーソルが静止し始めた時のX座標とY座標の和
+# そのため、変数領域に↓の変数を確保している(各1バイト)
+# - var_lgcs_xn ← 線形合同法(LGCs)のX_n
+# - var_lgcs_tile_sum ← 前回の乱数取得時のマウスカーソルのX座標とY座標の和
 # out: regA - 乱数(0x00 - 0xff)
 f_tile_to_byte >src/f_tile_to_byte.o
 fsz=$(to16 $(stat -c '%s' src/f_tile_to_byte.o))
@@ -2644,18 +2656,69 @@ f_get_rnd() {
 	# push
 	lr35902_push_reg regBC
 	lr35902_push_reg regAF
+	lr35902_push_reg regDE
+	lr35902_push_reg regHL
 
-	# 乱数生成
-	lr35902_copy_to_regA_from_ioport $GB_IO_TIMA
-	lr35902_copy_to_from regB regA
+	# regB = 現在のマウスカーソルX座標とY座標の和
 	lr35902_copy_to_regA_from_addr $var_mouse_x
-	lr35902_add_to_regA regB
 	lr35902_copy_to_from regB regA
 	lr35902_copy_to_regA_from_addr $var_mouse_y
 	lr35902_add_to_regA regB
 	lr35902_copy_to_from regB regA
 
+	# regA = var_lgcs_tile_sum
+	lr35902_copy_to_regA_from_addr $var_lgcs_tile_sum
+
+	# regA == regB ?
+	lr35902_compare_regA_and regB
+	(
+		# regA == regB の場合
+
+		# X_nとしてregBへvar_lgcs_xnを設定
+		lr35902_copy_to_regA_from_addr $var_lgcs_xn
+		lr35902_copy_to_from regB regA
+	) >src/f_get_rnd.1.o
+	(
+		# regA != regB の場合
+
+		# var_lgcs_tile_sum = regB
+		lr35902_copy_to_from regA regB
+		lr35902_copy_to_addr_from_regA $var_lgcs_tile_sum
+
+		# regA == regB の場合の処理を飛ばす
+		local sz_1=$(stat -c '%s' src/f_get_rnd.1.o)
+		lr35902_rel_jump $(two_digits_d $sz_1)
+	) >src/f_get_rnd.2.o
+	local sz_2=$(stat -c '%s' src/f_get_rnd.2.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_2)
+	cat src/f_get_rnd.2.o	# regA != regB の場合
+	cat src/f_get_rnd.1.o	# regA == regB の場合
+
+	# この時点で、regBにはX_nとして使う値が設定されている
+	# - 現在のマウスカーソルX座標とY座標の和 == var_lgcs_tile_sum
+	#   → regB = var_lgcs_xn
+	# - 現在のマウスカーソルX座標とY座標の和 != var_lgcs_tile_sum
+	#   → regB = 現在のマウスカーソルX座標とY座標の和
+
+	# regA = (regB << 2) + regB + 3
+	# この時点で、regA == regB
+	## regA <<= 2
+	lr35902_shift_left_arithmetic regA
+	lr35902_shift_left_arithmetic regA
+	## regA += regB
+	lr35902_add_to_regA regB
+	## regA += 3
+	lr35902_add_to_regA 03
+
+	# var_lgcs_xn = regA
+	lr35902_copy_to_addr_from_regA $var_lgcs_xn
+
+	# regB = regA
+	lr35902_copy_to_from regB regA
+
 	# pop & return
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regDE
 	lr35902_pop_reg regAF
 	lr35902_copy_to_from regA regB
 	lr35902_pop_reg regBC
@@ -5809,6 +5872,9 @@ init() {
 	lr35902_copy_to_addr_from_regA $var_exe_1
 	lr35902_copy_to_addr_from_regA $var_exe_2
 	lr35902_copy_to_addr_from_regA $var_exe_3
+	# - 乱数用変数をゼロクリア
+	lr35902_copy_to_addr_from_regA $var_lgcs_xn
+	lr35902_copy_to_addr_from_regA $var_lgcs_tile_sum
 	# - ウィンドウステータスをディレクトリ表示中で初期化
 	lr35902_set_bitN_of_reg $GBOS_WST_BITNUM_DIR regA
 	lr35902_copy_to_addr_from_regA $var_win_stat
