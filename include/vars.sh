@@ -83,12 +83,16 @@ var_exe_3=c025	# ファイルタイプ
 var_timer_handler=c026
 # ↑100(0x64)バイトは確保しておくということで、
 # 　0xc026 - 0xc089 は変数等に使わないこと
+# ↑タイマーハンドラ使っていないので100バイトも確保するのはやめる
 
 # バイナリ生物用変数
+var_binbio_get_code_comp_counter_addr_bh=c088	# get_code_comp()で使用するカウンタ/アドレス(下位8ビット)
+var_binbio_get_code_comp_counter_addr_th=c089	# get_code_comp()で使用するカウンタ/アドレス(上位8ビット)
 var_binbio_cur_cell_addr_bh=c08a	# 現在対象としている細胞アドレス(下位8ビット)
 var_binbio_cur_cell_addr_th=c08b	# 現在対象としている細胞アドレス(上位8ビット)
 var_binbio_mutation_probability=c08c	# 突然変異確率
-var_binbio_get_code_comp_counter=c08d	# get_code_comp()で使用するカウンタ
+
+# 0xc08d : 未使用
 
 # 乱数(線形合同法)
 var_lgcs_xn=c08e	# 線形合同法(LGCs)のX_n

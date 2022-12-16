@@ -83,6 +83,7 @@ GBOS_TMRR_BASE=dc00	# タイルミラー領域ベースアドレス
 GBOS_TMRR_BASE_BH=00	# タイルミラー領域ベースアドレス(下位8ビット)
 GBOS_TMRR_BASE_TH=dc	# タイルミラー領域ベースアドレス(上位8ビット)
 GBOS_TOFS_MASK_TH=03	# タイルアドレスオフセット部マスク(上位8ビット)
+GBOS_TMRR_END_PLUS1_TH=e0	# タイルミラー領域最終アドレス+1(上位8ビット)
 
 # 符号なしの2バイト値同士の比較
 # in  : regHL - 引かれる値
@@ -3446,9 +3447,9 @@ f_binbio_cell_metabolism_and_motion() {
 
 # コード化合物取得
 # 返して価値のある値は以下の通り
-# A. 初期細胞のbin_data:
-#    0x 3e 8b(GBOS_TILE_NUM_CELL) cd 04 18(a_binbio_cell_set_tile_num)
-# B. タイル番号として使用可能な値:
+# A. タイル番号以外:
+#    0x 3e cd 04 18(a_binbio_cell_set_tile_num)
+# B. タイル番号:
 #    0x 01〜8b (139種)
 # out: regA - 取得したコード化合物
 # ※ フラグレジスタは破壊される
@@ -3458,63 +3459,171 @@ fadr=$(calc16 "${a_binbio_cell_metabolism_and_motion}+${fsz}")
 a_binbio_get_code_comp=$(four_digits $fadr)
 echo -e "a_binbio_get_code_comp=$a_binbio_get_code_comp" >>$MAP_FILE_NAME
 f_binbio_get_code_comp() {
-	# regAへカウンタ値を取得
-	lr35902_copy_to_regA_from_addr $var_binbio_get_code_comp_counter
+	# push
+	lr35902_push_reg regHL
 
-	# regA == 0x00 ?
+	# 現在のカウンタ/アドレスをregHLへ取得
+	lr35902_copy_to_regA_from_addr $var_binbio_get_code_comp_counter_addr_bh
+	lr35902_copy_to_from regL regA
+	lr35902_copy_to_regA_from_addr $var_binbio_get_code_comp_counter_addr_th
+	lr35902_copy_to_from regH regA
+
+	# regHLはカウンタか?アドレスか?
+	# アドレス(タイルミラーアドレス)の場合、
+	# 上位8ビットは0xdc(少なくとも0ではない)
+	lr35902_copy_to_from regA regH
 	lr35902_compare_regA_and 00
 	(
-		# regA == 0x00 の場合
+		# カウンタの場合
 
-		# regA++
-		lr35902_inc regA
+		# regA = regL
+		lr35902_copy_to_from regA regL
 
-		# カウンタを更新
-		lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_counter
+		# 繰り返し生成する処理をマクロ化
+		# カウントに対応する値を返す
+		_binbio_get_code_comp_macro() {
+			local count=$1
+			local val=$2
 
-		# regA = 0xcd
-		lr35902_set_reg regA cd
+			# regA == count ?
+			lr35902_compare_regA_and $count
 
-		# return
+			# 違うなら8バイト分飛ばす
+			lr35902_rel_jump_with_cond NZ $(two_digits_d 8)
+
+			# regA == count の場合の処理(計8バイト)
+			## regA++
+			lr35902_inc regA	# 1
+			## カウンタ/アドレス変数(下位8ビット) = regA
+			lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_counter_addr_bh	# 3
+			## regA = val
+			lr35902_set_reg regA $val	# 2
+			## pop & return
+			lr35902_pop_reg regHL	# 1
+			lr35902_return	# 1
+		}
+
+		# マクロを使用して処理を生成
+		_binbio_get_code_comp_macro 00 3e
+		_binbio_get_code_comp_macro 01 cd
+		_binbio_get_code_comp_macro 02 04
+
+		# regA == 3 の場合は少し処理が異なる
+		# (カウンタ/アドレス変数の更新値が異なる)
+		# ※ カウンタであり前述のいずれの条件にも合致しなかった時点で
+		# 　 regA == 3であると判断する
+		## カウンタ/アドレス変数 = タイルミラー領域ベースアドレス
+		lr35902_set_reg regA $GBOS_TMRR_BASE_BH
+		lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_counter_addr_bh
+		lr35902_set_reg regA $GBOS_TMRR_BASE_TH
+		lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_counter_addr_th
+		## regA = 0x18
+		lr35902_set_reg regA 18
+		## pop & return
+		lr35902_pop_reg regHL
 		lr35902_return
 	) >src/f_binbio_get_code_comp.1.o
 	local sz_1=$(stat -c '%s' src/f_binbio_get_code_comp.1.o)
 	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_1)
 	cat src/f_binbio_get_code_comp.1.o
 
-	# regA < 0x8b ?
-	lr35902_compare_regA_and 8b
+	# アドレスの場合
+
+	# push
+	lr35902_push_reg regBC
+
+	# 変数が示すアドレスを起点にアドレスをインクリメントしながら
+	# 0x00以外のタイル値を探す
 	(
-		# regA < 0x8b の場合
+		# アドレスregHLの値 != 0x00 ?
+		lr35902_copy_to_from regA ptrHL
+		lr35902_compare_regA_and 00
+		(
+			# アドレスregHLの値 != 0x00 の場合
 
-		# regA++
-		lr35902_inc regA
+			# regBへregAを退避
+			lr35902_copy_to_from regB regA
 
-		# カウンタを更新
-		lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_counter
+			# regHL++
+			lr35902_inc regHL
 
-		# regA--
-		lr35902_dec regA
+			# regHL == タイルミラー領域最終アドレス+1 ?
+			lr35902_copy_to_from regA regH
+			lr35902_compare_regA_and $GBOS_TMRR_END_PLUS1_TH
+			(
+				# regHL == タイルミラー領域最終アドレス+1 の場合
 
-		# return
-		lr35902_return
-	) >src/f_binbio_get_code_comp.2.o
-	local sz_2=$(stat -c '%s' src/f_binbio_get_code_comp.2.o)
-	lr35902_rel_jump_with_cond NC $(two_digits_d $sz_2)
-	cat src/f_binbio_get_code_comp.2.o
+				# カウンタ/アドレス変数 = 0x0000
+				lr35902_xor_to_regA regA
+				lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_counter_addr_bh
+				lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_counter_addr_th
+			) >src/f_binbio_get_code_comp.2.o
+			(
+				# regHL != タイルミラー領域最終アドレス+1 の場合
 
-	# regA == 0x8b の場合
+				# カウンタ/アドレス変数 = regHL
+				lr35902_copy_to_from regA regL
+				lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_counter_addr_bh
+				lr35902_copy_to_from regA regH
+				lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_counter_addr_th
 
-	# regA = 0x00
+				# regHL == タイルミラー領域最終アドレス+1 の場合の処理を飛ばす
+				local sz_2=$(stat -c '%s' src/f_binbio_get_code_comp.2.o)
+				lr35902_rel_jump $(two_digits_d $sz_2)
+			) >src/f_binbio_get_code_comp.6.o
+			local sz_6=$(stat -c '%s' src/f_binbio_get_code_comp.6.o)
+			lr35902_rel_jump_with_cond Z $(two_digits_d $sz_6)
+			cat src/f_binbio_get_code_comp.6.o	# regHL != タイルミラー領域最終アドレス+1 の場合
+			cat src/f_binbio_get_code_comp.2.o	# regHL == タイルミラー領域最終アドレス+1 の場合
+
+			# regAをregBから復帰
+			lr35902_copy_to_from regA regB
+
+			# pop & return
+			lr35902_pop_reg regBC
+			lr35902_pop_reg regHL
+			lr35902_return
+		) >src/f_binbio_get_code_comp.3.o
+		local sz_3=$(stat -c '%s' src/f_binbio_get_code_comp.3.o)
+		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_3)
+		cat src/f_binbio_get_code_comp.3.o
+
+		# アドレスregHLの値 == 0x00 の場合
+
+		# regHL++
+		lr35902_inc regHL
+
+		# regHL == タイルミラー領域最終アドレス+1 ?
+		lr35902_copy_to_from regA regH
+		lr35902_compare_regA_and $GBOS_TMRR_END_PLUS1_TH
+		(
+			# regHL == タイルミラー領域最終アドレス+1 の場合
+
+			# ループを脱出
+			lr35902_rel_jump $(two_digits_d 2)
+		) >src/f_binbio_get_code_comp.4.o
+		local sz_4=$(stat -c '%s' src/f_binbio_get_code_comp.4.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_4)
+		cat src/f_binbio_get_code_comp.4.o
+	) >src/f_binbio_get_code_comp.5.o
+	cat src/f_binbio_get_code_comp.5.o
+	local sz_5=$(stat -c '%s' src/f_binbio_get_code_comp.5.o)
+	lr35902_rel_jump $(two_comp_d $((sz_5 + 2)))	# 2
+
+	# 0x00以外のタイル番号が見つからないまま
+	# regHL == タイルミラー領域最終アドレス+1 まで来てしまった場合
+
+	# カウンタ/アドレス変数 = 0x0000
 	lr35902_xor_to_regA regA
+	lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_counter_addr_bh
+	lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_counter_addr_th
 
-	# カウンタを更新
-	lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_counter
+	# regA = 細胞タイルのタイル値
+	lr35902_set_reg regA $GBOS_TILE_NUM_CELL
 
-	# regA = 0x8b
-	lr35902_set_reg regA 8b
-
-	# return
+	# pop & return
+	lr35902_pop_reg regBC
+	lr35902_pop_reg regHL
 	lr35902_return
 }
 
@@ -4995,9 +5104,10 @@ f_binbio_init() {
 	## mutation_probability = 77
 	lr35902_set_reg regA 4d
 	lr35902_copy_to_addr_from_regA $var_binbio_mutation_probability
-	## get_code_comp_counter = 0
+	## get_code_comp_counter_addr = 0x0000
 	lr35902_xor_to_regA regA
-	lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_counter
+	lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_counter_addr_bh
+	lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_counter_addr_th
 
 	# 初期細胞をマップへ配置
 	## タイル座標をVRAMアドレスへ変換
@@ -5743,7 +5853,7 @@ init_tmrr() {
 		lr35902_copyinc_to_ptrHL_from_regA
 
 		lr35902_copy_to_from regA regH
-		lr35902_compare_regA_and e0
+		lr35902_compare_regA_and $GBOS_TMRR_END_PLUS1_TH
 	) >src/init_tmrr.1.o
 	cat src/init_tmrr.1.o
 	local sz_1=$(stat -c '%s' src/init_tmrr.1.o)
