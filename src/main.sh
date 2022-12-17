@@ -79,6 +79,10 @@ GBOS_WST_NUM_TXT=04	# テキストファイル表示中
 GBOS_WST_NUM_IMG=08	# 画像ファイル表示中
 
 # タイルミラー領域
+# メモ：8近傍のオフセット
+# | -0x21 | -0x20 | -0x1f |
+# | -0x01 |     - | +0x01 |
+# | +0x1f | +0x20 | +0x21 |
 GBOS_TMRR_BASE=dc00	# タイルミラー領域ベースアドレス
 GBOS_TMRR_BASE_BH=00	# タイルミラー領域ベースアドレス(下位8ビット)
 GBOS_TMRR_BASE_TH=dc	# タイルミラー領域ベースアドレス(上位8ビット)
@@ -3167,7 +3171,7 @@ _binbio_cell_eval_family() {
 	(
 		# regC += 単位量
 		lr35902_copy_to_from regA regC
-		lr35902_add_to_regA $BINBIO_CELL_EVAL_ADD_UNIT
+		lr35902_add_to_regA $BINBIO_CELL_EVAL_FAMILY_ADD_UNIT
 		lr35902_copy_to_from regC regA
 	) >src/f_binbio_cell_eval_family.add.o
 	local sz_add=$(stat -c '%s' src/f_binbio_cell_eval_family.add.o)
@@ -3370,8 +3374,434 @@ _binbio_cell_eval_family() {
 	lr35902_pop_reg regBC
 	lr35902_return
 }
+## 「こんにちは、せかい！」という文字列の形成を目指す
+## ※ フラグレジスタは破壊される
+_binbio_cell_eval_helloworld() {
+	# push
+	lr35902_push_reg regHL
+
+	# 現在の細胞のアドレスをregHLへ取得
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
+	lr35902_copy_to_from regL regA
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
+	lr35902_copy_to_from regH regA
+
+	# flags.fix == 1 ?
+	lr35902_test_bitN_of_reg $BINBIO_CELL_FLAGS_BIT_FIX ptrHL
+	(
+		# flags.fix == 1 の場合
+
+		# 戻り値に適応度0xffを設定
+		lr35902_set_reg regA ff
+
+		# pop & return
+		lr35902_pop_reg regHL
+		lr35902_return
+	) >src/f_binbio_cell_eval_helloworld.1.o
+	local sz_1=$(stat -c '%s' src/f_binbio_cell_eval_helloworld.1.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_1)
+	cat src/f_binbio_cell_eval_helloworld.1.o
+
+	# push
+	lr35902_push_reg regBC
+
+	# アドレスregHLをtile_numまで進める
+	lr35902_set_reg regBC 0006
+	lr35902_add_to_regHL regBC
+
+	# regA = tile_num
+	lr35902_copy_to_from regA ptrHL
+
+	# 繰り返し使用する処理をファイルへ出力あるいはマクロ定義しておく
+	## (regE,regD) = (tile_x,tile_y)
+	(
+		# アドレスregHLをtile_xまで戻す
+		lr35902_set_reg regBC $(two_comp_4 5)
+		lr35902_add_to_regHL regBC
+
+		# regE = tile_x
+		lr35902_copy_to_from regE ptrHL
+
+		# アドレスregHLをtile_yまで進める
+		lr35902_inc regHL
+
+		# regD = tile_y
+		lr35902_copy_to_from regD ptrHL
+	) >src/f_binbio_cell_eval_helloworld.set_ed_xy.o
+	## regBへ単位量(1/2)を加算
+	(
+		lr35902_set_reg regA $BINBIO_CELL_EVAL_HELLOWORLD_ADD_UNIT_H
+		lr35902_add_to_regA regB
+		lr35902_copy_to_from regB regA
+	) >src/f_binbio_cell_eval_helloworld.addh.o
+	local sz_addh=$(stat -c '%s' src/f_binbio_cell_eval_helloworld.addh.o)
+	## regBへ単位量(1/4)を加算
+	(
+		lr35902_set_reg regA $BINBIO_CELL_EVAL_HELLOWORLD_ADD_UNIT_Q
+		lr35902_add_to_regA regB
+		lr35902_copy_to_from regB regA
+	) >src/f_binbio_cell_eval_helloworld.addq.o
+	local sz_addq=$(stat -c '%s' src/f_binbio_cell_eval_helloworld.addq.o)
+	## regBをpopし、単位量(1/2)を加算後、再度push
+	(
+		# regBCをpop
+		lr35902_pop_reg regBC
+
+		# regBへ単位量を加算
+		cat src/f_binbio_cell_eval_helloworld.addh.o
+
+		# regBCをpush
+		lr35902_push_reg regBC
+	) >src/f_binbio_cell_eval_helloworld.pop_addh_push.o
+	local sz_pop_addh_push=$(stat -c '%s' src/f_binbio_cell_eval_helloworld.pop_addh_push.o)
+	## regBをpopし、単位量(1/4)を加算後、再度push
+	(
+		# regBCをpop
+		lr35902_pop_reg regBC
+
+		# regBへ単位量を加算
+		cat src/f_binbio_cell_eval_helloworld.addq.o
+
+		# regBCをpush
+		lr35902_push_reg regBC
+	) >src/f_binbio_cell_eval_helloworld.pop_addq_push.o
+	local sz_pop_addq_push=$(stat -c '%s' src/f_binbio_cell_eval_helloworld.pop_addq_push.o)
+	## 最初の文字の条件判定と処理
+	_binbio_cell_eval_helloworld_char_first() {
+		local target_tile_num=$1
+		local next_tile_num=$2
+
+		lr35902_compare_regA_and $target_tile_num
+		(
+			# regAが対象の文字の場合
+
+			# push
+			lr35902_push_reg regDE
+
+			# (regE,regD) = (tile_x,tile_y)
+			cat src/f_binbio_cell_eval_helloworld.set_ed_xy.o
+
+			# regHLへ座標(tile_x,tile_y)に対応するタイルミラーアドレスを取得
+			lr35902_call $a_tcoord_to_mrraddr
+
+			# regB = 自分自身が所望のタイルである場合のベース値
+			lr35902_set_reg regB $BINBIO_CELL_EVAL_HELLOWORLD_ADD_UNIT_OWN
+
+			# regE(tile_x) == 表示範囲の右端 ?
+			lr35902_copy_to_from regA regE
+			lr35902_compare_regA_and $(calc16_2 "${GB_DISP_WIDTH_T}-1")
+			(
+				# tile_x != 表示範囲の右端 の場合
+
+				# 右座標が次の文字の場合、regBへ単位量を加算
+				## アドレスregHLを右座標へ移動
+				lr35902_inc regHL
+				## 右座標は次の文字か?
+				lr35902_copy_to_from regA ptrHL
+				lr35902_compare_regA_and $next_tile_num
+				lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_addh)
+				## regBへ単位量を加算
+				cat src/f_binbio_cell_eval_helloworld.addh.o
+				## アドレスregHLを戻す
+				lr35902_dec regHL
+			) >src/f_binbio_cell_eval_helloworld.char_first.1.o
+			local sz_char_first_1=$(stat -c '%s' src/f_binbio_cell_eval_helloworld.char_first.1.o)
+			lr35902_rel_jump_with_cond Z $(two_digits_d $sz_char_first_1)
+			cat src/f_binbio_cell_eval_helloworld.char_first.1.o
+
+			# regD(tile_y) == 表示範囲の下端 ?
+			lr35902_copy_to_from regA regD
+			lr35902_compare_regA_and $(calc16_2 "${GB_DISP_HEIGHT_T}-1")
+			(
+				# tile_y != 表示範囲の下端 の場合
+
+				# 下座標が次の文字の場合、regBへ単位量を加算
+				## regBCをpush
+				lr35902_push_reg regBC
+				## アドレスregHLを下座標へ移動
+				lr35902_set_reg regBC 0020
+				lr35902_add_to_regHL regBC
+				## 下座標は次の文字か?
+				lr35902_copy_to_from regA ptrHL
+				lr35902_compare_regA_and $next_tile_num
+				lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_pop_addh_push)
+				### regBをpopし、単位量(1/2)を加算後、再度push
+				cat src/f_binbio_cell_eval_helloworld.pop_addh_push.o
+				## アドレスregHLを戻す
+				lr35902_set_reg regBC $(two_comp_4 20)
+				lr35902_add_to_regHL regBC
+				## regBCをpop
+				lr35902_pop_reg regBC
+			) >src/f_binbio_cell_eval_helloworld.char_first.2.o
+			local sz_char_first_2=$(stat -c '%s' src/f_binbio_cell_eval_helloworld.char_first.2.o)
+			lr35902_rel_jump_with_cond Z $(two_digits_d $sz_char_first_2)
+			cat src/f_binbio_cell_eval_helloworld.char_first.2.o
+
+			# regAへ戻り値としてregB(適応度)を設定
+			lr35902_copy_to_from regA regB
+
+			# pop & return
+			lr35902_pop_reg regDE
+			lr35902_pop_reg regBC
+			lr35902_pop_reg regHL
+			lr35902_return
+		) >src/f_binbio_cell_eval_helloworld.char_first.3.o
+		local sz_char_first_3=$(stat -c '%s' src/f_binbio_cell_eval_helloworld.char_first.3.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_char_first_3)
+		cat src/f_binbio_cell_eval_helloworld.char_first.3.o
+	}
+	## 中間の文字の条件判定と処理
+	_binbio_cell_eval_helloworld_char_middle() {
+		local target_tile_num=$1
+		local prev_tile_num=$2
+		local next_tile_num=$3
+
+		lr35902_compare_regA_and $target_tile_num
+		(
+			# regAが対象の文字の場合
+
+			# push
+			lr35902_push_reg regDE
+
+			# (regE,regD) = (tile_x,tile_y)
+			cat src/f_binbio_cell_eval_helloworld.set_ed_xy.o
+
+			# regHLへ座標(tile_x,tile_y)に対応するタイルミラーアドレスを取得
+			lr35902_call $a_tcoord_to_mrraddr
+
+			# regB = 自分自身が所望のタイルである場合のベース値
+			lr35902_set_reg regB $BINBIO_CELL_EVAL_HELLOWORLD_ADD_UNIT_OWN
+
+			# regD(tile_y) == 0 ?
+			lr35902_copy_to_from regA regD
+			lr35902_compare_regA_and 00
+			(
+				# tile_y != 0 の場合
+
+				# 上座標が前の文字の場合、regBへ単位量を加算
+				## regBCをpush
+				lr35902_push_reg regBC
+				## アドレスregHLを上座標へ移動
+				lr35902_set_reg regBC $(two_comp_4 20)
+				lr35902_add_to_regHL regBC
+				## 上座標は前の文字か?
+				lr35902_copy_to_from regA ptrHL
+				lr35902_compare_regA_and $prev_tile_num
+				lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_pop_addq_push)
+				### regBをpopし、単位量(1/4)を加算後、再度push
+				cat src/f_binbio_cell_eval_helloworld.pop_addq_push.o
+				## アドレスregHLを戻す
+				lr35902_set_reg regBC 0020
+				lr35902_add_to_regHL regBC
+				## regBCをpop
+				lr35902_pop_reg regBC
+			) >src/f_binbio_cell_eval_helloworld.char_middle.1.o
+			local sz_char_middle_1=$(stat -c '%s' src/f_binbio_cell_eval_helloworld.char_middle.1.o)
+			lr35902_rel_jump_with_cond Z $(two_digits_d $sz_char_middle_1)
+			cat src/f_binbio_cell_eval_helloworld.char_middle.1.o
+
+			# regE(tile_x) == 表示範囲の右端 ?
+			lr35902_copy_to_from regA regE
+			lr35902_compare_regA_and $(calc16_2 "${GB_DISP_WIDTH_T}-1")
+			(
+				# tile_x != 表示範囲の右端 の場合
+
+				# 右座標が次の文字の場合、regBへ単位量を加算
+				## アドレスregHLを右座標へ移動
+				lr35902_inc regHL
+				## 右座標は次の文字か?
+				lr35902_copy_to_from regA ptrHL
+				lr35902_compare_regA_and $next_tile_num
+				lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_addq)
+				### regBへ単位量を加算
+				cat src/f_binbio_cell_eval_helloworld.addq.o
+				## アドレスregHLを戻す
+				lr35902_dec regHL
+			) >src/f_binbio_cell_eval_helloworld.char_middle.2.o
+			local sz_char_middle_2=$(stat -c '%s' src/f_binbio_cell_eval_helloworld.char_middle.2.o)
+			lr35902_rel_jump_with_cond Z $(two_digits_d $sz_char_middle_2)
+			cat src/f_binbio_cell_eval_helloworld.char_middle.2.o
+
+			# regD(tile_y) == 表示範囲の下端 ?
+			lr35902_copy_to_from regA regD
+			lr35902_compare_regA_and $(calc16_2 "${GB_DISP_HEIGHT_T}-1")
+			(
+				# tile_y != 表示範囲の下端 の場合
+
+				# 下座標が次の文字の場合、regBへ単位量を加算
+				## regBCをpush
+				lr35902_push_reg regBC
+				## アドレスregHLを下座標へ移動
+				lr35902_set_reg regBC 0020
+				lr35902_add_to_regHL regBC
+				## 下座標は次の文字か?
+				lr35902_copy_to_from regA ptrHL
+				lr35902_compare_regA_and $next_tile_num
+				lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_pop_addq_push)
+				### regBをpopし、単位量(1/4)を加算後、再度push
+				cat src/f_binbio_cell_eval_helloworld.pop_addq_push.o
+				## アドレスregHLを戻す
+				lr35902_set_reg regBC $(two_comp_4 20)
+				lr35902_add_to_regHL regBC
+				## regBCをpop
+				lr35902_pop_reg regBC
+			) >src/f_binbio_cell_eval_helloworld.char_middle.3.o
+			local sz_char_middle_3=$(stat -c '%s' src/f_binbio_cell_eval_helloworld.char_middle.3.o)
+			lr35902_rel_jump_with_cond Z $(two_digits_d $sz_char_middle_3)
+			cat src/f_binbio_cell_eval_helloworld.char_middle.3.o
+
+			# regE(tile_x) == 0 ?
+			lr35902_copy_to_from regA regE
+			lr35902_compare_regA_and 00
+			(
+				# tile_x != 0 の場合
+
+				# 左座標が前の文字の場合、regBへ単位量を加算
+				## アドレスregHLを左座標へ移動
+				lr35902_dec regHL
+				## 左座標は前の文字か?
+				lr35902_copy_to_from regA ptrHL
+				lr35902_compare_regA_and $prev_tile_num
+				lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_addq)
+				## regBへ単位量を加算
+				cat src/f_binbio_cell_eval_helloworld.addq.o
+				## アドレスregHLを戻す
+				lr35902_inc regHL
+			) >src/f_binbio_cell_eval_helloworld.char_middle.4.o
+			local sz_char_middle_4=$(stat -c '%s' src/f_binbio_cell_eval_helloworld.char_middle.4.o)
+			lr35902_rel_jump_with_cond Z $(two_digits_d $sz_char_middle_4)
+			cat src/f_binbio_cell_eval_helloworld.char_middle.4.o
+
+			# regAへ戻り値としてregB(適応度)を設定
+			lr35902_copy_to_from regA regB
+
+			# pop & return
+			lr35902_pop_reg regDE
+			lr35902_pop_reg regBC
+			lr35902_pop_reg regHL
+			lr35902_return
+		) >src/f_binbio_cell_eval_helloworld.char_middle.5.o
+		local sz_char_middle_5=$(stat -c '%s' src/f_binbio_cell_eval_helloworld.char_middle.5.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_char_middle_5)
+		cat src/f_binbio_cell_eval_helloworld.char_middle.5.o
+	}
+	## 最後の文字の条件判定と処理
+	_binbio_cell_eval_helloworld_char_last() {
+		local target_tile_num=$1
+		local prev_tile_num=$2
+
+		lr35902_compare_regA_and $target_tile_num
+		(
+			# regAが対象の文字の場合
+
+			# push
+			lr35902_push_reg regDE
+
+			# (regE,regD) = (tile_x,tile_y)
+			cat src/f_binbio_cell_eval_helloworld.set_ed_xy.o
+
+			# regHLへ座標(tile_x,tile_y)に対応するタイルミラーアドレスを取得
+			lr35902_call $a_tcoord_to_mrraddr
+
+			# regB = 自分自身が所望のタイルである場合のベース値
+			lr35902_set_reg regB $BINBIO_CELL_EVAL_HELLOWORLD_ADD_UNIT_OWN
+
+			# regD(tile_y) == 0 ?
+			lr35902_copy_to_from regA regD
+			lr35902_compare_regA_and 00
+			(
+				# tile_y != 0 の場合
+
+				# 上座標が前の文字の場合、regBへ単位量を加算
+				## regBCをpush
+				lr35902_push_reg regBC
+				## アドレスregHLを上座標へ移動
+				lr35902_set_reg regBC $(two_comp_4 20)
+				lr35902_add_to_regHL regBC
+				## 上座標は前の文字か?
+				lr35902_copy_to_from regA ptrHL
+				lr35902_compare_regA_and $prev_tile_num
+				lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_pop_addh_push)
+				### regBをpopし、単位量(1/2)を加算後、再度push
+				cat src/f_binbio_cell_eval_helloworld.pop_addh_push.o
+				## アドレスregHLを戻す
+				lr35902_set_reg regBC 0020
+				lr35902_add_to_regHL regBC
+				## regBCをpop
+				lr35902_pop_reg regBC
+			) >src/f_binbio_cell_eval_helloworld.char_last.1.o
+			local sz_char_last_1=$(stat -c '%s' src/f_binbio_cell_eval_helloworld.char_last.1.o)
+			lr35902_rel_jump_with_cond Z $(two_digits_d $sz_char_last_1)
+			cat src/f_binbio_cell_eval_helloworld.char_last.1.o
+
+			# regE(tile_x) == 0 ?
+			lr35902_copy_to_from regA regE
+			lr35902_compare_regA_and 00
+			(
+				# tile_x != 0 の場合
+
+				# 左座標が前の文字の場合、regBへ単位量を加算
+				## アドレスregHLを左座標へ移動
+				lr35902_dec regHL
+				## 左座標は前の文字か?
+				lr35902_copy_to_from regA ptrHL
+				lr35902_compare_regA_and $prev_tile_num
+				lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_addh)
+				## regBへ単位量を加算
+				cat src/f_binbio_cell_eval_helloworld.addh.o
+				## アドレスregHLを戻す
+				lr35902_inc regHL
+			) >src/f_binbio_cell_eval_helloworld.char_last.2.o
+			local sz_char_last_2=$(stat -c '%s' src/f_binbio_cell_eval_helloworld.char_last.2.o)
+			lr35902_rel_jump_with_cond Z $(two_digits_d $sz_char_last_2)
+			cat src/f_binbio_cell_eval_helloworld.char_last.2.o
+
+			# regAへ戻り値としてregB(適応度)を設定
+			lr35902_copy_to_from regA regB
+
+			# pop & return
+			lr35902_pop_reg regDE
+			lr35902_pop_reg regBC
+			lr35902_pop_reg regHL
+			lr35902_return
+		) >src/f_binbio_cell_eval_helloworld.char_last.3.o
+		local sz_char_last_3=$(stat -c '%s' src/f_binbio_cell_eval_helloworld.char_last.3.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_char_last_3)
+		cat src/f_binbio_cell_eval_helloworld.char_last.3.o
+	}
+
+	# 文字別の条件判定と処理
+	## 「こ」
+	_binbio_cell_eval_helloworld_char_first $GBOS_TILE_NUM_HIRA_KO $GBOS_TILE_NUM_HIRA_N
+	## 「ん」
+	_binbio_cell_eval_helloworld_char_middle $GBOS_TILE_NUM_HIRA_N $GBOS_TILE_NUM_HIRA_KO $GBOS_TILE_NUM_HIRA_NI
+	## 「に」
+	_binbio_cell_eval_helloworld_char_middle $GBOS_TILE_NUM_HIRA_NI $GBOS_TILE_NUM_HIRA_N $GBOS_TILE_NUM_HIRA_CHI
+	## 「ち」
+	_binbio_cell_eval_helloworld_char_middle $GBOS_TILE_NUM_HIRA_CHI $GBOS_TILE_NUM_HIRA_NI $GBOS_TILE_NUM_HIRA_HA
+	## 「は」
+	_binbio_cell_eval_helloworld_char_middle $GBOS_TILE_NUM_HIRA_HA $GBOS_TILE_NUM_HIRA_CHI $GBOS_TILE_NUM_TOUTEN
+	## 「、」
+	_binbio_cell_eval_helloworld_char_middle $GBOS_TILE_NUM_TOUTEN $GBOS_TILE_NUM_HIRA_HA $GBOS_TILE_NUM_HIRA_SE
+	## 「せ」
+	_binbio_cell_eval_helloworld_char_middle $GBOS_TILE_NUM_HIRA_SE $GBOS_TILE_NUM_TOUTEN $GBOS_TILE_NUM_HIRA_KA
+	## 「か」
+	_binbio_cell_eval_helloworld_char_middle $GBOS_TILE_NUM_HIRA_KA $GBOS_TILE_NUM_HIRA_SE $GBOS_TILE_NUM_HIRA_I
+	## 「い」
+	_binbio_cell_eval_helloworld_char_middle $GBOS_TILE_NUM_HIRA_I $GBOS_TILE_NUM_HIRA_KA $GBOS_TILE_NUM_EXCLAMATION
+	## 「!」
+	_binbio_cell_eval_helloworld_char_last $GBOS_TILE_NUM_EXCLAMATION $GBOS_TILE_NUM_HIRA_I
+
+	# regAへ戻り値として適応度のベース値を設定
+	lr35902_set_reg regA $BINBIO_CELL_EVAL_BASE_FITNESS
+
+	# pop & return
+	lr35902_pop_reg regBC
+	lr35902_pop_reg regHL
+	lr35902_return
+}
 f_binbio_cell_eval() {
-	_binbio_cell_eval_family
+	_binbio_cell_eval_helloworld
 }
 
 # 細胞の「代謝/運動」の振る舞い

@@ -39,4 +39,7 @@ BINBIO_CELL_FITNESS_INIT=80	# 適応度
 
 # 関数のチューニングパラメータ
 BINBIO_CELL_EVAL_BASE_FITNESS=7f	# 適応度のベース値
-BINBIO_CELL_EVAL_ADD_UNIT=10	# 同種1タイルあたりの適応度の加算単位
+BINBIO_CELL_EVAL_FAMILY_ADD_UNIT=10	# 同種1タイルあたりの適応度の加算単位
+BINBIO_CELL_EVAL_HELLOWORLD_ADD_UNIT_OWN=9b	# 自分自身が所望のタイルである場合のベース値
+BINBIO_CELL_EVAL_HELLOWORLD_ADD_UNIT_H=32	# 近傍に所望のタイルがある場合の加算単位①
+BINBIO_CELL_EVAL_HELLOWORLD_ADD_UNIT_Q=19	# 近傍に所望のタイルがある場合の加算単位②
