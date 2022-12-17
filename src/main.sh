@@ -3074,7 +3074,8 @@ fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_set_tile_num.o))
 fadr=$(calc16 "${a_binbio_cell_set_tile_num}+${fsz}")
 a_binbio_cell_eval=$(four_digits $fadr)
 echo -e "a_binbio_cell_eval=$a_binbio_cell_eval" >>$MAP_FILE_NAME
-f_binbio_cell_eval() {
+## 8近傍の同じタイル属性のタイルの数を評価する
+_binbio_cell_eval_family() {
 	# push
 	lr35902_push_reg regBC
 	lr35902_push_reg regAF
@@ -3101,10 +3102,10 @@ f_binbio_cell_eval() {
 
 		# return
 		lr35902_return
-	) >src/f_binbio_cell_eval.10.o
-	local sz_10=$(stat -c '%s' src/f_binbio_cell_eval.10.o)
+	) >src/f_binbio_cell_eval_family.10.o
+	local sz_10=$(stat -c '%s' src/f_binbio_cell_eval_family.10.o)
 	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_10)
-	cat src/f_binbio_cell_eval.10.o
+	cat src/f_binbio_cell_eval_family.10.o
 
 	# アドレスregHLをtile_numまで進める
 	lr35902_set_reg regBC 0006
@@ -3131,10 +3132,10 @@ f_binbio_cell_eval() {
 
 		# return
 		lr35902_return
-	) >src/f_binbio_cell_eval.1.o
-	local sz_1=$(stat -c '%s' src/f_binbio_cell_eval.1.o)
+	) >src/f_binbio_cell_eval_family.1.o
+	local sz_1=$(stat -c '%s' src/f_binbio_cell_eval_family.1.o)
 	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_1)
-	cat src/f_binbio_cell_eval.1.o
+	cat src/f_binbio_cell_eval_family.1.o
 
 	# push
 	lr35902_push_reg regDE
@@ -3168,8 +3169,8 @@ f_binbio_cell_eval() {
 		lr35902_copy_to_from regA regC
 		lr35902_add_to_regA $BINBIO_CELL_EVAL_ADD_UNIT
 		lr35902_copy_to_from regC regA
-	) >src/f_binbio_cell_eval.add.o
-	local sz_add=$(stat -c '%s' src/f_binbio_cell_eval.add.o)
+	) >src/f_binbio_cell_eval_family.add.o
+	local sz_add=$(stat -c '%s' src/f_binbio_cell_eval_family.add.o)
 	## アドレスregHLのタイル属性が現在の細胞と等しければ適応度へ単位量を加算する処理
 	(
 		# regAへ対象座標のタイル属性番号を取得
@@ -3184,11 +3185,11 @@ f_binbio_cell_eval() {
 		# regA(対象座標のタイル属性番号) == regB(現在の細胞のタイル属性番号) ?
 		lr35902_compare_regA_and regB
 		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_add)
-		cat src/f_binbio_cell_eval.add.o
+		cat src/f_binbio_cell_eval_family.add.o
 
 		# 現在の細胞のタイル属性番号と適応度を再びpush
 		lr35902_push_reg regBC
-	) >src/f_binbio_cell_eval.chkadd.o
+	) >src/f_binbio_cell_eval_family.chkadd.o
 
 	# regD(tile_y) == 0 ?
 	lr35902_copy_to_from regA regD
@@ -3208,14 +3209,14 @@ f_binbio_cell_eval() {
 			lr35902_set_reg regBC $(two_comp_4 21)
 			lr35902_add_to_regHL regBC
 			## アドレスregHLのタイル属性が現在の細胞と等しければ適応度へ単位量を加算
-			cat src/f_binbio_cell_eval.chkadd.o
+			cat src/f_binbio_cell_eval_family.chkadd.o
 			## アドレスregHLを元に戻す
 			lr35902_set_reg regBC 0021
 			lr35902_add_to_regHL regBC
-		) >src/f_binbio_cell_eval.2.o
-		local sz_2=$(stat -c '%s' src/f_binbio_cell_eval.2.o)
+		) >src/f_binbio_cell_eval_family.2.o
+		local sz_2=$(stat -c '%s' src/f_binbio_cell_eval_family.2.o)
 		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_2)
-		cat src/f_binbio_cell_eval.2.o
+		cat src/f_binbio_cell_eval_family.2.o
 
 		# 上座標をチェックし、
 		# タイル属性が現在の細胞と等しければ適応度へ単位量を加算
@@ -3223,7 +3224,7 @@ f_binbio_cell_eval() {
 		lr35902_set_reg regBC $(two_comp_4 20)
 		lr35902_add_to_regHL regBC
 		## アドレスregHLのタイル属性が現在の細胞と等しければ適応度へ単位量を加算
-		cat src/f_binbio_cell_eval.chkadd.o
+		cat src/f_binbio_cell_eval_family.chkadd.o
 		## アドレスregHLを元に戻す
 		lr35902_set_reg regBC 0020
 		lr35902_add_to_regHL regBC
@@ -3240,18 +3241,18 @@ f_binbio_cell_eval() {
 			lr35902_set_reg regBC $(two_comp_4 1f)
 			lr35902_add_to_regHL regBC
 			## アドレスregHLのタイル属性が現在の細胞と等しければ適応度へ単位量を加算
-			cat src/f_binbio_cell_eval.chkadd.o
+			cat src/f_binbio_cell_eval_family.chkadd.o
 			## アドレスregHLを元に戻す
 			lr35902_set_reg regBC 001f
 			lr35902_add_to_regHL regBC
-		) >src/f_binbio_cell_eval.3.o
-		local sz_3=$(stat -c '%s' src/f_binbio_cell_eval.3.o)
+		) >src/f_binbio_cell_eval_family.3.o
+		local sz_3=$(stat -c '%s' src/f_binbio_cell_eval_family.3.o)
 		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_3)
-		cat src/f_binbio_cell_eval.3.o
-	) >src/f_binbio_cell_eval.4.o
-	local sz_4=$(stat -c '%s' src/f_binbio_cell_eval.4.o)
+		cat src/f_binbio_cell_eval_family.3.o
+	) >src/f_binbio_cell_eval_family.4.o
+	local sz_4=$(stat -c '%s' src/f_binbio_cell_eval_family.4.o)
 	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_4)
-	cat src/f_binbio_cell_eval.4.o
+	cat src/f_binbio_cell_eval_family.4.o
 
 	# regE(tile_x) == 表示範囲の右端 ?
 	lr35902_copy_to_from regA regE
@@ -3264,13 +3265,13 @@ f_binbio_cell_eval() {
 		## アドレスregHLを対象座標へ移動
 		lr35902_inc regHL
 		## アドレスregHLのタイル属性が現在の細胞と等しければ適応度へ単位量を加算
-		cat src/f_binbio_cell_eval.chkadd.o
+		cat src/f_binbio_cell_eval_family.chkadd.o
 		## アドレスregHLを元に戻す
 		lr35902_dec regHL
-	) >src/f_binbio_cell_eval.5.o
-	local sz_5=$(stat -c '%s' src/f_binbio_cell_eval.5.o)
+	) >src/f_binbio_cell_eval_family.5.o
+	local sz_5=$(stat -c '%s' src/f_binbio_cell_eval_family.5.o)
 	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_5)
-	cat src/f_binbio_cell_eval.5.o
+	cat src/f_binbio_cell_eval_family.5.o
 
 	# regD(tile_y) == 表示範囲の下端 ?
 	lr35902_copy_to_from regA regD
@@ -3290,14 +3291,14 @@ f_binbio_cell_eval() {
 			lr35902_set_reg regBC 0021
 			lr35902_add_to_regHL regBC
 			## アドレスregHLのタイル属性が現在の細胞と等しければ適応度へ単位量を加算
-			cat src/f_binbio_cell_eval.chkadd.o
+			cat src/f_binbio_cell_eval_family.chkadd.o
 			## アドレスregHLを元に戻す
 			lr35902_set_reg regBC $(two_comp_4 21)
 			lr35902_add_to_regHL regBC
-		) >src/f_binbio_cell_eval.6.o
-		local sz_6=$(stat -c '%s' src/f_binbio_cell_eval.6.o)
+		) >src/f_binbio_cell_eval_family.6.o
+		local sz_6=$(stat -c '%s' src/f_binbio_cell_eval_family.6.o)
 		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_6)
-		cat src/f_binbio_cell_eval.6.o
+		cat src/f_binbio_cell_eval_family.6.o
 
 		# 下座標をチェックし、
 		# タイル属性が現在の細胞と等しければ適応度へ単位量を加算
@@ -3305,7 +3306,7 @@ f_binbio_cell_eval() {
 		lr35902_set_reg regBC 0020
 		lr35902_add_to_regHL regBC
 		## アドレスregHLのタイル属性が現在の細胞と等しければ適応度へ単位量を加算
-		cat src/f_binbio_cell_eval.chkadd.o
+		cat src/f_binbio_cell_eval_family.chkadd.o
 		## アドレスregHLを元に戻す
 		lr35902_set_reg regBC $(two_comp_4 20)
 		lr35902_add_to_regHL regBC
@@ -3322,18 +3323,18 @@ f_binbio_cell_eval() {
 			lr35902_set_reg regBC 001f
 			lr35902_add_to_regHL regBC
 			## アドレスregHLのタイル属性が現在の細胞と等しければ適応度へ単位量を加算
-			cat src/f_binbio_cell_eval.chkadd.o
+			cat src/f_binbio_cell_eval_family.chkadd.o
 			## アドレスregHLを元に戻す
 			lr35902_set_reg regBC $(two_comp_4 1f)
 			lr35902_add_to_regHL regBC
-		) >src/f_binbio_cell_eval.7.o
-		local sz_7=$(stat -c '%s' src/f_binbio_cell_eval.7.o)
+		) >src/f_binbio_cell_eval_family.7.o
+		local sz_7=$(stat -c '%s' src/f_binbio_cell_eval_family.7.o)
 		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_7)
-		cat src/f_binbio_cell_eval.7.o
-	) >src/f_binbio_cell_eval.8.o
-	local sz_8=$(stat -c '%s' src/f_binbio_cell_eval.8.o)
+		cat src/f_binbio_cell_eval_family.7.o
+	) >src/f_binbio_cell_eval_family.8.o
+	local sz_8=$(stat -c '%s' src/f_binbio_cell_eval_family.8.o)
 	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_8)
-	cat src/f_binbio_cell_eval.8.o
+	cat src/f_binbio_cell_eval_family.8.o
 
 	# regE(tile_x) == 0 ?
 	lr35902_copy_to_from regA regE
@@ -3346,13 +3347,13 @@ f_binbio_cell_eval() {
 		## アドレスregHLを対象座標へ移動
 		lr35902_dec regHL
 		## アドレスregHLのタイル属性が現在の細胞と等しければ適応度へ単位量を加算
-		cat src/f_binbio_cell_eval.chkadd.o
+		cat src/f_binbio_cell_eval_family.chkadd.o
 		## アドレスregHLを元に戻す
 		lr35902_inc regHL
-	) >src/f_binbio_cell_eval.9.o
-	local sz_9=$(stat -c '%s' src/f_binbio_cell_eval.9.o)
+	) >src/f_binbio_cell_eval_family.9.o
+	local sz_9=$(stat -c '%s' src/f_binbio_cell_eval_family.9.o)
 	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_9)
-	cat src/f_binbio_cell_eval.9.o
+	cat src/f_binbio_cell_eval_family.9.o
 
 	# 現在の細胞のタイル属性番号と適応度をpop
 	lr35902_pop_reg regBC
@@ -3368,6 +3369,9 @@ f_binbio_cell_eval() {
 	# pop & return
 	lr35902_pop_reg regBC
 	lr35902_return
+}
+f_binbio_cell_eval() {
+	_binbio_cell_eval_family
 }
 
 # 細胞の「代謝/運動」の振る舞い
