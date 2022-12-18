@@ -5535,8 +5535,8 @@ f_binbio_init() {
 	lr35902_copy_to_addr_from_regA $var_binbio_cur_cell_addr_bh
 	lr35902_set_reg regA $(echo $BINBIO_CELL_DATA_AREA_BEGIN | cut -c1-2)
 	lr35902_copy_to_addr_from_regA $var_binbio_cur_cell_addr_th
-	## mutation_probability = 77
-	lr35902_set_reg regA 4d
+	## mutation_probability
+	lr35902_set_reg regA $BINBIO_MUTATION_PROBABILITY_INIT
 	lr35902_copy_to_addr_from_regA $var_binbio_mutation_probability
 	## get_code_comp_counter_addr = 0x0000
 	lr35902_xor_to_regA regA
