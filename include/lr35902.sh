@@ -240,6 +240,19 @@ lr35902_set_regHL_and_SP() {
 	lr35902_set_SP_from_regHL
 }
 
+# regHLへSP+nのアドレスが設定される
+# 動作例：
+#   SP=0xfffe,n=0x00 -> regHL=0xfffe
+#   SP=0xfffe,n=0x01 -> regHL=0xffff
+#   SP=0xfffe,n=0x02 -> regHL=0x0000
+#   SP=0xfffe,n=0xff -> regHL=0xfffd
+#   SP=0xfffe,n=0xfe -> regHL=0xfffc
+lr35902_copy_to_regHL_from_SP_plus_n() {
+	local n=$1
+	echo -en "\xf8\x$n"	# ldhl sp,${n}
+	echo -e 'ldhl sp,$n\t;12' >>$ASM_LIST_FILE
+}
+
 lr35902_push_reg() {
 	local reg=$1
 	case $reg in
