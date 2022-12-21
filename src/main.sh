@@ -5098,6 +5098,8 @@ f_binbio_cell_division() {
 	lr35902_copy_to_from regA ptrBC
 	lr35902_copyinc_to_ptrHL_from_regA
 	lr35902_inc regBC
+	### 後のためにpush
+	lr35902_push_reg regAF
 	## tile_num = 親のtile_num
 	lr35902_copy_to_from regA ptrBC
 	lr35902_copyinc_to_ptrHL_from_regA
@@ -5119,9 +5121,26 @@ f_binbio_cell_division() {
 	lr35902_copy_to_from ptrHL regA
 
 	# mutation_probabilityに応じて突然変異
-	## mutation_probabilityをregBへ取得
-	lr35902_copy_to_regA_from_addr $var_binbio_mutation_probability
+	# ## mutation_probabilityをregBへ取得
+	# lr35902_copy_to_regA_from_addr $var_binbio_mutation_probability
+	# lr35902_copy_to_from regB regA
+	## 突然変異確率(regB) = 0xff - fitness
+	### 現在のregHLをpush
+	lr35902_push_reg regHL
+	### regHL = SP + 5(pushしていたfitnessのアドレス)
+	lr35902_copy_to_regHL_from_SP_plus_n 05
+	### regBへfitnessを取得
+	lr35902_copy_to_from regB ptrHL
+	### regA = 0xff - regB
+	### ※ sub命令の計算結果はMSBを符号ビットとして扱った結果となるが
+	### 　 0xffから減算する分にはそうであっても問題無い
+	###    例えば、0xff - 0x7f = 0x80 となるし、0xff - 0x01 = 0xfe となる
+	lr35902_set_reg regA ff
+	lr35902_sub_to_regA regB
+	### regB = regA
 	lr35902_copy_to_from regB regA
+	### regHLをpop
+	lr35902_pop_reg regHL
 	## 0x00〜0xffの間の乱数を生成
 	lr35902_call $a_get_rnd
 	## regA(生成した乱数) < mutation_probability ?
@@ -5147,6 +5166,8 @@ f_binbio_cell_division() {
 	### regB = 配置するタイル番号
 	#### pushしていた親のtile_numをpop
 	lr35902_pop_reg regBC
+	#### pushしていた親のfitnessもpop
+	lr35902_pop_reg regAF
 	### regDE = VRAMアドレス
 	#### regDEを上書きする前に後のためにpush
 	lr35902_push_reg regDE
