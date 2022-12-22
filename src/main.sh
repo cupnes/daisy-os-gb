@@ -4997,7 +4997,6 @@ f_binbio_cell_mutation() {
 
 	# push
 	lr35902_push_reg regBC
-	lr35902_push_reg regDE
 	lr35902_push_reg regHL
 
 	# アドレスregHLをbin_dataの2バイト目(タイル番号)まで進める
@@ -5007,39 +5006,8 @@ f_binbio_cell_mutation() {
 	# ptrHLへ生成した乱数を設定
 	lr35902_copy_to_from ptrHL regA
 
-	# 突然変異後の適応度を寿命かつ余命にする
-	## 現在のcur_cell_addrをregDEへ退避
-	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
-	lr35902_copy_to_from regE regA
-	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
-	lr35902_copy_to_from regD regA
-	## アドレスregHLを先頭まで戻す
-	lr35902_set_reg regBC $(two_comp_4 9)
-	lr35902_add_to_regHL regBC
-	## cur_cell_addrにregHLを設定
-	lr35902_copy_to_from regA regL
-	lr35902_copy_to_addr_from_regA $var_binbio_cur_cell_addr_bh
-	lr35902_copy_to_from regA regH
-	lr35902_copy_to_addr_from_regA $var_binbio_cur_cell_addr_th
-	## 評価を実施
-	lr35902_call $a_binbio_cell_eval
-	## アドレスregHLをlife_durationまで進める
-	lr35902_set_reg regBC 0003
-	lr35902_add_to_regHL regBC
-	## life_durationへregA(適応度)を設定し
-	## アドレスregHLをlife_leftまで進める
-	lr35902_copyinc_to_ptrHL_from_regA
-	## life_leftへregA(適応度)を設定
-	lr35902_copy_to_from ptrHL regA
-	## regDEへ退避していた値をcur_cell_addrへ復帰
-	lr35902_copy_to_from regA regE
-	lr35902_copy_to_addr_from_regA $var_binbio_cur_cell_addr_bh
-	lr35902_copy_to_from regA regD
-	lr35902_copy_to_addr_from_regA $var_binbio_cur_cell_addr_th
-
 	# pop & return
 	lr35902_pop_reg regHL
-	lr35902_pop_reg regDE
 	lr35902_pop_reg regBC
 	lr35902_pop_reg regAF
 	lr35902_return
