@@ -3071,15 +3071,14 @@ f_binbio_cell_set_tile_num() {
 	lr35902_return
 }
 
-# 現在の細胞を評価する
+# 評価の実装 - 8近傍の同じタイル属性のタイルの数を評価する
 # out: regA - 評価結果の適応度(0x00〜0xff)
 f_binbio_cell_set_tile_num >src/f_binbio_cell_set_tile_num.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_set_tile_num.o))
 fadr=$(calc16 "${a_binbio_cell_set_tile_num}+${fsz}")
-a_binbio_cell_eval=$(four_digits $fadr)
-echo -e "a_binbio_cell_eval=$a_binbio_cell_eval" >>$MAP_FILE_NAME
-## 8近傍の同じタイル属性のタイルの数を評価する
-_binbio_cell_eval_family() {
+a_binbio_cell_eval_family=$(four_digits $fadr)
+echo -e "a_binbio_cell_eval_family=$a_binbio_cell_eval_family" >>$MAP_FILE_NAME
+f_binbio_cell_eval_family() {
 	# push
 	lr35902_push_reg regBC
 	lr35902_push_reg regAF
@@ -3374,9 +3373,16 @@ _binbio_cell_eval_family() {
 	lr35902_pop_reg regBC
 	lr35902_return
 }
-## 「こんにちは、せかい！」という文字列の形成を目指す
-## ※ フラグレジスタは破壊される
-_binbio_cell_eval_helloworld() {
+
+# 評価の実装 - 「こんにちは、せかい！」という文字列の形成を目指す
+# out: regA - 評価結果の適応度(0x00〜0xff)
+# ※ フラグレジスタは破壊される
+f_binbio_cell_eval_family >src/f_binbio_cell_eval_family.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_eval_family.o))
+fadr=$(calc16 "${a_binbio_cell_eval_family}+${fsz}")
+a_binbio_cell_eval_helloworld=$(four_digits $fadr)
+echo -e "a_binbio_cell_eval_helloworld=$a_binbio_cell_eval_helloworld" >>$MAP_FILE_NAME
+f_binbio_cell_eval_helloworld() {
 	# push
 	lr35902_push_reg regHL
 
@@ -3800,8 +3806,31 @@ _binbio_cell_eval_helloworld() {
 	lr35902_pop_reg regHL
 	lr35902_return
 }
+
+# 現在の細胞を評価する
+# out: regA - 評価結果の適応度(0x00〜0xff)
+# ※ フラグレジスタは破壊される
+f_binbio_cell_eval_helloworld >src/f_binbio_cell_eval_helloworld.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_eval_helloworld.o))
+fadr=$(calc16 "${a_binbio_cell_eval_helloworld}+${fsz}")
+a_binbio_cell_eval=$(four_digits $fadr)
+echo -e "a_binbio_cell_eval=$a_binbio_cell_eval" >>$MAP_FILE_NAME
 f_binbio_cell_eval() {
-	_binbio_cell_eval_helloworld
+	# regAへexpset_numを取得
+	lr35902_copy_to_regA_from_addr $var_binbio_expset_num
+
+	# regA == HELLOWORLD ?
+	lr35902_compare_regA_and $BINBIO_EXPSET_HELLOWORLD
+	(
+		# regA == HELLOWORLD の場合
+		lr35902_call $a_binbio_cell_eval_helloworld
+	) >src/f_binbio_cell_eval.helloworld.o
+	local sz_helloworld=$(stat -c '%s' src/f_binbio_cell_eval.helloworld.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_helloworld)
+	cat src/f_binbio_cell_eval.helloworld.o
+
+	# return
+	lr35902_return
 }
 
 # 細胞の「代謝/運動」の振る舞い
@@ -3879,7 +3908,7 @@ f_binbio_cell_metabolism_and_motion() {
 	lr35902_return
 }
 
-# コード化合物取得
+# コード化合物取得の実装 - タイル番号は全タイルを返す
 # 返して価値のある値は以下の通り
 # A. タイル番号以外:
 #    0x 3e cd 04 18(a_binbio_cell_set_tile_num)
@@ -3890,16 +3919,16 @@ f_binbio_cell_metabolism_and_motion() {
 f_binbio_cell_metabolism_and_motion >src/f_binbio_cell_metabolism_and_motion.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_metabolism_and_motion.o))
 fadr=$(calc16 "${a_binbio_cell_metabolism_and_motion}+${fsz}")
-a_binbio_get_code_comp=$(four_digits $fadr)
-echo -e "a_binbio_get_code_comp=$a_binbio_get_code_comp" >>$MAP_FILE_NAME
-f_binbio_get_code_comp() {
+a_binbio_get_code_comp_all=$(four_digits $fadr)
+echo -e "a_binbio_get_code_comp_all=$a_binbio_get_code_comp_all" >>$MAP_FILE_NAME
+f_binbio_get_code_comp_all() {
 	# push
 	lr35902_push_reg regHL
 
 	# 現在のカウンタ/アドレスをregHLへ取得
-	lr35902_copy_to_regA_from_addr $var_binbio_get_code_comp_counter_addr_bh
+	lr35902_copy_to_regA_from_addr $var_binbio_get_code_comp_all_counter_addr_bh
 	lr35902_copy_to_from regL regA
-	lr35902_copy_to_regA_from_addr $var_binbio_get_code_comp_counter_addr_th
+	lr35902_copy_to_regA_from_addr $var_binbio_get_code_comp_all_counter_addr_th
 	lr35902_copy_to_from regH regA
 
 	# regHLはカウンタか?アドレスか?
@@ -3915,7 +3944,7 @@ f_binbio_get_code_comp() {
 
 		# 繰り返し生成する処理をマクロ化
 		# カウントに対応する値を返す
-		_binbio_get_code_comp_macro() {
+		_binbio_get_code_comp_all_macro() {
 			local count=$1
 			local val=$2
 
@@ -3929,7 +3958,7 @@ f_binbio_get_code_comp() {
 			## regA++
 			lr35902_inc regA	# 1
 			## カウンタ/アドレス変数(下位8ビット) = regA
-			lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_counter_addr_bh	# 3
+			lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_all_counter_addr_bh	# 3
 			## regA = val
 			lr35902_set_reg regA $val	# 2
 			## pop & return
@@ -3938,9 +3967,9 @@ f_binbio_get_code_comp() {
 		}
 
 		# マクロを使用して処理を生成
-		_binbio_get_code_comp_macro 00 3e
-		_binbio_get_code_comp_macro 01 cd
-		_binbio_get_code_comp_macro 02 04
+		_binbio_get_code_comp_all_macro 00 3e
+		_binbio_get_code_comp_all_macro 01 cd
+		_binbio_get_code_comp_all_macro 02 04
 
 		# regA == 3 の場合は少し処理が異なる
 		# (カウンタ/アドレス変数の更新値が異なる)
@@ -3948,18 +3977,18 @@ f_binbio_get_code_comp() {
 		# 　 regA == 3であると判断する
 		## カウンタ/アドレス変数 = タイルミラー領域ベースアドレス
 		lr35902_set_reg regA $GBOS_TMRR_BASE_BH
-		lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_counter_addr_bh
+		lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_all_counter_addr_bh
 		lr35902_set_reg regA $GBOS_TMRR_BASE_TH
-		lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_counter_addr_th
+		lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_all_counter_addr_th
 		## regA = 0x18
 		lr35902_set_reg regA 18
 		## pop & return
 		lr35902_pop_reg regHL
 		lr35902_return
-	) >src/f_binbio_get_code_comp.1.o
-	local sz_1=$(stat -c '%s' src/f_binbio_get_code_comp.1.o)
+	) >src/f_binbio_get_code_comp_all.1.o
+	local sz_1=$(stat -c '%s' src/f_binbio_get_code_comp_all.1.o)
 	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_1)
-	cat src/f_binbio_get_code_comp.1.o
+	cat src/f_binbio_get_code_comp_all.1.o
 
 	# アドレスの場合
 
@@ -3989,26 +4018,26 @@ f_binbio_get_code_comp() {
 
 				# カウンタ/アドレス変数 = 0x0000
 				lr35902_xor_to_regA regA
-				lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_counter_addr_bh
-				lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_counter_addr_th
-			) >src/f_binbio_get_code_comp.2.o
+				lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_all_counter_addr_bh
+				lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_all_counter_addr_th
+			) >src/f_binbio_get_code_comp_all.2.o
 			(
 				# regHL != タイルミラー領域最終アドレス+1 の場合
 
 				# カウンタ/アドレス変数 = regHL
 				lr35902_copy_to_from regA regL
-				lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_counter_addr_bh
+				lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_all_counter_addr_bh
 				lr35902_copy_to_from regA regH
-				lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_counter_addr_th
+				lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_all_counter_addr_th
 
 				# regHL == タイルミラー領域最終アドレス+1 の場合の処理を飛ばす
-				local sz_2=$(stat -c '%s' src/f_binbio_get_code_comp.2.o)
+				local sz_2=$(stat -c '%s' src/f_binbio_get_code_comp_all.2.o)
 				lr35902_rel_jump $(two_digits_d $sz_2)
-			) >src/f_binbio_get_code_comp.6.o
-			local sz_6=$(stat -c '%s' src/f_binbio_get_code_comp.6.o)
+			) >src/f_binbio_get_code_comp_all.6.o
+			local sz_6=$(stat -c '%s' src/f_binbio_get_code_comp_all.6.o)
 			lr35902_rel_jump_with_cond Z $(two_digits_d $sz_6)
-			cat src/f_binbio_get_code_comp.6.o	# regHL != タイルミラー領域最終アドレス+1 の場合
-			cat src/f_binbio_get_code_comp.2.o	# regHL == タイルミラー領域最終アドレス+1 の場合
+			cat src/f_binbio_get_code_comp_all.6.o	# regHL != タイルミラー領域最終アドレス+1 の場合
+			cat src/f_binbio_get_code_comp_all.2.o	# regHL == タイルミラー領域最終アドレス+1 の場合
 
 			# regAをregBから復帰
 			lr35902_copy_to_from regA regB
@@ -4017,10 +4046,10 @@ f_binbio_get_code_comp() {
 			lr35902_pop_reg regBC
 			lr35902_pop_reg regHL
 			lr35902_return
-		) >src/f_binbio_get_code_comp.3.o
-		local sz_3=$(stat -c '%s' src/f_binbio_get_code_comp.3.o)
+		) >src/f_binbio_get_code_comp_all.3.o
+		local sz_3=$(stat -c '%s' src/f_binbio_get_code_comp_all.3.o)
 		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_3)
-		cat src/f_binbio_get_code_comp.3.o
+		cat src/f_binbio_get_code_comp_all.3.o
 
 		# アドレスregHLの値 == 0x00 の場合
 
@@ -4035,13 +4064,13 @@ f_binbio_get_code_comp() {
 
 			# ループを脱出
 			lr35902_rel_jump $(two_digits_d 2)
-		) >src/f_binbio_get_code_comp.4.o
-		local sz_4=$(stat -c '%s' src/f_binbio_get_code_comp.4.o)
+		) >src/f_binbio_get_code_comp_all.4.o
+		local sz_4=$(stat -c '%s' src/f_binbio_get_code_comp_all.4.o)
 		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_4)
-		cat src/f_binbio_get_code_comp.4.o
-	) >src/f_binbio_get_code_comp.5.o
-	cat src/f_binbio_get_code_comp.5.o
-	local sz_5=$(stat -c '%s' src/f_binbio_get_code_comp.5.o)
+		cat src/f_binbio_get_code_comp_all.4.o
+	) >src/f_binbio_get_code_comp_all.5.o
+	cat src/f_binbio_get_code_comp_all.5.o
+	local sz_5=$(stat -c '%s' src/f_binbio_get_code_comp_all.5.o)
 	lr35902_rel_jump $(two_comp_d $((sz_5 + 2)))	# 2
 
 	# 0x00以外のタイル番号が見つからないまま
@@ -4049,8 +4078,8 @@ f_binbio_get_code_comp() {
 
 	# カウンタ/アドレス変数 = 0x0000
 	lr35902_xor_to_regA regA
-	lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_counter_addr_bh
-	lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_counter_addr_th
+	lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_all_counter_addr_bh
+	lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_all_counter_addr_th
 
 	# regA = 細胞タイルのタイル値
 	lr35902_set_reg regA $GBOS_TILE_NUM_CELL
@@ -4058,6 +4087,32 @@ f_binbio_get_code_comp() {
 	# pop & return
 	lr35902_pop_reg regBC
 	lr35902_pop_reg regHL
+	lr35902_return
+}
+
+# コード化合物取得
+# out: regA - 取得したコード化合物
+# ※ フラグレジスタは破壊される
+f_binbio_get_code_comp_all >src/f_binbio_get_code_comp_all.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_get_code_comp_all.o))
+fadr=$(calc16 "${a_binbio_get_code_comp_all}+${fsz}")
+a_binbio_get_code_comp=$(four_digits $fadr)
+echo -e "a_binbio_get_code_comp=$a_binbio_get_code_comp" >>$MAP_FILE_NAME
+f_binbio_get_code_comp() {
+	# regAへexpset_numを取得
+	lr35902_copy_to_regA_from_addr $var_binbio_expset_num
+
+	# regA == HELLOWORLD ?
+	lr35902_compare_regA_and $BINBIO_EXPSET_HELLOWORLD
+	(
+		# regA == HELLOWORLD の場合
+		lr35902_call $a_binbio_get_code_comp_all
+	) >src/f_binbio_get_code_comp.helloworld.o
+	local sz_helloworld=$(stat -c '%s' src/f_binbio_get_code_comp.helloworld.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_helloworld)
+	cat src/f_binbio_get_code_comp.helloworld.o
+
+	# return
 	lr35902_return
 }
 
@@ -4965,14 +5020,14 @@ f_binbio_cell_find_free_neighbor() {
 	lr35902_return
 }
 
-# 突然変異
+# 突然変異の実装 - 全タイルのどれかへ変異
 # in : regHL - 対象の細胞のアドレス
 f_binbio_cell_find_free_neighbor >src/f_binbio_cell_find_free_neighbor.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_find_free_neighbor.o))
 fadr=$(calc16 "${a_binbio_cell_find_free_neighbor}+${fsz}")
-a_binbio_cell_mutation=$(four_digits $fadr)
-echo -e "a_binbio_cell_mutation=$a_binbio_cell_mutation" >>$MAP_FILE_NAME
-f_binbio_cell_mutation() {
+a_binbio_cell_mutation_all=$(four_digits $fadr)
+echo -e "a_binbio_cell_mutation_all=$a_binbio_cell_mutation_all" >>$MAP_FILE_NAME
+f_binbio_cell_mutation_all() {
 	# push
 	lr35902_push_reg regAF
 
@@ -5009,6 +5064,35 @@ f_binbio_cell_mutation() {
 	# pop & return
 	lr35902_pop_reg regHL
 	lr35902_pop_reg regBC
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
+# 突然変異
+# in : regHL - 対象の細胞のアドレス
+f_binbio_cell_mutation_all >src/f_binbio_cell_mutation_all.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_mutation_all.o))
+fadr=$(calc16 "${a_binbio_cell_mutation_all}+${fsz}")
+a_binbio_cell_mutation=$(four_digits $fadr)
+echo -e "a_binbio_cell_mutation=$a_binbio_cell_mutation" >>$MAP_FILE_NAME
+f_binbio_cell_mutation() {
+	# push
+	lr35902_push_reg regAF
+
+	# regAへexpset_numを取得
+	lr35902_copy_to_regA_from_addr $var_binbio_expset_num
+
+	# regA == HELLOWORLD ?
+	lr35902_compare_regA_and $BINBIO_EXPSET_HELLOWORLD
+	(
+		# regA == HELLOWORLD の場合
+		lr35902_call $a_binbio_cell_mutation_all
+	) >src/f_binbio_cell_mutation.helloworld.o
+	local sz_helloworld=$(stat -c '%s' src/f_binbio_cell_mutation.helloworld.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_helloworld)
+	cat src/f_binbio_cell_mutation.helloworld.o
+
+	# pop & return
 	lr35902_pop_reg regAF
 	lr35902_return
 }
@@ -5561,8 +5645,11 @@ f_binbio_init() {
 	lr35902_copy_to_addr_from_regA $var_binbio_mutation_probability
 	## get_code_comp_counter_addr = 0x0000
 	lr35902_xor_to_regA regA
-	lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_counter_addr_bh
-	lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_counter_addr_th
+	lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_all_counter_addr_bh
+	lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_all_counter_addr_th
+	## expset_num
+	lr35902_set_reg regA $BINBIO_EXPSET_NUM_INIT
+	lr35902_copy_to_addr_from_regA $var_binbio_expset_num
 
 	# 初期細胞をマップへ配置
 	## タイル座標をVRAMアドレスへ変換
@@ -5963,8 +6050,11 @@ global_functions() {
 	f_tdq_enq
 	f_binbio_get_tile_family_num
 	f_binbio_cell_set_tile_num
+	f_binbio_cell_eval_family
+	f_binbio_cell_eval_helloworld
 	f_binbio_cell_eval
 	f_binbio_cell_metabolism_and_motion
+	f_binbio_get_code_comp_all
 	f_binbio_get_code_comp
 	f_binbio_cell_growth
 	f_binbio_cell_is_dividable
@@ -5972,6 +6062,7 @@ global_functions() {
 	f_binbio_find_cell_data_by_tile_xy
 	f_binbio_cell_alloc
 	f_binbio_cell_find_free_neighbor
+	f_binbio_cell_mutation_all
 	f_binbio_cell_mutation
 	f_binbio_cell_division
 	f_binbio_cell_division_fix
