@@ -3807,23 +3807,360 @@ f_binbio_cell_eval_helloworld() {
 	lr35902_return
 }
 
-# 現在の細胞を評価する
+# 評価の実装 - 「DAISY」という文字列の形成を目指す
 # out: regA - 評価結果の適応度(0x00〜0xff)
 # ※ フラグレジスタは破壊される
 f_binbio_cell_eval_helloworld >src/f_binbio_cell_eval_helloworld.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_eval_helloworld.o))
 fadr=$(calc16 "${a_binbio_cell_eval_helloworld}+${fsz}")
+a_binbio_cell_eval_daisy=$(four_digits $fadr)
+echo -e "a_binbio_cell_eval_daisy=$a_binbio_cell_eval_daisy" >>$MAP_FILE_NAME
+f_binbio_cell_eval_daisy() {
+	# push
+	lr35902_push_reg regHL
+
+	# 現在の細胞のアドレスをregHLへ取得
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
+	lr35902_copy_to_from regL regA
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
+	lr35902_copy_to_from regH regA
+
+	# flags.fix == 1 ?
+	lr35902_test_bitN_of_reg $BINBIO_CELL_FLAGS_BIT_FIX ptrHL
+	(
+		# flags.fix == 1 の場合
+
+		# 戻り値に適応度0xffを設定
+		lr35902_set_reg regA ff
+
+		# pop & return
+		lr35902_pop_reg regHL
+		lr35902_return
+	) >src/f_binbio_cell_eval_daisy.1.o
+	local sz_1=$(stat -c '%s' src/f_binbio_cell_eval_daisy.1.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_1)
+	cat src/f_binbio_cell_eval_daisy.1.o
+
+	# push
+	lr35902_push_reg regBC
+
+	# アドレスregHLをtile_numまで進める
+	lr35902_set_reg regBC 0006
+	lr35902_add_to_regHL regBC
+
+	# regA = tile_num
+	lr35902_copy_to_from regA ptrHL
+
+	# 繰り返し使用する処理をファイルへ出力あるいはマクロ定義しておく
+	## (regE,regD) = (tile_x,tile_y)
+	(
+		# アドレスregHLをtile_xまで戻す
+		lr35902_set_reg regBC $(two_comp_4 5)
+		lr35902_add_to_regHL regBC
+
+		# regE = tile_x
+		lr35902_copy_to_from regE ptrHL
+
+		# アドレスregHLをtile_yまで進める
+		lr35902_inc regHL
+
+		# regD = tile_y
+		lr35902_copy_to_from regD ptrHL
+	) >src/f_binbio_cell_eval_daisy.set_ed_xy.o
+	## regBへ単位量を加算
+	(
+		lr35902_set_reg regA $BINBIO_CELL_EVAL_DAISY_ADD_UNIT
+		lr35902_add_to_regA regB
+		lr35902_copy_to_from regB regA
+	) >src/f_binbio_cell_eval_daisy.add.o
+	local sz_add=$(stat -c '%s' src/f_binbio_cell_eval_daisy.add.o)
+	## regBへ単位量(1/2)を加算
+	(
+		lr35902_set_reg regA $BINBIO_CELL_EVAL_DAISY_ADD_UNIT_H
+		lr35902_add_to_regA regB
+		lr35902_copy_to_from regB regA
+	) >src/f_binbio_cell_eval_daisy.addh.o
+	local sz_addh=$(stat -c '%s' src/f_binbio_cell_eval_daisy.addh.o)
+	## regBをpopし、単位量を加算後、再度push
+	(
+		# regBCをpop
+		lr35902_pop_reg regBC
+
+		# regBへ単位量を加算
+		cat src/f_binbio_cell_eval_daisy.add.o
+
+		# regBCをpush
+		lr35902_push_reg regBC
+	) >src/f_binbio_cell_eval_daisy.pop_add_push.o
+	local sz_pop_add_push=$(stat -c '%s' src/f_binbio_cell_eval_daisy.pop_add_push.o)
+	## regBをpopし、単位量(1/2)を加算後、再度push
+	(
+		# regBCをpop
+		lr35902_pop_reg regBC
+
+		# regBへ単位量を加算
+		cat src/f_binbio_cell_eval_daisy.addh.o
+
+		# regBCをpush
+		lr35902_push_reg regBC
+	) >src/f_binbio_cell_eval_daisy.pop_addh_push.o
+	local sz_pop_addh_push=$(stat -c '%s' src/f_binbio_cell_eval_daisy.pop_addh_push.o)
+	## 最初の文字の条件判定と処理
+	_binbio_cell_eval_daisy_char_first() {
+		local target_tile_num=$1
+		local next_tile_num=$2
+
+		lr35902_compare_regA_and $target_tile_num
+		(
+			# regAが対象の文字の場合
+
+			# push
+			lr35902_push_reg regDE
+
+			# (regE,regD) = (tile_x,tile_y)
+			cat src/f_binbio_cell_eval_daisy.set_ed_xy.o
+
+			# regHLへ座標(tile_x,tile_y)に対応するタイルミラーアドレスを取得
+			lr35902_call $a_tcoord_to_mrraddr
+
+			# regB = 自分自身が所望のタイルである場合のベース値
+			lr35902_set_reg regB $BINBIO_CELL_EVAL_DAISY_ADD_UNIT_OWN
+
+			# regE(tile_x) == 表示範囲の右端 ?
+			lr35902_copy_to_from regA regE
+			lr35902_compare_regA_and $(calc16_2 "${GB_DISP_WIDTH_T}-1")
+			(
+				# tile_x != 表示範囲の右端 の場合
+
+				# 右座標が次の文字の場合、regBへ単位量を加算
+				## アドレスregHLを右座標へ移動
+				lr35902_inc regHL
+				## 右座標は次の文字か?
+				lr35902_copy_to_from regA ptrHL
+				lr35902_compare_regA_and $next_tile_num
+				lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_add)
+				## regBへ単位量を加算
+				cat src/f_binbio_cell_eval_daisy.add.o
+				## アドレスregHLを戻す
+				lr35902_dec regHL
+			) >src/f_binbio_cell_eval_daisy.char_first.1.o
+			local sz_char_first_1=$(stat -c '%s' src/f_binbio_cell_eval_daisy.char_first.1.o)
+			lr35902_rel_jump_with_cond Z $(two_digits_d $sz_char_first_1)
+			cat src/f_binbio_cell_eval_daisy.char_first.1.o
+
+			# regAへ戻り値としてregB(適応度)を設定
+			lr35902_copy_to_from regA regB
+
+			# pop & return
+			lr35902_pop_reg regDE
+			lr35902_pop_reg regBC
+			lr35902_pop_reg regHL
+			lr35902_return
+		) >src/f_binbio_cell_eval_daisy.char_first.3.o
+		local sz_char_first_3=$(stat -c '%s' src/f_binbio_cell_eval_daisy.char_first.3.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_char_first_3)
+		cat src/f_binbio_cell_eval_daisy.char_first.3.o
+	}
+	## 中間の文字の条件判定と処理
+	_binbio_cell_eval_daisy_char_middle() {
+		local target_tile_num=$1
+		local prev_tile_num=$2
+		local next_tile_num=$3
+
+		lr35902_compare_regA_and $target_tile_num
+		(
+			# regAが対象の文字の場合
+
+			# push
+			lr35902_push_reg regDE
+
+			# (regE,regD) = (tile_x,tile_y)
+			cat src/f_binbio_cell_eval_daisy.set_ed_xy.o
+
+			# regHLへ座標(tile_x,tile_y)に対応するタイルミラーアドレスを取得
+			lr35902_call $a_tcoord_to_mrraddr
+
+			# regB = 自分自身が所望のタイルである場合のベース値
+			lr35902_set_reg regB $BINBIO_CELL_EVAL_DAISY_ADD_UNIT_OWN
+
+			# regE(tile_x) == 表示範囲の右端 ?
+			lr35902_copy_to_from regA regE
+			lr35902_compare_regA_and $(calc16_2 "${GB_DISP_WIDTH_T}-1")
+			(
+				# tile_x != 表示範囲の右端 の場合
+
+				# 右座標が次の文字の場合、regBへ単位量を加算
+				## アドレスregHLを右座標へ移動
+				lr35902_inc regHL
+				## 右座標は次の文字か?
+				lr35902_copy_to_from regA ptrHL
+				lr35902_compare_regA_and $next_tile_num
+				lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_addh)
+				### regBへ単位量を加算
+				cat src/f_binbio_cell_eval_daisy.addh.o
+				## アドレスregHLを戻す
+				lr35902_dec regHL
+			) >src/f_binbio_cell_eval_daisy.char_middle.2.o
+			local sz_char_middle_2=$(stat -c '%s' src/f_binbio_cell_eval_daisy.char_middle.2.o)
+			lr35902_rel_jump_with_cond Z $(two_digits_d $sz_char_middle_2)
+			cat src/f_binbio_cell_eval_daisy.char_middle.2.o
+
+			# regE(tile_x) == 0 ?
+			lr35902_copy_to_from regA regE
+			lr35902_compare_regA_and 00
+			(
+				# tile_x != 0 の場合
+
+				# 左座標が前の文字の場合、regBへ単位量を加算
+				## アドレスregHLを左座標へ移動
+				lr35902_dec regHL
+				## 左座標は前の文字か?
+				lr35902_copy_to_from regA ptrHL
+				lr35902_compare_regA_and $prev_tile_num
+				lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_addh)
+				## regBへ単位量を加算
+				cat src/f_binbio_cell_eval_daisy.addh.o
+				## アドレスregHLを戻す
+				lr35902_inc regHL
+			) >src/f_binbio_cell_eval_daisy.char_middle.4.o
+			local sz_char_middle_4=$(stat -c '%s' src/f_binbio_cell_eval_daisy.char_middle.4.o)
+			lr35902_rel_jump_with_cond Z $(two_digits_d $sz_char_middle_4)
+			cat src/f_binbio_cell_eval_daisy.char_middle.4.o
+
+			# regAへ戻り値としてregB(適応度)を設定
+			lr35902_copy_to_from regA regB
+
+			# pop & return
+			lr35902_pop_reg regDE
+			lr35902_pop_reg regBC
+			lr35902_pop_reg regHL
+			lr35902_return
+		) >src/f_binbio_cell_eval_daisy.char_middle.5.o
+		local sz_char_middle_5=$(stat -c '%s' src/f_binbio_cell_eval_daisy.char_middle.5.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_char_middle_5)
+		cat src/f_binbio_cell_eval_daisy.char_middle.5.o
+	}
+	## 最後の文字の条件判定と処理
+	_binbio_cell_eval_daisy_char_last() {
+		local target_tile_num=$1
+		local prev_tile_num=$2
+
+		lr35902_compare_regA_and $target_tile_num
+		(
+			# regAが対象の文字の場合
+
+			# push
+			lr35902_push_reg regDE
+
+			# (regE,regD) = (tile_x,tile_y)
+			cat src/f_binbio_cell_eval_daisy.set_ed_xy.o
+
+			# regHLへ座標(tile_x,tile_y)に対応するタイルミラーアドレスを取得
+			lr35902_call $a_tcoord_to_mrraddr
+
+			# regB = 自分自身が所望のタイルである場合のベース値
+			lr35902_set_reg regB $BINBIO_CELL_EVAL_DAISY_ADD_UNIT_OWN
+
+			# regE(tile_x) == 0 ?
+			lr35902_copy_to_from regA regE
+			lr35902_compare_regA_and 00
+			(
+				# tile_x != 0 の場合
+
+				# 左座標が前の文字の場合、regBへ単位量を加算
+				## アドレスregHLを左座標へ移動
+				lr35902_dec regHL
+				## 左座標は前の文字か?
+				lr35902_copy_to_from regA ptrHL
+				lr35902_compare_regA_and $prev_tile_num
+				lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_add)
+				## regBへ単位量を加算
+				cat src/f_binbio_cell_eval_daisy.add.o
+				## アドレスregHLを戻す
+				lr35902_inc regHL
+			) >src/f_binbio_cell_eval_daisy.char_last.2.o
+			local sz_char_last_2=$(stat -c '%s' src/f_binbio_cell_eval_daisy.char_last.2.o)
+			lr35902_rel_jump_with_cond Z $(two_digits_d $sz_char_last_2)
+			cat src/f_binbio_cell_eval_daisy.char_last.2.o
+
+			# regAへ戻り値としてregB(適応度)を設定
+			lr35902_copy_to_from regA regB
+
+			# pop & return
+			lr35902_pop_reg regDE
+			lr35902_pop_reg regBC
+			lr35902_pop_reg regHL
+			lr35902_return
+		) >src/f_binbio_cell_eval_daisy.char_last.3.o
+		local sz_char_last_3=$(stat -c '%s' src/f_binbio_cell_eval_daisy.char_last.3.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_char_last_3)
+		cat src/f_binbio_cell_eval_daisy.char_last.3.o
+	}
+
+	# 文字別の条件判定と処理
+	## 使用する文字のタイル番号を変数へ取得しておく
+	local tile_D=$(get_alpha_tile_num 'D')
+	local tile_A=$(get_alpha_tile_num 'A')
+	local tile_I=$(get_alpha_tile_num 'I')
+	local tile_S=$(get_alpha_tile_num 'S')
+	local tile_Y=$(get_alpha_tile_num 'Y')
+	## 「D」
+	_binbio_cell_eval_daisy_char_first $tile_D $tile_A
+	## 「A」
+	_binbio_cell_eval_daisy_char_middle $tile_A $tile_D $tile_I
+	## 「I」
+	_binbio_cell_eval_daisy_char_middle $tile_I $tile_A $tile_S
+	## 「S」
+	_binbio_cell_eval_daisy_char_middle $tile_S $tile_I $tile_Y
+	## 「Y」
+	_binbio_cell_eval_daisy_char_last $tile_Y $tile_S
+
+	# regAへ戻り値として適応度のベース値を設定
+	lr35902_set_reg regA $BINBIO_CELL_EVAL_BASE_FITNESS
+
+	# pop & return
+	lr35902_pop_reg regBC
+	lr35902_pop_reg regHL
+	lr35902_return
+}
+
+# 現在の細胞を評価する
+# out: regA - 評価結果の適応度(0x00〜0xff)
+# ※ フラグレジスタは破壊される
+f_binbio_cell_eval_daisy >src/f_binbio_cell_eval_daisy.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_eval_daisy.o))
+fadr=$(calc16 "${a_binbio_cell_eval_daisy}+${fsz}")
 a_binbio_cell_eval=$(four_digits $fadr)
 echo -e "a_binbio_cell_eval=$a_binbio_cell_eval" >>$MAP_FILE_NAME
 f_binbio_cell_eval() {
 	# regAへexpset_numを取得
 	lr35902_copy_to_regA_from_addr $var_binbio_expset_num
 
+	# regA == DAISY ?
+	lr35902_compare_regA_and $BINBIO_EXPSET_DAISY
+	(
+		# regA == DAISY の場合
+
+		# 実装関数呼び出し
+		lr35902_call $a_binbio_cell_eval_daisy
+
+		# return
+		lr35902_return
+	) >src/f_binbio_cell_eval.daisy.o
+	local sz_daisy=$(stat -c '%s' src/f_binbio_cell_eval.daisy.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_daisy)
+	cat src/f_binbio_cell_eval.daisy.o
+
 	# regA == HELLOWORLD ?
 	lr35902_compare_regA_and $BINBIO_EXPSET_HELLOWORLD
 	(
 		# regA == HELLOWORLD の場合
+
+		# 実装関数呼び出し
 		lr35902_call $a_binbio_cell_eval_helloworld
+
+		# return
+		lr35902_return
 	) >src/f_binbio_cell_eval.helloworld.o
 	local sz_helloworld=$(stat -c '%s' src/f_binbio_cell_eval.helloworld.o)
 	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_helloworld)
@@ -3908,7 +4245,7 @@ f_binbio_cell_metabolism_and_motion() {
 	lr35902_return
 }
 
-# コード化合物取得の実装 - タイル番号は全タイルを返す
+# コード化合物取得の実装 - タイル番号は細胞として存在するどれかのタイルを返す
 # 返して価値のある値は以下の通り
 # A. タイル番号以外:
 #    0x 3e cd 04 18(a_binbio_cell_set_tile_num)
@@ -4102,11 +4439,31 @@ f_binbio_get_code_comp() {
 	# regAへexpset_numを取得
 	lr35902_copy_to_regA_from_addr $var_binbio_expset_num
 
+	# regA == DAISY ?
+	lr35902_compare_regA_and $BINBIO_EXPSET_DAISY
+	(
+		# regA == DAISY の場合
+
+		# 実装関数呼び出し
+		lr35902_call $a_binbio_get_code_comp_all
+
+		# return
+		lr35902_return
+	) >src/f_binbio_get_code_comp.daisy.o
+	local sz_daisy=$(stat -c '%s' src/f_binbio_get_code_comp.daisy.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_daisy)
+	cat src/f_binbio_get_code_comp.daisy.o
+
 	# regA == HELLOWORLD ?
 	lr35902_compare_regA_and $BINBIO_EXPSET_HELLOWORLD
 	(
 		# regA == HELLOWORLD の場合
+
+		# 実装関数呼び出し
 		lr35902_call $a_binbio_get_code_comp_all
+
+		# return
+		lr35902_return
 	) >src/f_binbio_get_code_comp.helloworld.o
 	local sz_helloworld=$(stat -c '%s' src/f_binbio_get_code_comp.helloworld.o)
 	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_helloworld)
@@ -5068,11 +5425,66 @@ f_binbio_cell_mutation_all() {
 	lr35902_return
 }
 
-# 突然変異
+# 突然変異の実装 - アルファベットタイルのどれかへ変異
+# タイル番号の範囲：0x1e('A') 〜 0x37('Z') (26種)
 # in : regHL - 対象の細胞のアドレス
 f_binbio_cell_mutation_all >src/f_binbio_cell_mutation_all.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_mutation_all.o))
 fadr=$(calc16 "${a_binbio_cell_mutation_all}+${fsz}")
+a_binbio_cell_mutation_alphabet=$(four_digits $fadr)
+echo -e "a_binbio_cell_mutation_alphabet=$a_binbio_cell_mutation_alphabet" >>$MAP_FILE_NAME
+f_binbio_cell_mutation_alphabet() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regBC
+	lr35902_push_reg regHL
+
+	# 0x00〜0x19(25)の乱数生成
+	(
+		# 0x00〜0xffの乱数生成
+		lr35902_call $a_get_rnd
+
+		# 下位5ビットを抽出
+		lr35902_and_to_regA 1f
+
+		# regA < 0x1a ?
+		lr35902_compare_regA_and 1a
+		(
+			# regA < 0x1a の場合
+
+			# ループを脱出
+			lr35902_rel_jump $(two_digits_d 2)
+		) >src/f_binbio_cell_mutation_alphabet.1.o
+		local sz_1=$(stat -c '%s' src/f_binbio_cell_mutation_alphabet.1.o)
+		lr35902_rel_jump_with_cond NC $(two_digits_d $sz_1)
+		cat src/f_binbio_cell_mutation_alphabet.1.o
+	) >src/f_binbio_cell_mutation_alphabet.2.o
+	cat src/f_binbio_cell_mutation_alphabet.2.o
+	local sz_2=$(stat -c '%s' src/f_binbio_cell_mutation_alphabet.2.o)
+	lr35902_rel_jump $(two_comp_d $((sz_2 + 2)))	# 2
+
+	# regA += 0x1e
+	lr35902_add_to_regA 1e
+
+	# アドレスregHLをbin_dataの2バイト目(タイル番号)まで進める
+	lr35902_set_reg regBC 0009
+	lr35902_add_to_regHL regBC
+
+	# ptrHLへ生成した乱数を設定
+	lr35902_copy_to_from ptrHL regA
+
+	# pop & return
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regBC
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
+# 突然変異
+# in : regHL - 対象の細胞のアドレス
+f_binbio_cell_mutation_alphabet >src/f_binbio_cell_mutation_alphabet.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_mutation_alphabet.o))
+fadr=$(calc16 "${a_binbio_cell_mutation_alphabet}+${fsz}")
 a_binbio_cell_mutation=$(four_digits $fadr)
 echo -e "a_binbio_cell_mutation=$a_binbio_cell_mutation" >>$MAP_FILE_NAME
 f_binbio_cell_mutation() {
@@ -5082,11 +5494,33 @@ f_binbio_cell_mutation() {
 	# regAへexpset_numを取得
 	lr35902_copy_to_regA_from_addr $var_binbio_expset_num
 
+	# regA == DAISY ?
+	lr35902_compare_regA_and $BINBIO_EXPSET_DAISY
+	(
+		# regA == DAISY の場合
+
+		# 実装関数呼び出し
+		lr35902_call $a_binbio_cell_mutation_alphabet
+
+		# pop & return
+		lr35902_pop_reg regAF
+		lr35902_return
+	) >src/f_binbio_cell_mutation.daisy.o
+	local sz_daisy=$(stat -c '%s' src/f_binbio_cell_mutation.daisy.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_daisy)
+	cat src/f_binbio_cell_mutation.daisy.o
+
 	# regA == HELLOWORLD ?
 	lr35902_compare_regA_and $BINBIO_EXPSET_HELLOWORLD
 	(
 		# regA == HELLOWORLD の場合
+
+		# 実装関数呼び出し
 		lr35902_call $a_binbio_cell_mutation_all
+
+		# pop & return
+		lr35902_pop_reg regAF
+		lr35902_return
 	) >src/f_binbio_cell_mutation.helloworld.o
 	local sz_helloworld=$(stat -c '%s' src/f_binbio_cell_mutation.helloworld.o)
 	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_helloworld)
@@ -6052,6 +6486,7 @@ global_functions() {
 	f_binbio_cell_set_tile_num
 	f_binbio_cell_eval_family
 	f_binbio_cell_eval_helloworld
+	f_binbio_cell_eval_daisy
 	f_binbio_cell_eval
 	f_binbio_cell_metabolism_and_motion
 	f_binbio_get_code_comp_all
@@ -6063,6 +6498,7 @@ global_functions() {
 	f_binbio_cell_alloc
 	f_binbio_cell_find_free_neighbor
 	f_binbio_cell_mutation_all
+	f_binbio_cell_mutation_alphabet
 	f_binbio_cell_mutation
 	f_binbio_cell_division
 	f_binbio_cell_division_fix
