@@ -4072,12 +4072,211 @@ f_binbio_cell_eval_daisy() {
 	lr35902_return
 }
 
-# 現在の細胞を評価する
+# 評価の実装 - 「HELLO」という文字列の形成を目指す
 # out: regA - 評価結果の適応度(0x00〜0xff)
 # ※ フラグレジスタは破壊される
 f_binbio_cell_eval_daisy >src/f_binbio_cell_eval_daisy.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_eval_daisy.o))
 fadr=$(calc16 "${a_binbio_cell_eval_daisy}+${fsz}")
+a_binbio_cell_eval_hello=$(four_digits $fadr)
+echo -e "a_binbio_cell_eval_hello=$a_binbio_cell_eval_hello" >>$MAP_FILE_NAME
+f_binbio_cell_eval_hello() {
+	# push
+	lr35902_push_reg regBC
+	lr35902_push_reg regDE
+	lr35902_push_reg regHL
+
+	# 現在の細胞のアドレスをregHLへ取得
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
+	lr35902_copy_to_from regL regA
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
+	lr35902_copy_to_from regH regA
+
+	# アドレスregHLをtile_xまで進める
+	lr35902_inc regHL
+
+	# regE = tile_x
+	lr35902_copy_to_from regE ptrHL
+
+	# アドレスregHLをtile_numまで進める
+	lr35902_set_reg regBC 0005
+	lr35902_add_to_regHL regBC
+
+	# regA = tile_num
+	lr35902_copy_to_from regA ptrHL
+
+	# regA == 細胞タイル ?
+	lr35902_compare_regA_and $GBOS_TILE_NUM_CELL
+	(
+		# regA == 細胞タイル の場合
+
+		# regA = 適応度のベース値
+		lr35902_set_reg regA $BINBIO_CELL_EVAL_BASE_FITNESS
+
+		# pop & return
+		lr35902_pop_reg regHL
+		lr35902_pop_reg regDE
+		lr35902_pop_reg regBC
+		lr35902_return
+	) >src/f_binbio_cell_eval_hello.cell.o
+	local sz_cell=$(stat -c '%s' src/f_binbio_cell_eval_hello.cell.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_cell)
+	cat src/f_binbio_cell_eval_hello.cell.o
+
+	# regD = regA(tile_num)
+	lr35902_copy_to_from regD regA
+
+	# regA = regE(tile_x)
+	lr35902_copy_to_from regA regE
+
+	# 繰り返し使用する処理をマクロ定義
+	## 対象の文字との近さに応じた適応度を返す
+	_binbio_cell_eval_hello_ret_distance() {
+		# 引数を取得
+		local target_char=$1
+
+		# 対象のタイル番号をシェル変数へ設定
+		local target_tile_num=$(get_alpha_tile_num $target_char)
+
+		# regA = regD(tile_num)
+		lr35902_copy_to_from regA regD
+
+		# regA(tile_num) < 対象のタイル番号 ?
+		lr35902_compare_regA_and $target_tile_num
+		(
+			# regA(tile_num) < 対象のタイル番号 の場合
+
+			# regA = 最大距離 - (対象のタイル番号 - tile_num)
+			## regA = 対象のタイル番号 - tile_num
+			### regA = 対象のタイル番号
+			lr35902_set_reg regA $target_tile_num
+			### regA -= regD(tile_num)
+			lr35902_sub_to_regA regD
+			## regB = regA
+			lr35902_copy_to_from regB regA
+			## regA = 最大距離
+			lr35902_set_reg regA $BINBIO_CELL_EVAL_HELLO_MAX_ALPHA_DIS
+			## regA -= regB
+			lr35902_sub_to_regA regB
+
+			# regA *= 5
+			## regB = regA
+			lr35902_copy_to_from regB regA
+			## regA <<= 2 (regA *= 4)
+			lr35902_shift_left_arithmetic regA
+			lr35902_shift_left_arithmetic regA
+			## regA += regB
+			lr35902_add_to_regA regB
+
+			# regA += 適応度のベース値
+			lr35902_add_to_regA $BINBIO_CELL_EVAL_BASE_FITNESS
+
+			# pop & return
+			lr35902_pop_reg regHL
+			lr35902_pop_reg regDE
+			lr35902_pop_reg regBC
+			lr35902_return
+		) >src/f_binbio_cell_eval_hello.lt.o
+		local sz_lt=$(stat -c '%s' src/f_binbio_cell_eval_hello.lt.o)
+		lr35902_rel_jump_with_cond NC $(two_digits_d $sz_lt)
+		cat src/f_binbio_cell_eval_hello.lt.o
+
+		# regA(tile_num) == 対象のタイル番号 ?
+		(
+			# regA(tile_num) == 対象のタイル番号 の場合
+
+			# regA = 適応度の最大値
+			lr35902_set_reg regA $BINBIO_CELL_MAX_FITNESS
+
+			# pop & return
+			lr35902_pop_reg regHL
+			lr35902_pop_reg regDE
+			lr35902_pop_reg regBC
+			lr35902_return
+		) >src/f_binbio_cell_eval_hello.eq.o
+		local sz_eq=$(stat -c '%s' src/f_binbio_cell_eval_hello.eq.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_eq)
+		cat src/f_binbio_cell_eval_hello.eq.o
+
+		# regA(tile_num) > 対象のタイル番号 の場合
+
+		# regA = 最大距離 - (tile_num - 対象のタイル番号)
+		## regA(tile_num) -= 対象のタイル番号
+		lr35902_sub_to_regA $target_tile_num
+		## regB = regA
+		lr35902_copy_to_from regB regA
+		## regA = 最大距離
+		lr35902_set_reg regA $BINBIO_CELL_EVAL_HELLO_MAX_ALPHA_DIS
+		## regA -= regB
+		lr35902_sub_to_regA regB
+
+		# regA *= 5
+		## regB = regA
+		lr35902_copy_to_from regB regA
+		## regA <<= 2 (regA *= 4)
+		lr35902_shift_left_arithmetic regA
+		lr35902_shift_left_arithmetic regA
+		## regA += regB
+		lr35902_add_to_regA regB
+
+		# regA += 適応度のベース値
+		lr35902_add_to_regA $BINBIO_CELL_EVAL_BASE_FITNESS
+
+		# pop & return
+		lr35902_pop_reg regHL
+		lr35902_pop_reg regDE
+		lr35902_pop_reg regBC
+		lr35902_return
+	}
+
+	# regA < 4 ? (0 <= tile_x <= 3 は'H')
+	lr35902_compare_regA_and 04
+	(
+		# regA < 4 の場合
+
+		# タイル'H'との近さに応じた適応度を返す
+		_binbio_cell_eval_hello_ret_distance 'H'
+	) >src/f_binbio_cell_eval_hello.h.o
+	local sz_h=$(stat -c '%s' src/f_binbio_cell_eval_hello.h.o)
+	lr35902_rel_jump_with_cond NC $(two_digits_d $sz_h)
+	cat src/f_binbio_cell_eval_hello.h.o
+
+	# regA < 8 ? (4 <= tile_x <= 7 は'E')
+	lr35902_compare_regA_and 08
+	(
+		# regA < 8 の場合
+
+		# タイル'E'との近さに応じた適応度を返す
+		_binbio_cell_eval_hello_ret_distance 'E'
+	) >src/f_binbio_cell_eval_hello.e.o
+	local sz_e=$(stat -c '%s' src/f_binbio_cell_eval_hello.e.o)
+	lr35902_rel_jump_with_cond NC $(two_digits_d $sz_e)
+	cat src/f_binbio_cell_eval_hello.e.o
+
+	# regA < 16 ? (8 <= tile_x <= 15 は'L')
+	lr35902_compare_regA_and 10
+	(
+		# regA < 16 の場合
+
+		# タイル'L'との近さに応じた適応度を返す
+		_binbio_cell_eval_hello_ret_distance 'L'
+	) >src/f_binbio_cell_eval_hello.l.o
+	local sz_l=$(stat -c '%s' src/f_binbio_cell_eval_hello.l.o)
+	lr35902_rel_jump_with_cond NC $(two_digits_d $sz_l)
+	cat src/f_binbio_cell_eval_hello.l.o
+
+	# regA >= 16 の場合 (16 <= tile_x <= 19 は'O')
+
+	# タイル'O'との近さに応じた適応度を返す
+	_binbio_cell_eval_hello_ret_distance 'O'
+}
+
+# 現在の細胞を評価する
+# out: regA - 評価結果の適応度(0x00〜0xff)
+# ※ フラグレジスタは破壊される
+f_binbio_cell_eval_hello >src/f_binbio_cell_eval_hello.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_eval_hello.o))
+fadr=$(calc16 "${a_binbio_cell_eval_hello}+${fsz}")
 a_binbio_cell_eval=$(four_digits $fadr)
 echo -e "a_binbio_cell_eval=$a_binbio_cell_eval" >>$MAP_FILE_NAME
 f_binbio_cell_eval() {
@@ -4130,6 +4329,24 @@ f_binbio_cell_eval() {
 		lr35902_pop_reg regHL
 		lr35902_pop_reg regBC
 	) >src/f_binbio_cell_eval.update_fix_flag.o
+
+	# regA == HELLO ?
+	lr35902_compare_regA_and $BINBIO_EXPSET_HELLO
+	(
+		# regA == HELLO の場合
+
+		# 実装関数呼び出し
+		lr35902_call $a_binbio_cell_eval_hello
+
+		# 評価結果に応じてfixフラグをセット/クリアする
+		cat src/f_binbio_cell_eval.update_fix_flag.o
+
+		# return
+		lr35902_return
+	) >src/f_binbio_cell_eval.hello.o
+	local sz_hello=$(stat -c '%s' src/f_binbio_cell_eval.hello.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_hello)
+	cat src/f_binbio_cell_eval.hello.o
 
 	# regA == DAISY ?
 	lr35902_compare_regA_and $BINBIO_EXPSET_DAISY
@@ -4439,6 +4656,21 @@ echo -e "a_binbio_get_code_comp=$a_binbio_get_code_comp" >>$MAP_FILE_NAME
 f_binbio_get_code_comp() {
 	# regAへexpset_numを取得
 	lr35902_copy_to_regA_from_addr $var_binbio_expset_num
+
+	# regA == HELLO ?
+	lr35902_compare_regA_and $BINBIO_EXPSET_HELLO
+	(
+		# regA == HELLO の場合
+
+		# 実装関数呼び出し
+		lr35902_call $a_binbio_get_code_comp_all
+
+		# return
+		lr35902_return
+	) >src/f_binbio_get_code_comp.hello.o
+	local sz_hello=$(stat -c '%s' src/f_binbio_get_code_comp.hello.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_hello)
+	cat src/f_binbio_get_code_comp.hello.o
 
 	# regA == DAISY ?
 	lr35902_compare_regA_and $BINBIO_EXPSET_DAISY
@@ -5620,6 +5852,22 @@ f_binbio_cell_mutation() {
 	# regAへexpset_numを取得
 	lr35902_copy_to_regA_from_addr $var_binbio_expset_num
 
+	# regA == HELLO ?
+	lr35902_compare_regA_and $BINBIO_EXPSET_HELLO
+	(
+		# regA == HELLO の場合
+
+		# 実装関数呼び出し
+		lr35902_call $a_binbio_cell_mutation_alphabet
+
+		# pop & return
+		lr35902_pop_reg regAF
+		lr35902_return
+	) >src/f_binbio_cell_mutation.hello.o
+	local sz_hello=$(stat -c '%s' src/f_binbio_cell_mutation.hello.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_hello)
+	cat src/f_binbio_cell_mutation.hello.o
+
 	# regA == DAISY ?
 	lr35902_compare_regA_and $BINBIO_EXPSET_DAISY
 	(
@@ -6613,6 +6861,7 @@ global_functions() {
 	f_binbio_cell_eval_family
 	f_binbio_cell_eval_helloworld
 	f_binbio_cell_eval_daisy
+	f_binbio_cell_eval_hello
 	f_binbio_cell_eval
 	f_binbio_cell_metabolism_and_motion
 	f_binbio_get_code_comp_all
