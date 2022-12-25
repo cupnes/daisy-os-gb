@@ -19,7 +19,7 @@ BINBIO_CELL_BIN_DATA_AREA_SIZE=05
 BINBIO_BIN_LOAD_ADDR=c007
 
 # 細胞データ領域
-BINBIO_CELL_DATA_AREA_BEGIN=c090	# 最初のアドレス
+BINBIO_CELL_DATA_AREA_BEGIN=c03c	# 最初のアドレス
 BINBIO_CELL_DATA_AREA_END=c2f7	# 最後のアドレス
 ## ※ 「(最後のアドレス + 1) - 最初のアドレス」が
 ## 　 細胞データ構造のサイズの倍数であること
