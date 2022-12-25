@@ -4082,8 +4082,6 @@ a_binbio_cell_eval_hello=$(four_digits $fadr)
 echo -e "a_binbio_cell_eval_hello=$a_binbio_cell_eval_hello" >>$MAP_FILE_NAME
 f_binbio_cell_eval_hello() {
 	# push
-	lr35902_push_reg regBC
-	lr35902_push_reg regDE
 	lr35902_push_reg regHL
 
 	# 現在の細胞のアドレスをregHLへ取得
@@ -4091,6 +4089,26 @@ f_binbio_cell_eval_hello() {
 	lr35902_copy_to_from regL regA
 	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
 	lr35902_copy_to_from regH regA
+
+	# flags.fix == 1 ?
+	lr35902_test_bitN_of_reg $BINBIO_CELL_FLAGS_BIT_FIX ptrHL
+	(
+		# flags.fix == 1 の場合
+
+		# 戻り値に適応度0xffを設定
+		lr35902_set_reg regA ff
+
+		# pop & return
+		lr35902_pop_reg regHL
+		lr35902_return
+	) >src/f_binbio_cell_eval_hello.fix.o
+	local sz_fix=$(stat -c '%s' src/f_binbio_cell_eval_hello.fix.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_fix)
+	cat src/f_binbio_cell_eval_hello.fix.o
+
+	# push
+	lr35902_push_reg regBC
+	lr35902_push_reg regDE
 
 	# アドレスregHLをtile_xまで進める
 	lr35902_inc regHL
@@ -4114,9 +4132,9 @@ f_binbio_cell_eval_hello() {
 		lr35902_set_reg regA $BINBIO_CELL_EVAL_BASE_FITNESS
 
 		# pop & return
-		lr35902_pop_reg regHL
 		lr35902_pop_reg regDE
 		lr35902_pop_reg regBC
+		lr35902_pop_reg regHL
 		lr35902_return
 	) >src/f_binbio_cell_eval_hello.cell.o
 	local sz_cell=$(stat -c '%s' src/f_binbio_cell_eval_hello.cell.o)
@@ -4172,9 +4190,9 @@ f_binbio_cell_eval_hello() {
 			lr35902_add_to_regA $BINBIO_CELL_EVAL_BASE_FITNESS
 
 			# pop & return
-			lr35902_pop_reg regHL
 			lr35902_pop_reg regDE
 			lr35902_pop_reg regBC
+			lr35902_pop_reg regHL
 			lr35902_return
 		) >src/f_binbio_cell_eval_hello.lt.o
 		local sz_lt=$(stat -c '%s' src/f_binbio_cell_eval_hello.lt.o)
@@ -4185,13 +4203,26 @@ f_binbio_cell_eval_hello() {
 		(
 			# regA(tile_num) == 対象のタイル番号 の場合
 
+			# アドレスregHLをlife_durationまで戻す
+			lr35902_set_reg regBC $(two_comp_4 3)
+			lr35902_add_to_regHL regBC
+
+			# regA = fixモード時の寿命(兼余命)
+			lr35902_set_reg regA $BINBIO_CELL_EVAL_HELLO_LIFE_ON_FIX
+
+			# life_duration = regA, regHL++
+			lr35902_copyinc_to_ptrHL_from_regA
+
+			# life_left = regA
+			lr35902_copy_to_from ptrHL regA
+
 			# regA = 適応度の最大値
 			lr35902_set_reg regA $BINBIO_CELL_MAX_FITNESS
 
 			# pop & return
-			lr35902_pop_reg regHL
 			lr35902_pop_reg regDE
 			lr35902_pop_reg regBC
+			lr35902_pop_reg regHL
 			lr35902_return
 		) >src/f_binbio_cell_eval_hello.eq.o
 		local sz_eq=$(stat -c '%s' src/f_binbio_cell_eval_hello.eq.o)
@@ -4223,9 +4254,9 @@ f_binbio_cell_eval_hello() {
 		lr35902_add_to_regA $BINBIO_CELL_EVAL_BASE_FITNESS
 
 		# pop & return
-		lr35902_pop_reg regHL
 		lr35902_pop_reg regDE
 		lr35902_pop_reg regBC
+		lr35902_pop_reg regHL
 		lr35902_return
 	}
 

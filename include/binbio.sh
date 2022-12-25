@@ -58,3 +58,4 @@ BINBIO_CELL_EVAL_DAISY_ADD_UNIT_OWN=a9	# 自分自身が所望のタイルであ
 BINBIO_CELL_EVAL_DAISY_ADD_UNIT=56	# 近傍に所望のタイルがある場合の加算単位①
 BINBIO_CELL_EVAL_DAISY_ADD_UNIT_H=2b	# 近傍に所望のタイルがある場合の加算単位②
 BINBIO_CELL_EVAL_HELLO_MAX_ALPHA_DIS=19	# アルファベット間の最大距離(25)
+BINBIO_CELL_EVAL_HELLO_LIFE_ON_FIX=ff	# fixモード時の寿命(兼余命)
