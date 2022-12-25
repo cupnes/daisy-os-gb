@@ -5426,8 +5426,22 @@ f_binbio_cell_mutation_all() {
 	lr35902_return
 }
 
-# 突然変異の実装 - アルファベットタイルのどれかへ変異
-# タイル番号の範囲：0x1e('A') 〜 0x37('Z') (26種)
+# 突然変異の実装 - アルファベットタイルの中で突然変異
+# 前提：
+# - 環境に存在し得るタイルの種類：
+#   - 細胞タイル：0x8b
+#   - アルファベットタイル：0x1e('A') 〜 0x37('Z') (26種)
+# 処理概要：
+# - 現在の細胞が細胞タイルの場合：
+#   - アルファベットタイル番号をランダムに選出
+# - 現在の細胞がアルファベットの場合：
+#   - 'A'の場合：
+#     - インクリメント
+#   - 'B'〜'Y'の場合：
+#     - インクリメントあるいはデクリメント
+#     - どちらにするかはランダムに決まる
+#   - 'Z'の場合：
+#     - デクリメント
 # in : regHL - 対象の細胞のアドレス
 f_binbio_cell_mutation_all >src/f_binbio_cell_mutation_all.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_mutation_all.o))
@@ -5440,38 +5454,149 @@ f_binbio_cell_mutation_alphabet() {
 	lr35902_push_reg regBC
 	lr35902_push_reg regHL
 
-	# 0x00〜0x19(25)の乱数生成
-	(
-		# 0x00〜0xffの乱数生成
-		lr35902_call $a_get_rnd
-
-		# 下位5ビットを抽出
-		lr35902_and_to_regA 1f
-
-		# regA < 0x1a ?
-		lr35902_compare_regA_and 1a
-		(
-			# regA < 0x1a の場合
-
-			# ループを脱出
-			lr35902_rel_jump $(two_digits_d 2)
-		) >src/f_binbio_cell_mutation_alphabet.1.o
-		local sz_1=$(stat -c '%s' src/f_binbio_cell_mutation_alphabet.1.o)
-		lr35902_rel_jump_with_cond NC $(two_digits_d $sz_1)
-		cat src/f_binbio_cell_mutation_alphabet.1.o
-	) >src/f_binbio_cell_mutation_alphabet.2.o
-	cat src/f_binbio_cell_mutation_alphabet.2.o
-	local sz_2=$(stat -c '%s' src/f_binbio_cell_mutation_alphabet.2.o)
-	lr35902_rel_jump $(two_comp_d $((sz_2 + 2)))	# 2
-
-	# regA += 0x1e
-	lr35902_add_to_regA 1e
-
 	# アドレスregHLをbin_dataの2バイト目(タイル番号)まで進める
 	lr35902_set_reg regBC 0009
 	lr35902_add_to_regHL regBC
 
-	# ptrHLへ生成した乱数を設定
+	# regAへbin_data内のタイル番号を取得
+	# ※ 突然変異はbin_dataに対して起こるので、
+	# 　 突然変異直後はbin_data内のタイル番号がまだtile_numへ反映されていない。
+	# 　 これはeval()時に反映される。
+	# 　 突然変異で生まれた細胞が細胞分裂するまでの間に一度もeval()が
+	# 　 呼ばれないことはあり得ないので、処理の削減のために現在のタイル番号として
+	# 　 突然変異の対象でもあるbin_data内のタイル番号を参照している。
+	lr35902_copy_to_from regA ptrHL
+
+	# regA == 細胞タイル ?
+	lr35902_compare_regA_and $GBOS_TILE_NUM_CELL
+	(
+		# regA == 細胞タイル の場合
+
+		# regAへ0x00〜0x19(25)の乱数を取得
+		(
+			# 0x00〜0xffの乱数生成
+			lr35902_call $a_get_rnd
+
+			# 下位5ビットを抽出
+			lr35902_and_to_regA 1f
+
+			# regA < 0x1a ?
+			lr35902_compare_regA_and 1a
+			(
+				# regA < 0x1a の場合
+
+				# ループを脱出
+				lr35902_rel_jump $(two_digits_d 2)
+			) >src/f_binbio_cell_mutation_alphabet.1.o
+			local sz_1=$(stat -c '%s' src/f_binbio_cell_mutation_alphabet.1.o)
+			lr35902_rel_jump_with_cond NC $(two_digits_d $sz_1)
+			cat src/f_binbio_cell_mutation_alphabet.1.o
+		) >src/f_binbio_cell_mutation_alphabet.2.o
+		cat src/f_binbio_cell_mutation_alphabet.2.o
+		local sz_2=$(stat -c '%s' src/f_binbio_cell_mutation_alphabet.2.o)
+		lr35902_rel_jump $(two_comp_d $((sz_2 + 2)))	# 2
+
+		# regA += 0x1e
+		lr35902_add_to_regA 1e
+
+		# ptrHL = regA
+		lr35902_copy_to_from ptrHL regA
+
+		# pop & return
+		lr35902_pop_reg regHL
+		lr35902_pop_reg regBC
+		lr35902_pop_reg regAF
+		lr35902_return
+	) >src/f_binbio_cell_mutation_alphabet.3.o
+	local sz_3=$(stat -c '%s' src/f_binbio_cell_mutation_alphabet.3.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_3)
+	cat src/f_binbio_cell_mutation_alphabet.3.o
+
+	# regA != 細胞タイル の場合
+
+	# regA == 'A' ?
+	lr35902_compare_regA_and $(get_alpha_tile_num 'A')
+	(
+		# regA == 'A' の場合
+
+		# regA++
+		lr35902_inc regA
+
+		# ptrHL = regA
+		lr35902_copy_to_from ptrHL regA
+
+		# pop & return
+		lr35902_pop_reg regHL
+		lr35902_pop_reg regBC
+		lr35902_pop_reg regAF
+		lr35902_return
+	) >src/f_binbio_cell_mutation_alphabet.4.o
+	local sz_4=$(stat -c '%s' src/f_binbio_cell_mutation_alphabet.4.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_4)
+	cat src/f_binbio_cell_mutation_alphabet.4.o
+
+	# regA == 'Z' ?
+	lr35902_compare_regA_and $(get_alpha_tile_num 'Z')
+	(
+		# regA == 'Z' の場合
+
+		# regA--
+		lr35902_dec regA
+
+		# ptrHL = regA
+		lr35902_copy_to_from ptrHL regA
+
+		# pop & return
+		lr35902_pop_reg regHL
+		lr35902_pop_reg regBC
+		lr35902_pop_reg regAF
+		lr35902_return
+	) >src/f_binbio_cell_mutation_alphabet.5.o
+	local sz_5=$(stat -c '%s' src/f_binbio_cell_mutation_alphabet.5.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_5)
+	cat src/f_binbio_cell_mutation_alphabet.5.o
+
+	# regAが'B'〜'Y'のいずれかの場合
+
+	# 現在のregAをregBへ退避
+	lr35902_copy_to_from regB regA
+
+	# regAへ0x00〜0xffの乱数を取得
+	lr35902_call $a_get_rnd
+
+	# regAのLSB == 0 ?
+	lr35902_test_bitN_of_reg 0 regA
+	(
+		# regAのLSB == 0 の場合
+
+		# regBからregAを復帰
+		lr35902_copy_to_from regA regB
+
+		# regA--
+		lr35902_dec regA
+
+		# ptrHL = regA
+		lr35902_copy_to_from ptrHL regA
+
+		# pop & return
+		lr35902_pop_reg regHL
+		lr35902_pop_reg regBC
+		lr35902_pop_reg regAF
+		lr35902_return
+	) >src/f_binbio_cell_mutation_alphabet.6.o
+	local sz_6=$(stat -c '%s' src/f_binbio_cell_mutation_alphabet.6.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_6)
+	cat src/f_binbio_cell_mutation_alphabet.6.o
+
+	# regAのLSB == 1 の場合
+
+	# regBからregAを復帰
+	lr35902_copy_to_from regA regB
+
+	# regA++
+	lr35902_inc regA
+
+	# ptrHL = regA
 	lr35902_copy_to_from ptrHL regA
 
 	# pop & return
