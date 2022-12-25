@@ -25,6 +25,9 @@ BINBIO_CELL_DATA_AREA_END=c2f7	# 最後のアドレス
 ## 　 細胞データ構造のサイズの倍数であること
 BINBIO_CELL_DATA_AREA_SIZE=$(four_digits $(calc16 "${BINBIO_CELL_DATA_AREA_END}-${BINBIO_CELL_DATA_AREA_BEGIN}+1"))
 
+# 適応度の最大値
+BINBIO_CELL_MAX_FITNESS=ff
+
 # タイル属性番号
 BINBIO_TILE_FAMILY_NUM_NONE=00	# 属性なし
 BINBIO_TILE_FAMILY_NUM_WIN=01	# ウィンドウ

@@ -3090,26 +3090,6 @@ f_binbio_cell_eval_family() {
 	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
 	lr35902_copy_to_from regH regA
 
-	# flags.fix == 1 ?
-	lr35902_test_bitN_of_reg $BINBIO_CELL_FLAGS_BIT_FIX ptrHL
-	(
-		# flags.fix == 1 の場合
-
-		# pop
-		lr35902_pop_reg regHL
-		lr35902_pop_reg regAF
-		lr35902_pop_reg regBC
-
-		# 戻り値に適応度0xffを設定
-		lr35902_set_reg regA ff
-
-		# return
-		lr35902_return
-	) >src/f_binbio_cell_eval_family.10.o
-	local sz_10=$(stat -c '%s' src/f_binbio_cell_eval_family.10.o)
-	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_10)
-	cat src/f_binbio_cell_eval_family.10.o
-
 	# アドレスregHLをtile_numまで進める
 	lr35902_set_reg regBC 0006
 	lr35902_add_to_regHL regBC
@@ -3391,22 +3371,6 @@ f_binbio_cell_eval_helloworld() {
 	lr35902_copy_to_from regL regA
 	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
 	lr35902_copy_to_from regH regA
-
-	# flags.fix == 1 ?
-	lr35902_test_bitN_of_reg $BINBIO_CELL_FLAGS_BIT_FIX ptrHL
-	(
-		# flags.fix == 1 の場合
-
-		# 戻り値に適応度0xffを設定
-		lr35902_set_reg regA ff
-
-		# pop & return
-		lr35902_pop_reg regHL
-		lr35902_return
-	) >src/f_binbio_cell_eval_helloworld.1.o
-	local sz_1=$(stat -c '%s' src/f_binbio_cell_eval_helloworld.1.o)
-	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_1)
-	cat src/f_binbio_cell_eval_helloworld.1.o
 
 	# push
 	lr35902_push_reg regBC
@@ -3825,22 +3789,6 @@ f_binbio_cell_eval_daisy() {
 	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
 	lr35902_copy_to_from regH regA
 
-	# flags.fix == 1 ?
-	lr35902_test_bitN_of_reg $BINBIO_CELL_FLAGS_BIT_FIX ptrHL
-	(
-		# flags.fix == 1 の場合
-
-		# 戻り値に適応度0xffを設定
-		lr35902_set_reg regA ff
-
-		# pop & return
-		lr35902_pop_reg regHL
-		lr35902_return
-	) >src/f_binbio_cell_eval_daisy.1.o
-	local sz_1=$(stat -c '%s' src/f_binbio_cell_eval_daisy.1.o)
-	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_1)
-	cat src/f_binbio_cell_eval_daisy.1.o
-
 	# push
 	lr35902_push_reg regBC
 
@@ -4136,6 +4084,53 @@ f_binbio_cell_eval() {
 	# regAへexpset_numを取得
 	lr35902_copy_to_regA_from_addr $var_binbio_expset_num
 
+	# 繰り返し使用する処理をファイル書き出し
+	## regA(評価結果の適応度)に応じてfixフラグをセット/クリアする
+	(
+		# push
+		lr35902_push_reg regBC
+		lr35902_push_reg regHL
+
+		# regBへregAを退避
+		lr35902_copy_to_from regB regA
+
+		# 現在の細胞のアドレスをregHL(のflags)へ取得
+		lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
+		lr35902_copy_to_from regL regA
+		lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
+		lr35902_copy_to_from regH regA
+
+		# regBからregAを復帰
+		lr35902_copy_to_from regA regB
+
+		# regA == CELL_MAX_FITNESS ?
+		lr35902_compare_regA_and $BINBIO_CELL_MAX_FITNESS
+		(
+			# regA == CELL_MAX_FITNESS の場合
+
+			# fixフラグをセットする
+			lr35902_set_bitN_of_reg $BINBIO_CELL_FLAGS_BIT_FIX ptrHL
+		) >src/f_binbio_cell_eval.max_fitness.o
+		(
+			# regA != CELL_MAX_FITNESS の場合
+
+			# fixフラグをクリアする
+			lr35902_res_bitN_of_reg $BINBIO_CELL_FLAGS_BIT_FIX ptrHL
+
+			# regA == CELL_MAX_FITNESS の場合の処理を飛ばす
+			local sz_max_fitness=$(stat -c '%s' src/f_binbio_cell_eval.max_fitness.o)
+			lr35902_rel_jump $(two_digits_d $sz_max_fitness)
+		) >src/f_binbio_cell_eval.not_max_fitness.o
+		local sz_not_max_fitness=$(stat -c '%s' src/f_binbio_cell_eval.not_max_fitness.o)
+		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_not_max_fitness)
+		cat src/f_binbio_cell_eval.not_max_fitness.o	# regA != CELL_MAX_FITNESS の場合
+		cat src/f_binbio_cell_eval.max_fitness.o	# regA == CELL_MAX_FITNESS の場合
+
+		# pop
+		lr35902_pop_reg regHL
+		lr35902_pop_reg regBC
+	) >src/f_binbio_cell_eval.update_fix_flag.o
+
 	# regA == DAISY ?
 	lr35902_compare_regA_and $BINBIO_EXPSET_DAISY
 	(
@@ -4143,6 +4138,9 @@ f_binbio_cell_eval() {
 
 		# 実装関数呼び出し
 		lr35902_call $a_binbio_cell_eval_daisy
+
+		# 評価結果に応じてfixフラグをセット/クリアする
+		cat src/f_binbio_cell_eval.update_fix_flag.o
 
 		# return
 		lr35902_return
@@ -4158,6 +4156,9 @@ f_binbio_cell_eval() {
 
 		# 実装関数呼び出し
 		lr35902_call $a_binbio_cell_eval_helloworld
+
+		# 評価結果に応じてfixフラグをセット/クリアする
+		cat src/f_binbio_cell_eval.update_fix_flag.o
 
 		# return
 		lr35902_return
