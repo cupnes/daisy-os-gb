@@ -6511,7 +6511,7 @@ f_binbio_init() {
 	lr35902_return
 }
 
-# バイナリ生物環境の初期化
+# 1周期分の周期動作を実施
 f_binbio_init >src/f_binbio_init.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_init.o))
 fadr=$(calc16 "${a_binbio_init}+${fsz}")
