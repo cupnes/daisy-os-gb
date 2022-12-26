@@ -2734,6 +2734,8 @@ f_get_rnd() {
 # in : regB  - 配置するタイル番号
 #      regD  - VRAMアドレス[15:8]
 #      regE  - VRAMアドレス[7:0]
+# ※ f_enq_tdq()の方が新しい(オーバーフローフラグ設定があったりする)
+# 　 こちらの関数は古いので使わないこと
 f_get_rnd >src/f_get_rnd.o
 fsz=$(to16 $(stat -c '%s' src/f_get_rnd.o))
 fadr=$(calc16 "${a_get_rnd}+${fsz}")
