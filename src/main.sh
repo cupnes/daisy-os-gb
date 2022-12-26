@@ -334,13 +334,85 @@ f_tcoord_to_mrraddr() {
 	lr35902_return
 }
 
+# 背景タイルマップを白タイル(タイル番号0)で初期化
+f_tcoord_to_mrraddr >src/f_tcoord_to_mrraddr.o
+fsz=$(to16 $(stat -c '%s' src/f_tcoord_to_mrraddr.o))
+fadr=$(calc16 "${a_tcoord_to_mrraddr}+${fsz}")
+a_clear_bg=$(four_digits $fadr)
+echo -e "a_clear_bg=$a_clear_bg" >>$MAP_FILE_NAME
+f_clear_bg() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regBC
+	lr35902_push_reg regHL
+
+	# 背景タイルマップを白タイル(タイル番号0)で初期化
+	local sz
+	lr35902_set_reg regHL $GBOS_BG_TILEMAP_START
+	lr35902_set_reg regB $GB_SC_HEIGHT_T
+	lr35902_clear_reg regA
+	(
+		lr35902_set_reg regC $GB_SC_WIDTH_T
+		(
+			lr35902_copyinc_to_ptrHL_from_regA
+			lr35902_dec regC
+		) >src/f_clear_bg.1.o
+		cat src/f_clear_bg.1.o
+		sz=$(stat -c '%s' src/f_clear_bg.1.o)
+		lr35902_rel_jump_with_cond NZ $(two_comp_d $((sz+2)))
+		lr35902_dec regB
+	) >src/f_clear_bg.2.o
+	cat src/f_clear_bg.2.o
+	sz=$(stat -c '%s' src/f_clear_bg.2.o)
+	lr35902_rel_jump_with_cond NZ $(two_comp_d $((sz+2)))
+
+	# pop & return
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regBC
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
+# タイルミラー領域を空白タイルで初期化
+f_clear_bg >src/f_clear_bg.o
+fsz=$(to16 $(stat -c '%s' src/f_clear_bg.o))
+fadr=$(calc16 "${a_clear_bg}+${fsz}")
+a_init_tmrr=$(four_digits $fadr)
+echo -e "a_init_tmrr=$a_init_tmrr" >>$MAP_FILE_NAME
+f_init_tmrr() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regHL
+
+	# regHLへタイルミラー領域のベースアドレスを設定
+	lr35902_set_reg regL $GBOS_TMRR_BASE_BH
+	lr35902_set_reg regH $GBOS_TMRR_BASE_TH
+
+	# タイルミラー領域を空白タイルで初期化
+	(
+		lr35902_set_reg regA $GBOS_TILE_NUM_SPC
+		lr35902_copyinc_to_ptrHL_from_regA
+
+		lr35902_copy_to_from regA regH
+		lr35902_compare_regA_and $GBOS_TMRR_END_PLUS1_TH
+	) >src/f_init_tmrr.1.o
+	cat src/f_init_tmrr.1.o
+	local sz_1=$(stat -c '%s' src/f_init_tmrr.1.o)
+	lr35902_rel_jump_with_cond NZ $(two_comp_d $((sz_1 + 2)))
+
+	# pop & return
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
 # タイル座標の位置へ指定されたタイルを配置する
 # in : regA  - 配置するタイル番号
 #      regD  - タイル座標Y
 #      regE  - タイル座標X
-f_tcoord_to_mrraddr >src/f_tcoord_to_mrraddr.o
-fsz=$(to16 $(stat -c '%s' src/f_tcoord_to_mrraddr.o))
-fadr=$(calc16 "${a_tcoord_to_mrraddr}+${fsz}")
+f_init_tmrr >src/f_init_tmrr.o
+fsz=$(to16 $(stat -c '%s' src/f_init_tmrr.o))
+fadr=$(calc16 "${a_init_tmrr}+${fsz}")
 a_lay_tile_at_tcoord=$(four_digits $fadr)
 echo -e "a_lay_tile_at_tcoord=$a_lay_tile_at_tcoord" >>$MAP_FILE_NAME
 f_lay_tile_at_tcoord() {
@@ -4499,7 +4571,7 @@ f_binbio_cell_metabolism_and_motion() {
 # コード化合物取得の実装 - タイル番号は細胞として存在するどれかのタイルを返す
 # 返して価値のある値は以下の通り
 # A. タイル番号以外:
-#    0x 3e cd 04 18(a_binbio_cell_set_tile_num)
+#    0x 3e cd a_binbio_cell_set_tile_num(下位8ビット) a_binbio_cell_set_tile_num(上位8ビット)
 # B. タイル番号:
 #    0x 01〜8b (139種)
 # out: regA - 取得したコード化合物
@@ -4557,7 +4629,7 @@ f_binbio_get_code_comp_all() {
 		# マクロを使用して処理を生成
 		_binbio_get_code_comp_all_macro 00 3e
 		_binbio_get_code_comp_all_macro 01 cd
-		_binbio_get_code_comp_all_macro 02 04
+		_binbio_get_code_comp_all_macro 02 $(echo $a_binbio_cell_set_tile_num | cut -c3-4)
 
 		# regA == 3 の場合は少し処理が異なる
 		# (カウンタ/アドレス変数の更新値が異なる)
@@ -4568,8 +4640,8 @@ f_binbio_get_code_comp_all() {
 		lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_all_counter_addr_bh
 		lr35902_set_reg regA $GBOS_TMRR_BASE_TH
 		lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_all_counter_addr_th
-		## regA = 0x18
-		lr35902_set_reg regA 18
+		## regA = a_binbio_cell_set_tile_num(上位8ビット)
+		lr35902_set_reg regA $(echo $a_binbio_cell_set_tile_num | cut -c1-2)
 		## pop & return
 		lr35902_pop_reg regHL
 		lr35902_return
@@ -6511,10 +6583,68 @@ f_binbio_init() {
 	lr35902_return
 }
 
-# 1周期分の周期動作を実施
+# バイナリ生物環境のリセット
+# in : regA - 実験セット番号
 f_binbio_init >src/f_binbio_init.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_init.o))
 fadr=$(calc16 "${a_binbio_init}+${fsz}")
+a_binbio_reset=$(four_digits $fadr)
+echo -e "a_binbio_reset=$a_binbio_reset" >>$MAP_FILE_NAME
+f_binbio_reset() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regBC
+
+	# regA(実験セット番号)をregBへ退避
+	lr35902_copy_to_from regB regA
+
+	# V-Blankの開始を待つ
+	# ※ regAFは破壊される
+	gb_wait_for_vblank_to_start
+
+	# LCDを停止する
+	# - 停止の間はVRAMとOAMに自由にアクセスできる(vblankとか関係なく)
+	lr35902_set_reg regA ${GBOS_LCDC_BASE}
+	lr35902_copy_to_ioport_from_regA $GB_IO_LCDC
+
+	# 背景タイルマップを白タイル(タイル番号0)で初期化
+	lr35902_call $a_clear_bg
+
+	# tdq初期化
+	# - tdq.head = tdq.tail = TDQ_FIRST
+	lr35902_set_reg regA $(echo $GBOS_TDQ_FIRST | cut -c3-4)
+	lr35902_copy_to_addr_from_regA $var_tdq_head_bh
+	lr35902_copy_to_addr_from_regA $var_tdq_tail_bh
+	lr35902_set_reg regA $(echo $GBOS_TDQ_FIRST | cut -c1-2)
+	lr35902_copy_to_addr_from_regA $var_tdq_head_th
+	lr35902_copy_to_addr_from_regA $var_tdq_tail_th
+	# - tdq.stat = is_empty
+	lr35902_set_reg regA 01
+	lr35902_copy_to_addr_from_regA $var_tdq_stat
+
+	# タイルミラー領域の初期化
+	lr35902_call $a_init_tmrr
+
+	# 初期化
+	## regA(引数)をregBから復帰
+	lr35902_copy_to_from regA regB
+	## 関数呼び出し
+	lr35902_call $a_binbio_init
+
+	# LCD再開
+	lr35902_set_reg regA $(calc16 "${GBOS_LCDC_BASE}+${GB_LCDC_BIT_DE}")
+	lr35902_copy_to_ioport_from_regA $GB_IO_LCDC
+
+	# pop & return
+	lr35902_pop_reg regBC
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
+# 1周期分の周期動作を実施
+f_binbio_reset >src/f_binbio_reset.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_reset.o))
+fadr=$(calc16 "${a_binbio_reset}+${fsz}")
 a_binbio_do_cycle=$(four_digits $fadr)
 echo -e "a_binbio_do_cycle=$a_binbio_do_cycle" >>$MAP_FILE_NAME
 f_binbio_do_cycle() {
@@ -6842,11 +6972,11 @@ f_binbio_event_btn_select_release() {
 	# push
 	lr35902_push_reg regAF
 
-	# 初期化を実施
+	# リセットを実施
 	## regA(引数)を設定
 	lr35902_set_reg regA $BINBIO_EVENT_BTN_SELECT_RELEASE_EXPSET
 	## 関数呼び出し
-	lr35902_call $a_binbio_init
+	lr35902_call $a_binbio_reset
 
 	# pop & return
 	lr35902_pop_reg regAF
@@ -6874,6 +7004,8 @@ global_functions() {
 	f_tcoord_to_addr
 	f_wtcoord_to_tcoord
 	f_tcoord_to_mrraddr
+	f_clear_bg
+	f_init_tmrr
 	f_lay_tile_at_tcoord
 	f_lay_tile_at_wtcoord
 	f_lay_tiles_at_tcoord_to_right
@@ -6941,6 +7073,7 @@ global_functions() {
 	f_binbio_cell_death
 	f_binbio_select_next_cell
 	f_binbio_init
+	f_binbio_reset
 	f_binbio_do_cycle
 	f_binbio_event_btn_a_release
 	f_binbio_event_btn_b_release
@@ -7009,27 +7142,6 @@ load_all_tiles() {
 	cat src/load_all_tiles.2.o
 	rel_sz=$(stat -c '%s' src/load_all_tiles.2.o)
 	lr35902_rel_jump $(two_comp_d $((rel_sz + 2)))
-}
-
-clear_bg() {
-	local sz
-	lr35902_set_reg regHL $GBOS_BG_TILEMAP_START
-	lr35902_set_reg regB $GB_SC_HEIGHT_T
-	lr35902_clear_reg regA
-	(
-		lr35902_set_reg regC $GB_SC_WIDTH_T
-		(
-			lr35902_copyinc_to_ptrHL_from_regA
-			lr35902_dec regC
-		) >src/clear_bg.1.o
-		cat src/clear_bg.1.o
-		sz=$(stat -c '%s' src/clear_bg.1.o)
-		lr35902_rel_jump_with_cond NZ $(two_comp_d $((sz+2)))
-		lr35902_dec regB
-	) >src/clear_bg.2.o
-	cat src/clear_bg.2.o
-	sz=$(stat -c '%s' src/clear_bg.2.o)
-	lr35902_rel_jump_with_cond NZ $(two_comp_d $((sz+2)))
 }
 
 lay_tiles_in_grid() {
@@ -7262,23 +7374,6 @@ proc_bar_end() {
 	fi
 }
 
-# タイルミラー領域を空白タイルで初期化
-init_tmrr() {
-	lr35902_set_reg regL $GBOS_TMRR_BASE_BH
-	lr35902_set_reg regH $GBOS_TMRR_BASE_TH
-
-	(
-		lr35902_set_reg regA $GBOS_TILE_NUM_SPC
-		lr35902_copyinc_to_ptrHL_from_regA
-
-		lr35902_copy_to_from regA regH
-		lr35902_compare_regA_and $GBOS_TMRR_END_PLUS1_TH
-	) >src/init_tmrr.1.o
-	cat src/init_tmrr.1.o
-	local sz_1=$(stat -c '%s' src/init_tmrr.1.o)
-	lr35902_rel_jump_with_cond NZ $(two_comp_d $((sz_1 + 2)))
-}
-
 init() {
 	# 割り込みは一旦無効にする
 	lr35902_disable_interrupts
@@ -7315,7 +7410,7 @@ init() {
 	load_all_tiles
 
 	# 背景タイルマップを白タイル(タイル番号0)で初期化
-	clear_bg
+	lr35902_call $a_clear_bg
 
 	# OAMを初期化(全て非表示にする)
 	hide_all_objs
@@ -7383,7 +7478,7 @@ init() {
 	timer_init_handler
 
 	# タイルミラー領域の初期化
-	init_tmrr
+	lr35902_call $a_init_tmrr
 
 	# バイナリ生物環境の初期化
 	## regA(引数)を設定

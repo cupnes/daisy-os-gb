@@ -399,6 +399,8 @@ gb_set_palette_to_default() {
 	done
 }
 
+# V-Blankの開始を待つ
+# ※ regAFは破壊される
 gb_wait_for_vblank_to_start() {
 	# vblankの開始の瞬間(LY=147)を待つ
 	lr35902_copy_to_regA_from_ioport $GB_IO_LY
