@@ -75,4 +75,5 @@ a_binbio_reset=2470
 a_binbio_do_cycle=24A3
 a_binbio_event_btn_a_release=24F5
 a_binbio_event_btn_b_release=252C
-a_binbio_event_btn_select_release=2590
+a_binbio_event_btn_start_release=2590
+a_binbio_event_btn_select_release=2598

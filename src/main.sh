@@ -6962,10 +6962,31 @@ f_binbio_event_btn_b_release() {
 	lr35902_return
 }
 
-# バイナリ生物環境用のセレクトボタンリリースイベントハンドラ
+# バイナリ生物環境用のスタートボタンリリースイベントハンドラ
 f_binbio_event_btn_b_release >src/f_binbio_event_btn_b_release.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_event_btn_b_release.o))
 fadr=$(calc16 "${a_binbio_event_btn_b_release}+${fsz}")
+a_binbio_event_btn_start_release=$(four_digits $fadr)
+echo -e "a_binbio_event_btn_start_release=$a_binbio_event_btn_start_release" >>$MAP_FILE_NAME
+f_binbio_event_btn_start_release() {
+	# push
+	lr35902_push_reg regAF
+
+	# リセットを実施
+	## regA(引数)を設定
+	lr35902_set_reg regA $BINBIO_EVENT_BTN_START_RELEASE_EXPSET
+	## 関数呼び出し
+	lr35902_call $a_binbio_reset
+
+	# pop & return
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
+# バイナリ生物環境用のセレクトボタンリリースイベントハンドラ
+f_binbio_event_btn_start_release >src/f_binbio_event_btn_start_release.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_event_btn_start_release.o))
+fadr=$(calc16 "${a_binbio_event_btn_start_release}+${fsz}")
 a_binbio_event_btn_select_release=$(four_digits $fadr)
 echo -e "a_binbio_event_btn_select_release=$a_binbio_event_btn_select_release" >>$MAP_FILE_NAME
 f_binbio_event_btn_select_release() {
@@ -7077,6 +7098,7 @@ global_functions() {
 	f_binbio_do_cycle
 	f_binbio_event_btn_a_release
 	f_binbio_event_btn_b_release
+	f_binbio_event_btn_start_release
 	f_binbio_event_btn_select_release
 }
 
@@ -7606,14 +7628,14 @@ btn_release_handler() {
 	lr35902_rel_jump_with_cond Z $(two_digits_d $sz)
 	cat src/btn_release_handler.3.o
 
-	# # スタートボタンの確認
-	# lr35902_test_bitN_of_reg $GBOS_START_KEY_BITNUM regA
-	# (
-	# 	lr35902_call $a_select_ram
-	# ) >src/btn_release_handler.4.o
-	# sz=$(stat -c '%s' src/btn_release_handler.4.o)
-	# lr35902_rel_jump_with_cond Z $(two_digits_d $sz)
-	# cat src/btn_release_handler.4.o
+	# スタートボタンの確認
+	lr35902_test_bitN_of_reg $GBOS_START_KEY_BITNUM regA
+	(
+		lr35902_call $a_binbio_event_btn_start_release
+	) >src/btn_release_handler.4.o
+	sz=$(stat -c '%s' src/btn_release_handler.4.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz)
+	cat src/btn_release_handler.4.o
 }
 
 # タイル描画キュー処理
