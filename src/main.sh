@@ -6411,6 +6411,7 @@ f_binbio_select_next_cell() {
 }
 
 # バイナリ生物環境の初期化
+# in : regA - 実験セット番号
 f_binbio_select_next_cell >src/f_binbio_select_next_cell.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_select_next_cell.o))
 fadr=$(calc16 "${a_binbio_select_next_cell}+${fsz}")
@@ -6422,6 +6423,9 @@ f_binbio_init() {
 	lr35902_push_reg regBC
 	lr35902_push_reg regDE
 	lr35902_push_reg regHL
+
+	# 実験セット番号変数を初期化
+	lr35902_copy_to_addr_from_regA $var_binbio_expset_num
 
 	# 細胞データ領域をゼロクリア
 	lr35902_call $a_binbio_clear_cell_data_area
@@ -6475,7 +6479,7 @@ f_binbio_init() {
 	lr35902_xor_to_regA regA
 	lr35902_copy_to_from ptrHL regA
 
-	# システム変数へ初期値を設定
+	# その他のシステム変数へ初期値を設定
 	## cur_cell_addr = $BINBIO_CELL_DATA_AREA_BEGIN
 	lr35902_set_reg regA $(echo $BINBIO_CELL_DATA_AREA_BEGIN | cut -c3-4)
 	lr35902_copy_to_addr_from_regA $var_binbio_cur_cell_addr_bh
@@ -6488,9 +6492,6 @@ f_binbio_init() {
 	lr35902_xor_to_regA regA
 	lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_all_counter_addr_bh
 	lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_all_counter_addr_th
-	## expset_num
-	lr35902_set_reg regA $BINBIO_EXPSET_NUM_INIT
-	lr35902_copy_to_addr_from_regA $var_binbio_expset_num
 
 	# 初期細胞をマップへ配置
 	## タイル座標をVRAMアドレスへ変換
@@ -6612,6 +6613,9 @@ f_binbio_do_cycle() {
 		# regA != 0 の場合
 
 		# 初期化を実施
+		## regA(引数) = 現在の実験セット番号
+		lr35902_copy_to_regA_from_addr $var_binbio_expset_num
+		## 関数呼び出し
 		lr35902_call $a_binbio_init
 	) >src/f_binbio_do_cycle.3.o
 	local sz_3=$(stat -c '%s' src/f_binbio_do_cycle.3.o)
@@ -6784,6 +6788,9 @@ f_binbio_event_btn_b_release() {
 			# regA != 0 の場合
 
 			# 初期化を実施
+			## regA(引数) = 現在の実験セット番号
+			lr35902_copy_to_regA_from_addr $var_binbio_expset_num
+			## 関数呼び出し
 			lr35902_call $a_binbio_init
 		) >src/f_binbio_event_btn_b_release.4.o
 		local sz_4=$(stat -c '%s' src/f_binbio_event_btn_b_release.4.o)
@@ -6821,6 +6828,27 @@ f_binbio_event_btn_b_release() {
 	# pop & return
 	lr35902_pop_reg regHL
 	lr35902_pop_reg regDE
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
+# バイナリ生物環境用のセレクトボタンリリースイベントハンドラ
+f_binbio_event_btn_b_release >src/f_binbio_event_btn_b_release.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_event_btn_b_release.o))
+fadr=$(calc16 "${a_binbio_event_btn_b_release}+${fsz}")
+a_binbio_event_btn_select_release=$(four_digits $fadr)
+echo -e "a_binbio_event_btn_select_release=$a_binbio_event_btn_select_release" >>$MAP_FILE_NAME
+f_binbio_event_btn_select_release() {
+	# push
+	lr35902_push_reg regAF
+
+	# 初期化を実施
+	## regA(引数)を設定
+	lr35902_set_reg regA $BINBIO_EVENT_BTN_SELECT_RELEASE_EXPSET
+	## 関数呼び出し
+	lr35902_call $a_binbio_init
+
+	# pop & return
 	lr35902_pop_reg regAF
 	lr35902_return
 }
@@ -6916,6 +6944,7 @@ global_functions() {
 	f_binbio_do_cycle
 	f_binbio_event_btn_a_release
 	f_binbio_event_btn_b_release
+	f_binbio_event_btn_select_release
 }
 
 gbos_vec() {
@@ -7357,6 +7386,9 @@ init() {
 	init_tmrr
 
 	# バイナリ生物環境の初期化
+	## regA(引数)を設定
+	lr35902_set_reg regA $BINBIO_EXPSET_NUM_INIT
+	## 関数呼び出し
 	lr35902_call $a_binbio_init
 
 	# 現状、タイマーは使っていないので明示的に止めておく
@@ -7470,14 +7502,14 @@ btn_release_handler() {
 	lr35902_rel_jump_with_cond Z $(two_digits_d $sz)
 	cat src/btn_release_handler.2.o
 
-	# # セレクトボタンの確認
-	# lr35902_test_bitN_of_reg $GBOS_SELECT_KEY_BITNUM regA
-	# (
-	# 	lr35902_call $a_select_rom
-	# ) >src/btn_release_handler.3.o
-	# sz=$(stat -c '%s' src/btn_release_handler.3.o)
-	# lr35902_rel_jump_with_cond Z $(two_digits_d $sz)
-	# cat src/btn_release_handler.3.o
+	# セレクトボタンの確認
+	lr35902_test_bitN_of_reg $GBOS_SELECT_KEY_BITNUM regA
+	(
+		lr35902_call $a_binbio_event_btn_select_release
+	) >src/btn_release_handler.3.o
+	sz=$(stat -c '%s' src/btn_release_handler.3.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz)
+	cat src/btn_release_handler.3.o
 
 	# # スタートボタンの確認
 	# lr35902_test_bitN_of_reg $GBOS_START_KEY_BITNUM regA
