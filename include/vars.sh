@@ -85,12 +85,10 @@ var_timer_handler=c026
 # 　0xc026 - 0xc089 は変数等に使わないこと
 # ↑タイマーハンドラ使っていないので100バイトも確保するのはやめる
 
-# 0xc026 - 0xc032 : 未使用
+# 0xc026 - 0xc034 : 未使用
 
 # バイナリ生物用変数
-var_binbio_get_code_comp_hello_counter=c033	# get_code_comp_hello()で使用するカウンタ
-var_binbio_get_code_comp_hello_addr_bh=c034	# get_code_comp_hello()で使用するアドレス(下位8ビット)
-var_binbio_get_code_comp_hello_addr_th=c035	# get_code_comp_hello()で使用するアドレス(上位8ビット)
+var_binbio_get_code_comp_hello_counter=c035	# get_code_comp_hello()で使用するカウンタ
 var_binbio_expset_num=c036	# 現在の実験セット番号
 var_binbio_get_code_comp_all_counter_addr_bh=c037	# get_code_comp_all()で使用するカウンタ/アドレス(下位8ビット)
 var_binbio_get_code_comp_all_counter_addr_th=c038	# get_code_comp_all()で使用するカウンタ/アドレス(上位8ビット)

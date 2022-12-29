@@ -4751,79 +4751,143 @@ f_binbio_get_code_comp_all() {
 }
 
 # コード化合物取得の実装 - "hello"の各文字の領域ではそれぞれの文字が取得しやすい
-# out: regA - 取得したコード化合物
-# ※ フラグレジスタは破壊される
+## 繰り返し使用する処理をマクロ定義
+### 指定された文字を対象とする領域の確率で文字を取得する処理を生成
+### out: regA - 取得したアルファベットタイル番号
+### ※ フラグレジスタは破壊される
+_binbio_get_code_comp_hello_get_char_area_prob() {
+	# regAへ0x00〜0xffの乱数取得
+	lr35902_call $a_get_rnd
+
+	# 指定された文字を対象とする領域の確率で文字を取得する条件分岐
+	local area_char=$1
+	local area_char_tile_num=$(get_alpha_tile_num $area_char)
+	local base_char='A'
+	local base_char_tile_num=$(get_alpha_tile_num $base_char)
+	local area_char_id=$(calc16 "$area_char_tile_num - $base_char_tile_num")
+	local id=$(calc16 "$area_char_id + 1")
+	local range_dec=0
+	local i_dec
+	local sz
+	for i_dec in $(seq 4 16 | tac) $(seq 5 15); do
+		range_dec=$((range_dec + i_dec))
+
+		# regA < $range_dec ?
+		lr35902_compare_regA_and $(two_digits_d --allow-ge-128 $range_dec)
+		(
+			# regA < $range_dec の場合
+
+			# regA(戻り値) = $base_char_tile_num + $id
+			lr35902_set_reg regA $(calc16_2 "$base_char_tile_num + $id")
+
+			# return
+			lr35902_return
+		) >src/f_binbio_get_code_comp_hello.get_char_area_prob.o
+		sz=$(stat -c '%s' src/f_binbio_get_code_comp_hello.get_char_area_prob.o)
+		lr35902_rel_jump_with_cond NC $(two_digits_d $sz)
+		cat src/f_binbio_get_code_comp_hello.get_char_area_prob.o
+
+		# idを進める
+		id=$(calc16 "($id + 1) % 1a")
+	done
+	## regA >= 240 の場合
+	### regA(戻り値) = $base_char_tile_num + $id
+	lr35902_set_reg regA $(calc16_2 "$base_char_tile_num + $id")
+	### return
+	lr35902_return
+}
+## 本体関数から呼び出されるサブ関数を定義
+### 'H'を対象とする領域の確率で文字を取得
 f_binbio_get_code_comp_all >src/f_binbio_get_code_comp_all.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_get_code_comp_all.o))
 fadr=$(calc16 "${a_binbio_get_code_comp_all}+${fsz}")
+a_binbio_get_code_comp_hello_get_char_area_prob_h=$(four_digits $fadr)
+echo -e "a_binbio_get_code_comp_hello_get_char_area_prob_h=$a_binbio_get_code_comp_hello_get_char_area_prob_h" >>$MAP_FILE_NAME
+f_binbio_get_code_comp_hello_get_char_area_prob_h() {
+	_binbio_get_code_comp_hello_get_char_area_prob 'H'
+}
+### 'E'を対象とする領域の確率で文字を取得
+f_binbio_get_code_comp_hello_get_char_area_prob_h >src/f_binbio_get_code_comp_hello_get_char_area_prob_h.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_get_code_comp_hello_get_char_area_prob_h.o))
+fadr=$(calc16 "${a_binbio_get_code_comp_hello_get_char_area_prob_h}+${fsz}")
+a_binbio_get_code_comp_hello_get_char_area_prob_e=$(four_digits $fadr)
+echo -e "a_binbio_get_code_comp_hello_get_char_area_prob_e=$a_binbio_get_code_comp_hello_get_char_area_prob_e" >>$MAP_FILE_NAME
+f_binbio_get_code_comp_hello_get_char_area_prob_e() {
+	_binbio_get_code_comp_hello_get_char_area_prob 'E'
+}
+### 'L'を対象とする領域の確率で文字を取得
+f_binbio_get_code_comp_hello_get_char_area_prob_e >src/f_binbio_get_code_comp_hello_get_char_area_prob_e.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_get_code_comp_hello_get_char_area_prob_e.o))
+fadr=$(calc16 "${a_binbio_get_code_comp_hello_get_char_area_prob_e}+${fsz}")
+a_binbio_get_code_comp_hello_get_char_area_prob_l=$(four_digits $fadr)
+echo -e "a_binbio_get_code_comp_hello_get_char_area_prob_l=$a_binbio_get_code_comp_hello_get_char_area_prob_l" >>$MAP_FILE_NAME
+f_binbio_get_code_comp_hello_get_char_area_prob_l() {
+	_binbio_get_code_comp_hello_get_char_area_prob 'L'
+}
+### 'O'を対象とする領域の確率で文字を取得
+f_binbio_get_code_comp_hello_get_char_area_prob_l >src/f_binbio_get_code_comp_hello_get_char_area_prob_l.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_get_code_comp_hello_get_char_area_prob_l.o))
+fadr=$(calc16 "${a_binbio_get_code_comp_hello_get_char_area_prob_l}+${fsz}")
+a_binbio_get_code_comp_hello_get_char_area_prob_o=$(four_digits $fadr)
+echo -e "a_binbio_get_code_comp_hello_get_char_area_prob_o=$a_binbio_get_code_comp_hello_get_char_area_prob_o" >>$MAP_FILE_NAME
+f_binbio_get_code_comp_hello_get_char_area_prob_o() {
+	_binbio_get_code_comp_hello_get_char_area_prob 'O'
+}
+## 本体関数
+## out: regA - 取得したコード化合物
+## ※ フラグレジスタは破壊される
+f_binbio_get_code_comp_hello_get_char_area_prob_o >src/f_binbio_get_code_comp_hello_get_char_area_prob_o.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_get_code_comp_hello_get_char_area_prob_o.o))
+fadr=$(calc16 "${a_binbio_get_code_comp_hello_get_char_area_prob_o}+${fsz}")
 a_binbio_get_code_comp_hello=$(four_digits $fadr)
 echo -e "a_binbio_get_code_comp_hello=$a_binbio_get_code_comp_hello" >>$MAP_FILE_NAME
 f_binbio_get_code_comp_hello() {
 	# regA = カウンタ変数
 	lr35902_copy_to_regA_from_addr $var_binbio_get_code_comp_hello_counter
 
-	# regA < 4 ?
-	lr35902_compare_regA_and 04
+	# 繰り返し使用する処理をマクロ定義
+	## regA < 第1引数 なら、カウンタ変数値をインクリメントし、第2引数を返す
+	_binbio_get_code_comp_hello_if_regA_lt_inc_counter_ret_val() {
+		local sz
+
+		# regA < 第1引数 ?
+		lr35902_compare_regA_and $1
+		(
+			# regA < 第1引数 の場合
+
+			# カウンタ変数値をインクリメント
+			lr35902_inc regA
+			lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_hello_counter
+
+			# 第2引数を返す
+			lr35902_set_reg regA $2
+			lr35902_return
+		) >src/f_binbio_get_code_comp_hello.iir.o
+		sz=$(stat -c '%s' src/f_binbio_get_code_comp_hello.iir.o)
+		lr35902_rel_jump_with_cond NC $(two_digits_d $sz)
+		cat src/f_binbio_get_code_comp_hello.iir.o
+	}
+
+	# 0 <= regA <= 3 では、bin_dataを構成するコード化合物のタイル番号以外を返す
+	# 即ち、カウンタの値に応じて
+	# 0x 3e cd a_binbio_cell_set_tile_num(下位8ビット) a_binbio_cell_set_tile_num(上位8ビット)
+	# のいずれかを返す
+	## regA < 1 なら、カウンタ変数値をインクリメントし、0x3eを返す
+	_binbio_get_code_comp_hello_if_regA_lt_inc_counter_ret_val 01 3e
+	## regA < 2 なら、カウンタ変数値をインクリメントし、0xcdを返す
+	_binbio_get_code_comp_hello_if_regA_lt_inc_counter_ret_val 02 cd
+	## regA < 3 なら、カウンタ変数値をインクリメントし、a_binbio_cell_set_tile_num(下位8ビット)を返す
+	_binbio_get_code_comp_hello_if_regA_lt_inc_counter_ret_val 03 $(echo $a_binbio_cell_set_tile_num | cut -c3-4)
+	## regA < 4 なら、カウンタ変数値をインクリメントし、a_binbio_cell_set_tile_num(上位8ビット)を返す
+	_binbio_get_code_comp_hello_if_regA_lt_inc_counter_ret_val 04 $(echo $a_binbio_cell_set_tile_num | cut -c1-2)
+
+	# regA < 5 なら、カウンタ変数値をインクリメントし、細胞タイルを返す
+	_binbio_get_code_comp_hello_if_regA_lt_inc_counter_ret_val 05 $GBOS_TILE_NUM_CELL
+
+	# regA < 6 ?
+	lr35902_compare_regA_and 06
 	(
-		# regA < 4 の場合
-		# bin_dataを構成するコード化合物のタイル番号以外を返す
-
-		# カウンタ変数をインクリメントした値で更新
-		lr35902_inc regA
-		lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_hello_counter
-
-		# カウンタの値に応じて
-		# 0x 3e cd a_binbio_cell_set_tile_num(下位8ビット) a_binbio_cell_set_tile_num(上位8ビット)
-		# のいずれかを返す
-		## regA == 1 ?
-		lr35902_compare_regA_and 01
-		(
-			# regA == 1 の場合
-
-			# 0x3eを返す
-			lr35902_set_reg regA 3e
-			lr35902_return
-		) >src/f_binbio_get_code_comp_hello.3e.o
-		local sz_3e=$(stat -c '%s' src/f_binbio_get_code_comp_hello.3e.o)
-		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_3e)
-		cat src/f_binbio_get_code_comp_hello.3e.o
-		## regA == 2 ?
-		lr35902_compare_regA_and 02
-		(
-			# regA == 2 の場合
-
-			# 0xcdを返す
-			lr35902_set_reg regA cd
-			lr35902_return
-		) >src/f_binbio_get_code_comp_hello.cd.o
-		local sz_cd=$(stat -c '%s' src/f_binbio_get_code_comp_hello.cd.o)
-		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_cd)
-		cat src/f_binbio_get_code_comp_hello.cd.o
-		## regA == 3 ?
-		lr35902_compare_regA_and 03
-		(
-			# regA == 3 の場合
-
-			# a_binbio_cell_set_tile_num(下位8ビット)を返す
-			lr35902_set_reg regA $(echo $a_binbio_cell_set_tile_num | cut -c3-4)
-			lr35902_return
-		) >src/f_binbio_get_code_comp_hello.stn_bh.o
-		local sz_stn_bh=$(stat -c '%s' src/f_binbio_get_code_comp_hello.stn_bh.o)
-		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_stn_bh)
-		cat src/f_binbio_get_code_comp_hello.stn_bh.o
-		## regA == 4 の場合
-		## a_binbio_cell_set_tile_num(上位8ビット)を返す
-		lr35902_set_reg regA $(echo $a_binbio_cell_set_tile_num | cut -c1-2)
-		lr35902_return
-	) >src/f_binbio_get_code_comp_hello.inst.o
-	local sz_inst=$(stat -c '%s' src/f_binbio_get_code_comp_hello.inst.o)
-	lr35902_rel_jump_with_cond NC $(two_digits_d $sz_inst)
-	cat src/f_binbio_get_code_comp_hello.inst.o
-
-	# regA < 5 ?
-	lr35902_compare_regA_and 05
-	(
-		# regA < 5 の場合
+		# regA < 6 の場合
 		# tile_xに応じて"hello"を構成する文字タイルのいずれかを返す
 
 		# push
@@ -4906,65 +4970,20 @@ f_binbio_get_code_comp_hello() {
 	lr35902_rel_jump_with_cond NC $(two_digits_d $sz_hello)
 	cat src/f_binbio_get_code_comp_hello.hello.o
 
-	# regA < 9 ?
-	lr35902_compare_regA_and 09
-	(
-		# regA < 9 の場合
-		# bin_dataを構成するコード化合物のタイル番号以外を返す
+	# 6 <= regA <= 9 では、bin_dataを構成するコード化合物のタイル番号以外を返す
+	# 即ち、カウンタの値に応じて
+	# 0x 3e cd a_binbio_cell_set_tile_num(下位8ビット) a_binbio_cell_set_tile_num(上位8ビット)
+	# のいずれかを返す
+	## regA < 7 なら、カウンタ変数値をインクリメントし、0x3eを返す
+	_binbio_get_code_comp_hello_if_regA_lt_inc_counter_ret_val 07 3e
+	## regA < 8 なら、カウンタ変数値をインクリメントし、0xcdを返す
+	_binbio_get_code_comp_hello_if_regA_lt_inc_counter_ret_val 08 cd
+	## regA < 9 なら、カウンタ変数値をインクリメントし、a_binbio_cell_set_tile_num(下位8ビット)を返す
+	_binbio_get_code_comp_hello_if_regA_lt_inc_counter_ret_val 09 $(echo $a_binbio_cell_set_tile_num | cut -c3-4)
+	## regA < 10 なら、カウンタ変数値をインクリメントし、a_binbio_cell_set_tile_num(上位8ビット)を返す
+	_binbio_get_code_comp_hello_if_regA_lt_inc_counter_ret_val 0a $(echo $a_binbio_cell_set_tile_num | cut -c1-2)
 
-		# カウンタ変数をインクリメントした値で更新
-		lr35902_inc regA
-		lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_hello_counter
-
-		# カウンタの値に応じて
-		# 0x 3e cd a_binbio_cell_set_tile_num(下位8ビット) a_binbio_cell_set_tile_num(上位8ビット)
-		# のいずれかを返す
-		## regA == 6 ?
-		lr35902_compare_regA_and 06
-		(
-			# regA == 6 の場合
-
-			# 0x3eを返す
-			lr35902_set_reg regA 3e
-			lr35902_return
-		) >src/f_binbio_get_code_comp_hello.3e.o
-		local sz_3e=$(stat -c '%s' src/f_binbio_get_code_comp_hello.3e.o)
-		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_3e)
-		cat src/f_binbio_get_code_comp_hello.3e.o
-		## regA == 7 ?
-		lr35902_compare_regA_and 07
-		(
-			# regA == 7 の場合
-
-			# 0xcdを返す
-			lr35902_set_reg regA cd
-			lr35902_return
-		) >src/f_binbio_get_code_comp_hello.cd.o
-		local sz_cd=$(stat -c '%s' src/f_binbio_get_code_comp_hello.cd.o)
-		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_cd)
-		cat src/f_binbio_get_code_comp_hello.cd.o
-		## regA == 8 ?
-		lr35902_compare_regA_and 08
-		(
-			# regA == 8 の場合
-
-			# a_binbio_cell_set_tile_num(下位8ビット)を返す
-			lr35902_set_reg regA $(echo $a_binbio_cell_set_tile_num | cut -c3-4)
-			lr35902_return
-		) >src/f_binbio_get_code_comp_hello.stn_bh.o
-		local sz_stn_bh=$(stat -c '%s' src/f_binbio_get_code_comp_hello.stn_bh.o)
-		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_stn_bh)
-		cat src/f_binbio_get_code_comp_hello.stn_bh.o
-		## regA == 9 の場合
-		## a_binbio_cell_set_tile_num(上位8ビット)を返す
-		lr35902_set_reg regA $(echo $a_binbio_cell_set_tile_num | cut -c1-2)
-		lr35902_return
-	) >src/f_binbio_get_code_comp_hello.inst2.o
-	local sz_inst2=$(stat -c '%s' src/f_binbio_get_code_comp_hello.inst2.o)
-	lr35902_rel_jump_with_cond NC $(two_digits_d $sz_inst2)
-	cat src/f_binbio_get_code_comp_hello.inst2.o
-
-	# regA >= 9 の場合
+	# regA >= 10 の場合
 
 	# push
 	lr35902_push_reg regHL
@@ -4973,92 +4992,74 @@ f_binbio_get_code_comp_hello() {
 	lr35902_clear_reg regA
 	lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_hello_counter
 
-	# regHL = アドレス変数の値
-	lr35902_copy_to_regA_from_addr $var_binbio_get_code_comp_hello_addr_bh
+	# 現在の細胞のアドレスをregHLへ取得
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
 	lr35902_copy_to_from regL regA
-	lr35902_copy_to_regA_from_addr $var_binbio_get_code_comp_hello_addr_th
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
 	lr35902_copy_to_from regH regA
 
-	# アドレスregHLを起点に0x00でない値を探す
+	# アドレスregHLをtile_xまで進める
+	lr35902_inc regHL
+
+	# regA = tile_x
+	lr35902_copy_to_from regA ptrHL
+
+	# regA < 4 ? (0 <= tile_x <= 3 は'H')
+	lr35902_compare_regA_and 04
 	(
-		# regA = ptrHL
-		lr35902_copy_to_from regA ptrHL
+		# regA < 4 の場合
 
-		# regA != 0x00 ?
-		lr35902_compare_regA_and 00
-		(
-			# regA != 0x00 の場合
+		# 'H'を対象とする領域の確率で文字を取得
+		lr35902_call $a_binbio_get_code_comp_hello_get_char_area_prob_h
 
-			# push
-			lr35902_push_reg regBC
+		# pop & return
+		lr35902_pop_reg regHL
+		lr35902_return
+	) >src/f_binbio_get_code_comp_hello.cab_h.o
+	local sz_cab_h=$(stat -c '%s' src/f_binbio_get_code_comp_hello.cab_h.o)
+	lr35902_rel_jump_with_cond NC $(two_digits_d $sz_cab_h)
+	cat src/f_binbio_get_code_comp_hello.cab_h.o
 
-			# regAをregBへ退避
-			lr35902_copy_to_from regB regA
+	# regA < 8 ? (4 <= tile_x <= 7 は'E')
+	lr35902_compare_regA_and 08
+	(
+		# regA < 8 の場合
 
-			# regHL++
-			lr35902_inc regHL
+		# 'E'を対象とする領域の確率で文字を取得
+		lr35902_call $a_binbio_get_code_comp_hello_get_char_area_prob_e
 
-			# アドレスregHLがタイルミラー領域を出たか?
-			lr35902_copy_to_from regA regH
-			lr35902_compare_regA_and $GBOS_TMRR_END_PLUS1_TH
-			(
-				# アドレスregHLがタイルミラー領域を出た場合
+		# pop & return
+		lr35902_pop_reg regHL
+		lr35902_return
+	) >src/f_binbio_get_code_comp_hello.cab_e.o
+	local sz_cab_e=$(stat -c '%s' src/f_binbio_get_code_comp_hello.cab_e.o)
+	lr35902_rel_jump_with_cond NC $(two_digits_d $sz_cab_e)
+	cat src/f_binbio_get_code_comp_hello.cab_e.o
 
-				# アドレス変数へタイルミラー領域ベースアドレスを設定
-				lr35902_set_reg regA $GBOS_TMRR_BASE_BH
-				lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_hello_addr_bh
-				lr35902_set_reg regA $GBOS_TMRR_BASE_TH
-				lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_hello_addr_th
+	# regA < 16 ? (8 <= tile_x <= 15 は'L')
+	lr35902_compare_regA_and 10
+	(
+		# regA < 16 の場合
 
-				# regAをregBから復帰
-				lr35902_copy_to_from regA regB
+		# 'L'を対象とする領域の確率で文字を取得
+		lr35902_call $a_binbio_get_code_comp_hello_get_char_area_prob_l
 
-				# pop & return
-				lr35902_pop_reg regBC
-				lr35902_pop_reg regHL
-				lr35902_return
-			) >src/f_binbio_get_code_comp_hello.oom.o
-			local sz_oom=$(stat -c '%s' src/f_binbio_get_code_comp_hello.oom.o)
-			lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_oom)
-			cat src/f_binbio_get_code_comp_hello.oom.o
+		# pop & return
+		lr35902_pop_reg regHL
+		lr35902_return
+	) >src/f_binbio_get_code_comp_hello.cab_l.o
+	local sz_cab_l=$(stat -c '%s' src/f_binbio_get_code_comp_hello.cab_l.o)
+	lr35902_rel_jump_with_cond NC $(two_digits_d $sz_cab_l)
+	cat src/f_binbio_get_code_comp_hello.cab_l.o
 
-			# アドレス変数へregHLを設定
-			lr35902_copy_to_from regA regL
-			lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_hello_addr_bh
-			lr35902_copy_to_from regA regH
-			lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_hello_addr_th
+	# regA >= 16 の場合 (16 <= tile_x <= 19 は'O')
 
-			# regAをregBから復帰
-			lr35902_copy_to_from regA regB
+	# 'O'を対象とする領域の確率で文字を取得
+	lr35902_call $a_binbio_get_code_comp_hello_get_char_area_prob_o
 
-			# pop & return
-			lr35902_pop_reg regBC
-			lr35902_pop_reg regHL
-			lr35902_return
-		) >src/f_binbio_get_code_comp_hello.found.o
-		local sz_found=$(stat -c '%s' src/f_binbio_get_code_comp_hello.found.o)
-		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_found)
-		cat src/f_binbio_get_code_comp_hello.found.o
-
-		# regHL++
-		lr35902_inc regHL
-
-		# アドレスregHLがタイルミラー領域を出たか?
-		lr35902_copy_to_from regA regH
-		lr35902_compare_regA_and $GBOS_TMRR_END_PLUS1_TH
-		(
-			# アドレスregHLがタイルミラー領域を出た場合
-
-			# regHLへタイルミラー領域ベースアドレスを設定
-			lr35902_set_reg regHL $GBOS_TMRR_BASE
-		) >src/f_binbio_get_code_comp_hello.oom2.o
-		local sz_oom2=$(stat -c '%s' src/f_binbio_get_code_comp_hello.oom2.o)
-		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_oom2)
-		cat src/f_binbio_get_code_comp_hello.oom2.o
-	) >src/f_binbio_get_code_comp_hello.loop.o
-	cat src/f_binbio_get_code_comp_hello.loop.o
-	local sz_loop=$(stat -c '%s' src/f_binbio_get_code_comp_hello.loop.o)
-	lr35902_rel_jump $(two_comp_d $((sz_loop + 2)))
+	# pop & return
+	lr35902_pop_reg regHL
+	lr35902_return
 }
 
 # コード化合物取得
@@ -6877,11 +6878,6 @@ f_binbio_init() {
 	lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_all_counter_addr_th
 	## get_code_comp_hello_counter = 0
 	lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_hello_counter
-	## binbio_get_code_comp_hello_addr = タイルミラー領域ベースアドレス
-	lr35902_set_reg regA $GBOS_TMRR_BASE_BH
-	lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_hello_addr_bh
-	lr35902_set_reg regA $GBOS_TMRR_BASE_TH
-	lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_hello_addr_th
 
 	# 初期細胞をマップへ配置
 	## タイル座標をVRAMアドレスへ変換
@@ -7397,6 +7393,10 @@ global_functions() {
 	f_binbio_cell_eval
 	f_binbio_cell_metabolism_and_motion
 	f_binbio_get_code_comp_all
+	f_binbio_get_code_comp_hello_get_char_area_prob_h
+	f_binbio_get_code_comp_hello_get_char_area_prob_e
+	f_binbio_get_code_comp_hello_get_char_area_prob_l
+	f_binbio_get_code_comp_hello_get_char_area_prob_o
 	f_binbio_get_code_comp_hello
 	f_binbio_get_code_comp
 	f_binbio_cell_growth
