@@ -25,13 +25,27 @@ two_digits() {
 		echo $val
 		;;
 	*)
-		echo "Error: Invalid digits: %val" 1>&2
+		echo "Error: Invalid digits: $val" 1>&2
 		return 1
 	esac
 }
 
 two_digits_d() {
-	local val_d=$1
+	local opt
+	local val_d
+	if [ $# -lt 2 ]; then
+		opt=''
+		val_d=$1
+	else
+		opt=$1
+		val_d=$2
+	fi
+	if [ $val_d -ge 128 ]; then
+		if [ "$opt" != '--allow-ge-128' ]; then
+			echo "Error: $val_d >= 128" 1>&2
+			return 1
+		fi
+	fi
 	local val=$(echo "obase=16;$val_d" | bc)
 	two_digits $val
 }
