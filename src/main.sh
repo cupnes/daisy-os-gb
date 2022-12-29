@@ -7862,14 +7862,14 @@ btn_release_handler() {
 	lr35902_rel_jump_with_cond Z $(two_digits_d $sz)
 	cat src/btn_release_handler.1.o
 
-	# Aボタンの確認
-	lr35902_test_bitN_of_reg $GBOS_A_KEY_BITNUM regA
-	(
-		lr35902_call $a_binbio_event_btn_a_release
-	) >src/btn_release_handler.2.o
-	sz=$(stat -c '%s' src/btn_release_handler.2.o)
-	lr35902_rel_jump_with_cond Z $(two_digits_d $sz)
-	cat src/btn_release_handler.2.o
+	# # Aボタンの確認
+	# lr35902_test_bitN_of_reg $GBOS_A_KEY_BITNUM regA
+	# (
+	# 	lr35902_call $a_binbio_event_btn_a_release
+	# ) >src/btn_release_handler.2.o
+	# sz=$(stat -c '%s' src/btn_release_handler.2.o)
+	# lr35902_rel_jump_with_cond Z $(two_digits_d $sz)
+	# cat src/btn_release_handler.2.o
 
 	# セレクトボタンの確認
 	lr35902_test_bitN_of_reg $GBOS_SELECT_KEY_BITNUM regA
