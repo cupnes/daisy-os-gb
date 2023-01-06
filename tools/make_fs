@@ -118,6 +118,9 @@ create_file_heads() {
 		2bpp|2BPP)
 			echo -en '\x03'
 			;;
+		img|IMG)
+			echo -en '\x04'
+			;;
 		*)
 			echo -en '\x00'
 		esac

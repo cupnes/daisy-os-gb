@@ -100,63 +100,10 @@ print_fs_system() {
 	(
 		mkdir -p fs_system
 
-		# binedit.exe
-		if [ ! -f fs_system/0100.exe ]; then
-			make -C files_exe/binedit
-			cp files_exe/binedit/binedit.exe fs_system/0100.exe
+		# retrogstudy_07_yohgami_gb_01.img
+		if [ ! -f fs_system/0100.img ]; then
+			cp files_img/retrogstudy_07_yohgami_gb_01.img fs_system/0100.img
 		fi
-
-		# sound_ch2_rand_description.2bpp
-		if [ ! -f fs_system/0200.2bpp ]; then
-			cp files_img/sound_ch2_rand_description.2bpp fs_system/0200.2bpp
-		fi
-
-		# sound_ch2_rand.exe
-		if [ ! -f fs_system/0300.exe ]; then
-			make -C files_exe/sound_ch2_rand
-			cp files_exe/sound_ch2_rand/sound_ch2_rand.exe fs_system/0300.exe
-		fi
-
-		# colophon_random_sound_play.txt
-		if [ ! -f fs_system/0400.txt ]; then
-			make -C files_txt/colophon_random_sound_play
-			cp files_txt/colophon_random_sound_play/colophon_random_sound_play.txt fs_system/0400.txt
-		fi
-
-		# # cartram_formatter.exe
-		# if [ ! -f fs_system/0200.exe ]; then
-		# 	make -C files_exe/cartram_formatter
-		# 	cp files_exe/cartram_formatter/cartram_formatter.exe fs_system/0200.exe
-		# fi
-
-		# # welcome.txt
-		# if [ ! -f fs_system/0300.txt ]; then
-		# 	make -C files_txt/welcome
-		# 	cp files_txt/welcome/welcome.txt fs_system/0300.txt
-		# fi
-
-		# # version.2bpp
-		# if [ ! -f fs_system/0400.2bpp ]; then
-		# 	cp files_img/version.2bpp fs_system/0400.2bpp
-		# fi
-
-		# # appendix.txt
-		# if [ ! -f fs_system/0450.txt ]; then
-		# 	make -C files_txt/appendix
-		# 	cp files_txt/appendix/appendix.txt fs_system/0450.txt
-		# fi
-
-		# # lifegame_glider.exe
-		# if [ ! -f fs_system/0500.exe ]; then
-		# 	make -C files_exe/lifegame_glider
-		# 	cp files_exe/lifegame_glider/lifegame_glider.exe fs_system/0500.exe
-		# fi
-
-		# # lifegame_random.exe
-		# if [ ! -f fs_system/0600.exe ]; then
-		# 	make -C files_exe/lifegame_random
-		# 	cp files_exe/lifegame_random/lifegame_random.exe fs_system/0600.exe
-		# fi
 
 		tools/make_fs fs_system fs_system.img
 	) >/dev/null
