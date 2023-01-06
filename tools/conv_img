@@ -1,0 +1,138 @@
+#!/bin/bash
+
+# set -uex
+set -ue
+
+# 現状、256タイルを超えるサイズには未対応
+MAX_NUM_TILES=256
+
+usage() {
+	echo 'Usage:' 1>&2
+	echo -e "\t$0 SRC_IMG_FILE DST_IMG_FILE" 1>&2
+	echo -e "\t$0 -h" 1>&2
+}
+
+if [ $# -eq 1 ]; then
+	if [ "$1" = '-h' ]; then
+		usage
+		exit 0
+	fi
+
+	usage
+	exit 1
+fi
+if [ $# -ne 2 ]; then
+	usage
+	exit 1
+fi
+
+SRC_IMG_FILE=$1
+DST_IMG_FILE=$2
+
+txt22bpp() {
+	local txt=$1
+	local out=$2
+
+	local msb=''
+	local lsb=''
+	for i in $(seq 64); do
+		local ch=$(cut -c${i} ${txt})
+		case $ch in
+		A)
+			msb="${msb}1"
+			lsb="${lsb}1"
+			;;
+		B)
+			msb="${msb}1"
+			lsb="${lsb}0"
+			;;
+		C)
+			msb="${msb}0"
+			lsb="${lsb}1"
+			;;
+		D)
+			msb="${msb}0"
+			lsb="${lsb}0"
+			;;
+		esac
+		if [ $((i % 8)) -eq 0 ]; then
+			local msb_hex=$(echo "obase=16;ibase=2;${msb}" | bc)
+			local lsb_hex=$(echo "obase=16;ibase=2;${lsb}" | bc)
+			echo -en "\x${lsb_hex}\x${msb_hex}" >>${out}
+			msb=''
+			lsb=''
+		fi
+	done
+}
+
+# 作業ディレクトリ作成
+tempdir="${DST_IMG_FILE}_temp"
+mkdir ${tempdir}
+trap "rm -rf $tempdir" EXIT
+
+# 元ファイル名から拡張子を除いた部分を取得
+src_name=$(basename $SRC_IMG_FILE | rev | cut -d'.' -f2- | rev)
+
+# 元画像をグレースケールへ変換
+convert $SRC_IMG_FILE -type GrayScale $tempdir/${src_name}_gray.png
+
+# さらに4色へ原色
+convert $tempdir/${src_name}_gray.png -depth 2 $tempdir/${src_name}_depth2.png
+# ↑による4色への減色が汚くなる場合、減色は予めGIMP等で行っておくと良い。
+# その場合、↑のconvertコマンドはコメントアウトして↓を有効化すること
+# cp $tempdir/${src_name}_gray.png $tempdir/${src_name}_depth2.png
+
+# PGM形式へ変換
+convert $tempdir/${src_name}_depth2.png $tempdir/${src_name}_depth2.pgm
+
+# 減色した結果、残った4色を各8進数で変数へ取得
+oct4col=$(sed -n '$p' $tempdir/${src_name}_depth2.pgm | od -bv -w1 \
+		  | cut -d' ' -f2 | head -n -1 | sort -nu | sed 's/^/\\/' \
+		  | tr -d '\n')
+
+# 画像を8x8で分割
+mkdir $tempdir/${src_name}_crop
+convert $tempdir/${src_name}_depth2.pgm \
+	-crop 8x8 $tempdir/${src_name}_crop/%03d.pgm
+
+# 分割した全画像のmd5と、重複除去したmd5のリストを作成
+md5sum $tempdir/${src_name}_crop/* >$tempdir/${src_name}_crop.md5
+cut -d' ' -f1 $tempdir/${src_name}_crop.md5 | sort -u >$tempdir/${src_name}_crop_md5_su.txt
+num_tiles=$(wc -l $tempdir/${src_name}_crop_md5_su.txt | cut -d' ' -f1)
+if [ $num_tiles -gt $MAX_NUM_TILES ]; then
+	echo "Error: Number of unsupported tiles. (num_tiles=${num_tiles} > 256)" 1>&2
+	exit 1
+fi
+for md5 in $(cat $tempdir/${src_name}_crop_md5_su.txt); do
+	grep -w $md5 $tempdir/${src_name}_crop.md5 | head -n 1
+done >$tempdir/${src_name}_crop_su.md5
+
+# 画像定義領域を生成
+for md5 in $(cut -d' ' -f1 $tempdir/${src_name}_crop.md5); do
+	tile_num=$(awk '$0=="'$md5'"{print NR - 1}' $tempdir/${src_name}_crop_md5_su.txt)
+	echo -en "\x$(printf '%02x' $tile_num)"
+done >$tempdir/img_def_area.o
+
+# 分割したそれぞれを、4色を'A'・'B'・'C'・'D'の文字で表すテキストへ変換し、
+# 2bppへ変換、そのままタイル定義領域を生成
+mkdir $tempdir/${src_name}_txt
+mkdir $tempdir/${src_name}_2bpp
+for pgm_path in $(rev $tempdir/${src_name}_crop_su.md5 | cut -d' ' -f1 | rev); do
+	pgm_name=$(basename $pgm_path | rev | cut -d'.' -f2- | rev)
+	sed -n '$p' $pgm_path | tr "$oct4col" 'ABCD' >$tempdir/${src_name}_txt/${pgm_name}.txt
+
+	txt22bpp $tempdir/${src_name}_txt/${pgm_name}.txt $tempdir/${src_name}_2bpp/${pgm_name}.2bpp
+
+	cat $tempdir/${src_name}_2bpp/${pgm_name}.2bpp
+done >$tempdir/tile_def_area.o
+
+# タイル定義領域サイズを生成
+sz=$(stat -c '%s' $tempdir/tile_def_area.o)
+sz_hex=$(printf '%04x' $sz)
+(
+	echo -en "\x$(echo $sz_hex | cut -c3-4)"
+	echo -en "\x$(echo $sz_hex | cut -c1-2)"
+) >$tempdir/tile_def_area_size.o
+
+# 変換結果を生成
+cat $tempdir/tile_def_area_size.o $tempdir/tile_def_area.o $tempdir/img_def_area.o >$DST_IMG_FILE
