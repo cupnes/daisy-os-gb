@@ -6,7 +6,7 @@
 | --- | --- | --- | --- |
 | 0 | `tile_def_area_size` | タイル定義領域サイズ | 2 |
 | 2 | `tile_def_area` | タイル定義領域 | `tile_def_area_size` |
-| 2 + `tile_def_area_size` | `image_def_area` | 画像定義領域 | 360 (20 * 18[タイル]) |
+| 2 + `tile_def_area_size` | `img_def_area` | 画像定義領域 | 360 (20 * 18[タイル]) |
 
 ### タイル定義領域サイズ
 現状、4096バイト(256タイル)を超えるサイズには未対応。
