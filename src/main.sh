@@ -985,9 +985,6 @@ fadr=$(calc16 "${a_tn_to_addr}+${fsz}")
 a_view_img=$(four_digits $fadr)
 echo -e "a_view_img=$a_view_img" >>$MAP_FILE_NAME
 f_view_img() {
-	# 画像解像度は16x13タイル(128x104ピクセル)固定
-	# なので、ファイルサイズは0x0d00固定
-
 	# push
 	lr35902_push_reg regAF
 	lr35902_push_reg regBC
@@ -997,34 +994,36 @@ f_view_img() {
 	# ファイル番号をBへコピー
 	lr35902_copy_to_from regB regA
 
-	# 次に描画するタイル番号を0x30で初期化
-	lr35902_set_reg regA 30
-	lr35902_copy_to_addr_from_regA $var_view_img_nt
-
-	# 次に使用するタイルアドレスを設定
-	local ntadr=$(calc16 "${GBOS_TILE_DATA_START}+300")
-	lr35902_set_reg regA $(echo $ntadr | cut -c3-4)
-	lr35902_copy_to_addr_from_regA $var_view_img_ntadr_bh
-	lr35902_set_reg regA $(echo $ntadr | cut -c1-2)
-	lr35902_copy_to_addr_from_regA $var_view_img_ntadr_th
-
-	# 次に描画するタイルデータアドレスを設定
+	# regDEへ描画する画像データアドレスを取得
+	## 「ファイルシステムベースアドレス」から「最初のファイルの『ファイルデータへのオフセット』」へのオフセット
 	local file_ofs_1st_ofs=0008
+	## regHLへファイルシステム領域ベースアドレスを設定
 	lr35902_copy_to_regA_from_addr $var_fs_base_bh
 	lr35902_copy_to_from regL regA
 	lr35902_copy_to_regA_from_addr $var_fs_base_th
 	lr35902_copy_to_from regH regA
+	## regDEへ「最初のファイルの『ファイルデータへのオフセット』」へのオフセットを設定
 	lr35902_set_reg regDE $file_ofs_1st_ofs
+	## regHL += regDE し、regHLへ最初のファイルの『ファイルデータへのオフセット』のアドレスを設定
 	lr35902_add_to_regHL regDE
+	## regA = regB(ファイル番号)
 	lr35902_copy_to_from regA regB
+	## regA == 0 ?
 	lr35902_compare_regA_and 00
 	(
-		# 描画するファイル番号が0以外の場合
+		# regA != 0 の場合
+		# (描画するファイル番号が0以外の場合)
 
+		# regDEへファイル属性情報1つ分のサイズを設定
 		lr35902_set_reg regDE $(four_digits $GBOS_FS_FILE_ATTR_SZ)
 
+		# 目的のファイルの『ファイルデータへのオフセット』に到達するまで
+		# regHLへregDEを加算し続ける
 		(
+			# regHL += regDE
 			lr35902_add_to_regHL regDE
+
+			# regA--
 			lr35902_dec regA
 		) >src/f_view_img.1.o
 		cat src/f_view_img.1.o
@@ -1034,44 +1033,25 @@ f_view_img() {
 	local sz_2=$(stat -c '%s' src/f_view_img.2.o)
 	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_2)
 	cat src/f_view_img.2.o
-	## ファイル領域へのオフセット取得
+	## regDEへファイルデータへのオフセット取得
 	lr35902_copyinc_to_regA_from_ptrHL
 	lr35902_copy_to_from regE regA
 	lr35902_copy_to_from regA ptrHL
 	lr35902_copy_to_from regD regA
-	## ファイルサイズ(2バイト)を飛ばす
-	lr35902_inc regDE
-	lr35902_inc regDE
-	## FSベースアドレスと足してファイルデータ先頭アドレス取得
+	## FSベースアドレスと足してregHLへファイルデータ先頭アドレス取得
 	lr35902_copy_to_regA_from_addr $var_fs_base_bh
 	lr35902_copy_to_from regL regA
 	lr35902_copy_to_regA_from_addr $var_fs_base_th
 	lr35902_copy_to_from regH regA
 	lr35902_add_to_regHL regDE
-	## ファイルデータ領域のアドレスを変数へ設定
-	lr35902_copy_to_from regA regL
-	lr35902_copy_to_addr_from_regA $var_view_img_dtadr_bh
-	lr35902_copy_to_from regA regH
-	lr35902_copy_to_addr_from_regA $var_view_img_dtadr_th
+	## ファイルサイズ(2バイト)を飛ばす
+	lr35902_inc regHL
+	lr35902_inc regHL
+	## regDE = regHL
+	lr35902_copy_to_from regE regL
+	lr35902_copy_to_from regD regH
 
-	# 次に描画するウィンドウタイル座標を設定
-	lr35902_set_reg regA 03
-	lr35902_copy_to_addr_from_regA $var_view_img_nyt
-	lr35902_set_reg regA 02
-	lr35902_copy_to_addr_from_regA $var_view_img_nxt
-
-	# DASのview_imgビットを立てる
-	lr35902_copy_to_regA_from_addr $var_draw_act_stat
-	lr35902_set_bitN_of_reg $GBOS_DA_BITNUM_VIEW_IMG regA
-	lr35902_copy_to_addr_from_regA $var_draw_act_stat
-
-	# ウィンドウステータスに「画像ファイル表示中」を設定
-	lr35902_copy_to_regA_from_addr $var_win_stat
-	## 「ディレクトリ表示中」はクリア
-	lr35902_res_bitN_of_reg $GBOS_WST_BITNUM_DIR regA
-	## 「画像ファイル表示中」を設定
-	lr35902_set_bitN_of_reg $GBOS_WST_BITNUM_IMG regA
-	lr35902_copy_to_addr_from_regA $var_win_stat
+	
 
 	# pop & return
 	lr35902_pop_reg regHL
