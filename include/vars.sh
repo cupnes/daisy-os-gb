@@ -29,7 +29,7 @@ var_da_var6=c00c	# DA用変数6
 # (include/binbio.sh 参照)
 
 var_clr_win_nyt=c00d	# - clr_win: 次にクリアするウィンドウタイル座標Y
-var_view_img_nt=c00e	# view_img: 次に描画するタイル番号
+var_view_img_state=c00e	# view_img: ステート番号
 var_view_img_ntadr_bh=c00f	# view_img: 次に使用するタイルアドレス(下位8ビット)
 var_view_img_ntadr_th=c010	# view_img: 次に使用するタイルアドレス(上位8ビット)
 var_view_img_dtadr_bh=c011	# view_img: 次に描画するタイルデータアドレス(下位8ビット)

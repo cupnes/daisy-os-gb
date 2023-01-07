@@ -979,6 +979,7 @@ f_tn_to_addr() {
 
 # 画像ファイルを表示
 # in : regA - 表示するファイル番号(0始まり)
+# ※ VRAMのタイルパターンテーブル(0x8000〜)は破壊される
 f_tn_to_addr >src/f_tn_to_addr.o
 fsz=$(to16 $(stat -c '%s' src/f_tn_to_addr.o))
 fadr=$(calc16 "${a_tn_to_addr}+${fsz}")
@@ -988,13 +989,34 @@ f_view_img() {
 	# push
 	lr35902_push_reg regAF
 	lr35902_push_reg regBC
+
+	# ファイル番号をregBへ退避
+	lr35902_copy_to_from regB regA
+
+	# tdq.statにemptyフラグはセットされているか?
+	lr35902_copy_to_regA_from_addr $var_tdq_stat
+	lr35902_test_bitN_of_reg $GBOS_TDQ_STAT_BITNUM_EMPTY regA
+	(
+		# tdq.statにemptyフラグがセットされていない場合
+
+		# 変数view_img_stateにtdq消費待ちを設定
+		lr35902_set_reg regA $GBOS_VIEW_IMG_STAT_WAIT_FOR_TDQEMP
+		lr35902_copy_to_addr_from_regA $var_view_img_state
+
+		# pop & return
+		lr35902_pop_reg regBC
+		lr35902_pop_reg regAF
+		lr35902_return
+	) >src/f_view_img.tdq_not_emp.o
+	local sz_tdq_not_emp=$(stat -c '%s' src/f_view_img.tdq_not_emp.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_tdq_not_emp)
+	cat src/f_view_img.tdq_not_emp.o
+
+	# push
 	lr35902_push_reg regDE
 	lr35902_push_reg regHL
 
-	# ファイル番号をBへコピー
-	lr35902_copy_to_from regB regA
-
-	# regDEへ描画する画像データアドレスを取得
+	# regHLへ描画する画像データアドレスを取得
 	## 「ファイルシステムベースアドレス」から「最初のファイルの『ファイルデータへのオフセット』」へのオフセット
 	local file_ofs_1st_ofs=0008
 	## regHLへファイルシステム領域ベースアドレスを設定
@@ -1047,200 +1069,145 @@ f_view_img() {
 	## ファイルサイズ(2バイト)を飛ばす
 	lr35902_inc regHL
 	lr35902_inc regHL
-	## regDE = regHL
-	lr35902_copy_to_from regE regL
-	lr35902_copy_to_from regD regH
 
-	
+	# V-Blankの開始を待つ
+	# ※ regAFは破壊される
+	gb_wait_for_vblank_to_start
 
-	# pop & return
-	lr35902_pop_reg regHL
-	lr35902_pop_reg regDE
-	lr35902_pop_reg regBC
-	lr35902_pop_reg regAF
-	lr35902_return
-}
+	# LCDを停止する
+	# - 停止の間はVRAMとOAMに自由にアクセスできる(vblankとか関係なく)
+	lr35902_set_reg regA ${GBOS_LCDC_BASE}
+	lr35902_copy_to_ioport_from_regA $GB_IO_LCDC
 
-# 画像ファイルを表示する周期関数
-f_view_img >src/f_view_img.o
-fsz=$(to16 $(stat -c '%s' src/f_view_img.o))
-fadr=$(calc16 "${a_view_img}+${fsz}")
-a_view_img_cyc=$(four_digits $fadr)
-echo -e "a_view_img_cyc=$a_view_img_cyc" >>$MAP_FILE_NAME
-f_view_img_cyc() {
-	# push
-	lr35902_push_reg regAF
-	lr35902_push_reg regBC
-	lr35902_push_reg regDE
-	lr35902_push_reg regHL
+	# 繰り返し使用する処理をファイル書き出し
+	## ループを脱出
+	(
+		lr35902_rel_jump $(two_digits_d 2)
+	) >src/f_view_img.break.o
+	local sz_break=$(stat -c '%s' src/f_view_img.break.o)
 
-	# 次に描画するタイル番号をBへロード
-	lr35902_copy_to_regA_from_addr $var_view_img_nt
+	# タイル定義領域の内容をVRAMのタイルパターンテーブル(0x8000〜)へコピー
+	## regBCへタイル定義領域サイズを取得
+	lr35902_copyinc_to_regA_from_ptrHL
+	lr35902_copy_to_from regC regA
+	lr35902_copyinc_to_regA_from_ptrHL
 	lr35902_copy_to_from regB regA
-
-	# 次に使用するタイルアドレスをHLへロード
-	lr35902_copy_to_regA_from_addr $var_view_img_ntadr_bh
-	lr35902_copy_to_from regL regA
-	lr35902_copy_to_regA_from_addr $var_view_img_ntadr_th
-	lr35902_copy_to_from regH regA
-
-	# 退避する必要の有無確認
-	# (タイル番号 + 1 <= タイル数 なら退避必要
-	#  タイル番号 + 1 > タイル数 なら退避不要
-	#  タイル番号(regB) > (タイル数 - 1)(regA) なら退避不要)
-	local save_base_tn=$(calc16_2 "${GBOS_NUM_ALL_TILES}-1")
-	lr35902_set_reg regA $save_base_tn
-	lr35902_compare_regA_and regB
+	## regDE = VRAMのタイルパターンテーブルベースアドレス
+	lr35902_set_reg regDE $GBOS_TILE_DATA_START
+	## regBCのサイズ分だけregHLからregDEへコピー
 	(
-		# 退避処理
+		# regA = ptrHL, regHL++
+		lr35902_copyinc_to_regA_from_ptrHL
 
-		# HLをpush
-		lr35902_push_reg regHL
-
-		# 退避するタイルのアドレスをDEへ設定
-		lr35902_copy_to_from regD regH
-		lr35902_copy_to_from regE regL
-
-		# HLへ退避先のメモリアドレスを設定
-		## DE+5000hを設定する(D300h-)
-		lr35902_copy_to_from regA regB
-		lr35902_set_reg regBC 5000
-		lr35902_add_to_regHL regBC
-		lr35902_copy_to_from regB regA
-
-		# Cへ16を設定(ループ用カウンタ。16バイト)
-		lr35902_set_reg regC 10
-
-		# Cの数だけ1バイトずつ[DE]->[HL]へコピー
-		(
-			lr35902_copy_to_from regA ptrDE
-			lr35902_copyinc_to_ptrHL_from_regA
-			lr35902_inc regDE
-			lr35902_dec regC
-		) >src/f_view_img_cyc.2.o
-		cat src/f_view_img_cyc.2.o
-		local sz_2=$(stat -c '%s' src/f_view_img_cyc.2.o)
-		lr35902_rel_jump_with_cond NZ $(two_comp_d $((sz_2+2)))
-
-		# HLをpop
-		lr35902_pop_reg regHL
-	) >src/f_view_img_cyc.1.o
-	local sz_1=$(stat -c '%s' src/f_view_img_cyc.1.o)
-	lr35902_rel_jump_with_cond C $(two_digits_d $sz_1)
-	cat src/f_view_img_cyc.1.o
-
-	# ファイルにかかれているタイルデータを30以降のタイル領域へロード
-	## 次に描画するタイルデータアドレスをDEへ設定
-	lr35902_copy_to_regA_from_addr $var_view_img_dtadr_bh
-	lr35902_copy_to_from regE regA
-	lr35902_copy_to_regA_from_addr $var_view_img_dtadr_th
-	lr35902_copy_to_from regD regA
-
-	## Cへ16を設定(ループ用カウンタ。16バイト)
-	lr35902_set_reg regC 10
-
-	## Cの数だけ1バイトずつ[DE]->[HL]へコピー
-	(
-		lr35902_copy_to_from regA ptrDE
-		lr35902_copyinc_to_ptrHL_from_regA
+		# ptrDE = regA, regDE++
+		lr35902_copy_to_from ptrDE regA
 		lr35902_inc regDE
-		lr35902_dec regC
-	) >src/f_view_img_cyc.3.o
-	cat src/f_view_img_cyc.3.o
-	local sz_3=$(stat -c '%s' src/f_view_img_cyc.3.o)
-	lr35902_rel_jump_with_cond NZ $(two_comp_d $((sz_3+2)))
 
-	## 次に描画するタイルデータアドレス更新
-	lr35902_copy_to_from regA regE
-	lr35902_copy_to_addr_from_regA $var_view_img_dtadr_bh
-	lr35902_copy_to_from regA regD
-	lr35902_copy_to_addr_from_regA $var_view_img_dtadr_th
+		# regBC--
+		lr35902_dec regBC
 
-	# 30〜ffのタイルを(xt,yt)=(02,03)のdrawable領域へ配置
-	## 1サイクルで1タイル
+		# regBC == 0 ならループを脱出
+		lr35902_clear_reg regA
+		lr35902_or_to_regA regC
+		lr35902_or_to_regA regB
+		lr35902_compare_regA_and 00
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_break)
+		cat src/f_view_img.break.o
+	) >src/f_view_img.cpy_de_hl.o
+	cat src/f_view_img.cpy_de_hl.o
+	local sz_cpy_de_hl=$(stat -c '%s' src/f_view_img.cpy_de_hl.o)
+	lr35902_rel_jump $(two_comp_d $((sz_cpy_de_hl + 2)))	# 2
 
-	## 次に描画するウィンドウタイル座標を(X,Y)=(E,D)へ取得
-	lr35902_copy_to_regA_from_addr $var_view_img_nyt
-	lr35902_copy_to_from regD regA
-	lr35902_copy_to_regA_from_addr $var_view_img_nxt
-	lr35902_copy_to_from regE regA
-
-	## 次に描画するタイル番号をAへ設定
-	lr35902_copy_to_from regA regB
-
-	## タイルを描画
-	lr35902_call $a_lay_tile_at_wtcoord
-
-	# 終了判定
-	## 今描画したタイルは最後(0xff)のタイルか?
-	lr35902_compare_regA_and ff
+	# 画像定義領域の内容をVRAMの背景マップ領域へ1行ずつコピー
+	## regDEへVRAMの背景マップ領域のベースアドレスを設定
+	lr35902_set_reg regDE $GBOS_BG_TILEMAP_START
+	## regBへ表示領域の縦方向のタイル数(行数)を設定
+	lr35902_set_reg regB $GB_DISP_HEIGHT_T
+	## regBが0になるまでregHLからregDEへ表示領域の縦方向のタイル数ずつコピー
 	(
-		# 最後のタイルである場合
-
-		# 終わったらDASのview_imgのビットを下ろす
-		lr35902_copy_to_regA_from_addr $var_draw_act_stat
-		lr35902_res_bitN_of_reg $GBOS_DA_BITNUM_VIEW_IMG regA
-		lr35902_copy_to_addr_from_regA $var_draw_act_stat
-	) >src/f_view_img_cyc.4.o
-	(
-		# 最後のタイルでない場合
-
-		# 次に描画するタイル番号を更新
-		lr35902_inc regA
-		lr35902_copy_to_addr_from_regA $var_view_img_nt
-
-		# 次に使用するタイルアドレスを更新
-		## HLがインクリメント済みの状態
-		lr35902_copy_to_from regA regL
-		lr35902_copy_to_addr_from_regA $var_view_img_ntadr_bh
-		lr35902_copy_to_from regA regH
-		lr35902_copy_to_addr_from_regA $var_view_img_ntadr_th
-
-		# 次に描画するウィンドウタイル座標更新
-		## 今描画したX座標はウィンドウ右端か?
-		lr35902_copy_to_from regA regE
-		lr35902_compare_regA_and $(calc16_2 "${GBOS_WIN_DRAWABLE_WIDTH_T}+1")
+		# ジャンプサイズ計算のため予めファイル書き出し
+		## regDEを表示領域外のタイル数分進める処理
 		(
-			# 右端である場合
+			# regCへ表示領域外のタイル数を設定
+			lr35902_set_reg regC $(calc16_2 "${GB_SC_WIDTH_T}-${GB_DISP_WIDTH_T}")
 
-			# X座標を左端座標へ更新
-			lr35902_set_reg regA 02
-			lr35902_copy_to_addr_from_regA $var_view_img_nxt
+			# regDE += regC
+			## regHLをスタックへ退避
+			lr35902_push_reg regHL
+			## regHL = regDE
+			lr35902_copy_to_from regL regE
+			lr35902_copy_to_from regH regD
+			## regBをregAへ退避
+			lr35902_copy_to_from regA regB
+			## regB = 0
+			lr35902_clear_reg regB
+			## regHL += regBC
+			lr35902_add_to_regHL regBC
+			## regDE = regHL
+			lr35902_copy_to_from regE regL
+			lr35902_copy_to_from regD regH
+			## regBをregAから復帰
+			lr35902_copy_to_from regB regA
+			## regHLをスタックから復帰
+			lr35902_pop_reg regHL
+		) >src/f_view_img.fwd_de.o
+		local sz_fwd_de=$(stat -c '%s' src/f_view_img.fwd_de.o)
 
-			# Y座標をインクリメント
-			lr35902_copy_to_from regA regD
-			lr35902_inc regA
-			lr35902_copy_to_addr_from_regA $var_view_img_nyt
-		) >src/f_view_img_cyc.6.o
+		# regHLからregDEへ表示領域の縦方向のタイル数分コピー
+		## regCへ表示領域の縦方向のタイル数を設定
+		lr35902_set_reg regC $GB_DISP_WIDTH_T
+		## regCの数だけregHLからregDEへコピー
 		(
-			# 右端でない場合
+			# regA = ptrHL, regHL++
+			lr35902_copyinc_to_regA_from_ptrHL
 
-			# X座標をインクリメント
-			lr35902_copy_to_from regA regE
-			lr35902_inc regA
-			lr35902_copy_to_addr_from_regA $var_view_img_nxt
+			# ptrDE = regA, regDE++
+			lr35902_copy_to_from ptrDE regA
+			lr35902_inc regDE
 
-			# 右端である場合の処理を飛ばす
-			local sz_6=$(stat -c '%s' src/f_view_img_cyc.6.o)
-			lr35902_rel_jump $(two_digits_d $sz_6)
-		) >src/f_view_img_cyc.7.o
-		local sz_7=$(stat -c '%s' src/f_view_img_cyc.7.o)
-		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_7)
-		## 右端でない場合
-		cat src/f_view_img_cyc.7.o
-		## 右端である場合
-		cat src/f_view_img_cyc.6.o
+			# regC--
+			lr35902_dec regC
 
-		## 最後のタイルである場合の処理を飛ばす
-		local sz_4=$(stat -c '%s' src/f_view_img_cyc.4.o)
-		lr35902_rel_jump $(two_digits_d $sz_4)
-	) >src/f_view_img_cyc.5.o
-	local sz_5=$(stat -c '%s' src/f_view_img_cyc.5.o)
-	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_5)
-	## 最後のタイルでない場合
-	cat src/f_view_img_cyc.5.o
-	## 最後のタイルである場合
-	cat src/f_view_img_cyc.4.o
+			# regC == 0 ならループを脱出
+			lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_break)
+			cat src/f_view_img.break.o
+		) >src/f_view_img.cpy_line.o
+		cat src/f_view_img.cpy_line.o
+		local sz_cpy_line=$(stat -c '%s' src/f_view_img.cpy_line.o)
+		lr35902_rel_jump $(two_comp_d $((sz_cpy_line + 2)))	# 2
+
+		# regB--
+		lr35902_dec regB
+
+		# regB == 0 ?
+		(
+			# regB == 0 の場合
+
+			# ループを脱出
+			lr35902_rel_jump $(two_digits_d $((sz_fwd_de + 2)))
+		) >src/f_view_img.break_bg.o
+		local sz_break_bg=$(stat -c '%s' src/f_view_img.break_bg.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_break_bg)
+		cat src/f_view_img.break_bg.o
+
+		# regDEを表示領域外のタイル数分進める
+		cat src/f_view_img.fwd_de.o
+	) >src/f_view_img.cpy_bg.o
+	cat src/f_view_img.cpy_bg.o
+	local sz_cpy_bg=$(stat -c '%s' src/f_view_img.cpy_bg.o)
+	lr35902_rel_jump $(two_comp_d $((sz_cpy_bg + 2)))	# 2
+
+	# スプライトオフでLCD再開
+	lr35902_set_reg regA $(calc16 "${GBOS_LCDC_BASE}+${GB_LCDC_BIT_DE}-${GB_LCDC_BIT_OBJE}")
+	lr35902_copy_to_ioport_from_regA $GB_IO_LCDC
+
+	# 変数mouse_enableにマウス無効化設定
+	lr35902_clear_reg regA
+	lr35902_copy_to_addr_from_regA $var_mouse_enable
+
+	# 変数view_img_stateに画像表示中を設定
+	lr35902_set_reg regA $GBOS_VIEW_IMG_STAT_DURING_IMG_DISP
+	lr35902_copy_to_addr_from_regA $var_view_img_state
 
 	# pop & return
 	lr35902_pop_reg regHL
@@ -1251,9 +1218,9 @@ f_view_img_cyc() {
 }
 
 # タイルデータを復帰する周期ハンドラを登録する関数
-f_view_img_cyc >src/f_view_img_cyc.o
-fsz=$(to16 $(stat -c '%s' src/f_view_img_cyc.o))
-fadr=$(calc16 "${a_view_img_cyc}+${fsz}")
+f_view_img >src/f_view_img.o
+fsz=$(to16 $(stat -c '%s' src/f_view_img.o))
+fadr=$(calc16 "${a_view_img}+${fsz}")
 a_rstr_tiles=$(four_digits $fadr)
 echo -e "a_rstr_tiles=$a_rstr_tiles" >>$MAP_FILE_NAME
 f_rstr_tiles() {
@@ -6999,74 +6966,12 @@ echo -e "a_binbio_event_btn_a_release=$a_binbio_event_btn_a_release" >>$MAP_FILE
 f_binbio_event_btn_a_release() {
 	# push
 	lr35902_push_reg regAF
-	lr35902_push_reg regDE
-	lr35902_push_reg regHL
 
-	# マウスカーソル(X,Y)をタイル座標へ変換し(regE,regD)へ設定
-	## regEへマウスカーソル先端のX座標を取得
-	lr35902_copy_to_regA_from_addr $var_mouse_x
-	lr35902_sub_to_regA 08
-	lr35902_copy_to_from regE regA
-	## regEを3ビット右シフト
-	lr35902_shift_right_logical regE
-	lr35902_shift_right_logical regE
-	lr35902_shift_right_logical regE
-	## regDへマウスカーソル先端のY座標を取得
-	lr35902_copy_to_regA_from_addr $var_mouse_y
-	lr35902_sub_to_regA 10
-	lr35902_copy_to_from regD regA
-	## regEを3ビット右シフト
-	lr35902_shift_right_logical regD
-	lr35902_shift_right_logical regD
-	lr35902_shift_right_logical regD
-
-	# タイル座標(regE,regD)の細胞アドレスをregHLへ取得
-	lr35902_call $a_binbio_find_cell_data_by_tile_xy
-
-	# 見つかった(regHL != NULL)か?
-	lr35902_xor_to_regA regA
-	lr35902_or_to_regA regL
-	lr35902_or_to_regA regH
-	lr35902_compare_regA_and 00
-	(
-		# 見つからなかった(regHL == NULL)場合
-
-		# pop & return
-		lr35902_pop_reg regHL
-		lr35902_pop_reg regDE
-		lr35902_pop_reg regAF
-		lr35902_return
-	) >src/f_binbio_event_btn_a_release.1.o
-	local sz_1=$(stat -c '%s' src/f_binbio_event_btn_a_release.1.o)
-	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_1)
-	cat src/f_binbio_event_btn_a_release.1.o
-
-	# 取得した細胞のflags.fixをトグルする
-	lr35902_test_bitN_of_reg $BINBIO_CELL_FLAGS_BIT_FIX ptrHL
-	(
-		# flags.fix == 0 の場合
-
-		# flags.fixをセットする
-		lr35902_set_bitN_of_reg $BINBIO_CELL_FLAGS_BIT_FIX ptrHL
-	) >src/f_binbio_event_btn_a_release.2.o
-	(
-		# flags.fix == 1 の場合
-
-		# flags.fixをクリアする
-		lr35902_res_bitN_of_reg $BINBIO_CELL_FLAGS_BIT_FIX ptrHL
-
-		# flags.fix == 0 の場合の処理を飛ばす
-		local sz_2=$(stat -c '%s' src/f_binbio_event_btn_a_release.2.o)
-		lr35902_rel_jump $(two_digits_d $sz_2)
-	) >src/f_binbio_event_btn_a_release.3.o
-	local sz_3=$(stat -c '%s' src/f_binbio_event_btn_a_release.3.o)
-	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_3)
-	cat src/f_binbio_event_btn_a_release.3.o	# flags.fix == 1 の場合
-	cat src/f_binbio_event_btn_a_release.2.o	# flags.fix == 0 の場合
+	# 画像表示
+	lr35902_set_reg regA $BINBIO_EVENT_BTN_A_RELEASE_FILE_NUM
+	lr35902_call $a_view_img
 
 	# pop & return
-	lr35902_pop_reg regHL
-	lr35902_pop_reg regDE
 	lr35902_pop_reg regAF
 	lr35902_return
 }
@@ -7273,7 +7178,6 @@ global_functions() {
 	f_clr_win_cyc
 	f_tn_to_addr
 	f_view_img
-	f_view_img_cyc
 	f_rstr_tiles
 	f_rstr_tiles_cyc
 	f_view_dir
@@ -7728,6 +7632,9 @@ init() {
 	lr35902_copy_to_addr_from_regA $var_tdq_stat
 	# - マウス有効化
 	lr35902_copy_to_addr_from_regA $var_mouse_enable
+	# - 画像表示ステータスを画像表示なしで初期化
+	lr35902_set_reg regA $GBOS_VIEW_IMG_STAT_NONE
+	lr35902_copy_to_addr_from_regA $var_view_img_state
 	# - タイマーハンドラ初期化
 	timer_init_handler
 
@@ -7842,14 +7749,14 @@ btn_release_handler() {
 	lr35902_rel_jump_with_cond Z $(two_digits_d $sz)
 	cat src/btn_release_handler.1.o
 
-	# # Aボタンの確認
-	# lr35902_test_bitN_of_reg $GBOS_A_KEY_BITNUM regA
-	# (
-	# 	lr35902_call $a_binbio_event_btn_a_release
-	# ) >src/btn_release_handler.2.o
-	# sz=$(stat -c '%s' src/btn_release_handler.2.o)
-	# lr35902_rel_jump_with_cond Z $(two_digits_d $sz)
-	# cat src/btn_release_handler.2.o
+	# Aボタンの確認
+	lr35902_test_bitN_of_reg $GBOS_A_KEY_BITNUM regA
+	(
+		lr35902_call $a_binbio_event_btn_a_release
+	) >src/btn_release_handler.2.o
+	sz=$(stat -c '%s' src/btn_release_handler.2.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz)
+	cat src/btn_release_handler.2.o
 
 	# セレクトボタンの確認
 	lr35902_test_bitN_of_reg $GBOS_SELECT_KEY_BITNUM regA
@@ -8004,9 +7911,6 @@ event_driven() {
 	lr35902_halt
 
 
-	# [処理棒の開始時点設定]
-	proc_bar_begin
-
 
 	# [マウスカーソル更新]
 
@@ -8100,8 +8004,42 @@ event_driven() {
 	lr35902_copy_to_addr_from_regA $var_prv_btn
 
 
-	# [バイナリ生物周期処理]
-	lr35902_call $a_binbio_do_cycle
+
+	# [画像表示処理]
+
+	# 現在、何らかの画像表示処理中か?
+	lr35902_copy_to_regA_from_addr $var_view_img_state
+	lr35902_compare_regA_and $GBOS_VIEW_IMG_STAT_NONE
+	(
+		# 画像表示処理中でない場合
+
+		# [バイナリ生物周期処理]
+		lr35902_call $a_binbio_do_cycle
+	) >src/event_driven.no_img_proc.o
+	(
+		# 何らかの画像表示処理中である場合
+
+		# tdq消費待ちか?
+		lr35902_compare_regA_and $GBOS_VIEW_IMG_STAT_WAIT_FOR_TDQEMP
+		(
+			# tdq消費待ちである場合
+
+			# 画像表示関数を再呼び出し
+			lr35902_call $a_view_img
+		) >src/event_driven.during_wait_tdqemp.o
+		local sz_during_wait_tdqemp=$(stat -c '%s' src/event_driven.during_wait_tdqemp.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_during_wait_tdqemp)
+		cat src/event_driven.during_wait_tdqemp.o
+
+		# 画像表示処理中でない場合の処理を飛ばす
+		local sz_no_img_proc=$(stat -c '%s' src/event_driven.no_img_proc.o)
+		lr35902_rel_jump $(two_digits_d $sz_no_img_proc)
+	) >src/event_driven.during_img_proc.o
+	local sz_during_img_proc=$(stat -c '%s' src/event_driven.during_img_proc.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_during_img_proc)
+	cat src/event_driven.during_img_proc.o	# 何らかの画像表示処理中である場合
+	cat src/event_driven.no_img_proc.o	# 画像表示処理中でない場合
+
 
 
 	# [キー入力処理]
@@ -8225,9 +8163,6 @@ event_driven() {
 	lr35902_copy_to_from regA regC			# 1
 	lr35902_copy_to_addr_from_regA $var_btn_stat	# 3
 
-
-	# [処理棒の終了時点設定]
-	proc_bar_end
 
 
 	# [割り込み待ち(halt)へ戻る]
