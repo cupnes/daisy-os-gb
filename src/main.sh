@@ -7106,8 +7106,10 @@ f_binbio_event_btn_a_release() {
 	# push
 	lr35902_push_reg regAF
 
+	# 現在のスライドのファイル番号を変数から取得
+	lr35902_copy_to_regA_from_addr $var_ss_current_file_num
+
 	# 画像表示
-	lr35902_set_reg regA $BINBIO_EVENT_BTN_A_RELEASE_FILE_NUM
 	lr35902_call $a_view_img
 
 	# pop & return
@@ -7765,6 +7767,9 @@ init() {
 	# - 画像表示ステータスを画像表示なしで初期化
 	lr35902_set_reg regA $GBOS_VIEW_IMG_STAT_NONE
 	lr35902_copy_to_addr_from_regA $var_view_img_state
+	# - slide show: 現在のスライドのファイル番号の初期値
+	lr35902_set_reg regA $SS_CURRENT_FILE_NUM_INIT
+	lr35902_copy_to_addr_from_regA $var_ss_current_file_num
 	# - タイマーハンドラ初期化
 	timer_init_handler
 
@@ -8154,8 +8159,10 @@ event_driven() {
 		(
 			# tdq消費待ちである場合
 
-			# 画像表示関数を再呼び出し
-			lr35902_set_reg regA $BINBIO_EVENT_BTN_A_RELEASE_FILE_NUM
+			# 現在のスライドのファイル番号を変数から取得
+			lr35902_copy_to_regA_from_addr $var_ss_current_file_num
+
+			# 画像表示
 			lr35902_call $a_view_img
 		) >src/event_driven.during_wait_tdqemp.o
 		local sz_during_wait_tdqemp=$(stat -c '%s' src/event_driven.during_wait_tdqemp.o)
