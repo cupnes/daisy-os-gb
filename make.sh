@@ -100,10 +100,11 @@ print_fs_system() {
 	(
 		mkdir -p fs_system
 
-		# retrogstudy_07_yohgami_gb_01.img
-		if [ ! -f fs_system/0100.img ]; then
-			cp files_img/retrogstudy_07_yohgami_gb_01.img fs_system/0100.img
-		fi
+		# retrogstudy_07_yohgami_gb_XX.img
+		for img_path in $(ls files_img/retrogstudy_07_yohgami_gb_??.img); do
+			n=$(echo $img_path | rev | cut -d'.' -f2 | cut -d'_' -f1 | rev)
+			cp $img_path fs_system/${n}00.img
+		done
 
 		tools/make_fs fs_system fs_system.img
 	) >/dev/null
