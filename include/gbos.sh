@@ -93,5 +93,6 @@ GBOS_VIEW_IMG_STAT_WAIT_FOR_TDQEMP=01	# tdq消費待ち
 GBOS_VIEW_IMG_STAT_DURING_IMG_DISP=02	# 画像表示中
 
 # slide show
-SS_CURRENT_FILE_NUM_INIT=00	# 現在のスライドのファイル番号の初期値
+SS_FIRST_FILE_NUM=00	# 最初のスライドのファイル番号
 SS_LAST_FILE_NUM=01	# 最後のスライドのファイル番号
+SS_CURRENT_FILE_NUM_INIT=$SS_FIRST_FILE_NUM	# 現在のスライドのファイル番号の初期値
