@@ -7258,10 +7258,60 @@ f_binbio_event_btn_b_release() {
 	lr35902_return
 }
 
-# バイナリ生物環境用のスタートボタンリリースイベントハンドラ
+# バイナリ生物環境用の→ボタンリリースイベントハンドラ
 f_binbio_event_btn_b_release >src/f_binbio_event_btn_b_release.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_event_btn_b_release.o))
 fadr=$(calc16 "${a_binbio_event_btn_b_release}+${fsz}")
+a_binbio_event_btn_right_release=$(four_digits $fadr)
+echo -e "a_binbio_event_btn_right_release=$a_binbio_event_btn_right_release" >>$MAP_FILE_NAME
+f_binbio_event_btn_right_release() {
+	# push
+	lr35902_push_reg regAF
+
+	# 画像処理中か?
+	lr35902_copy_to_regA_from_addr $var_view_img_state
+	lr35902_compare_regA_and $GBOS_VIEW_IMG_STAT_DURING_IMG_DISP
+	(
+		# 画像処理中でない場合
+
+		# pop & return
+		lr35902_pop_reg regAF
+		lr35902_return
+	) >src/f_binbio_event_btn_right_release.nothing_return.o
+	local sz_nothing_return=$(stat -c '%s' src/f_binbio_event_btn_right_release.nothing_return.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_nothing_return)
+	cat src/f_binbio_event_btn_right_release.nothing_return.o
+
+	# regAへ現在のスライドのファイル番号を取得
+	lr35902_copy_to_regA_from_addr $var_ss_current_file_num
+
+	# regA < 最後のスライドのファイル番号 ?
+	lr35902_compare_regA_and $SS_LAST_FILE_NUM
+	(
+		# regA < 最後のスライドのファイル番号 の場合
+
+		# regA++
+		lr35902_inc regA
+
+		# 画像表示
+		lr35902_call $a_view_img
+
+		# 現在のスライドのファイル番号変数を更新
+		lr35902_copy_to_addr_from_regA $var_ss_current_file_num
+	) >src/f_binbio_event_btn_right_release.update_img.o
+	local sz_update_img=$(stat -c '%s' src/f_binbio_event_btn_right_release.update_img.o)
+	lr35902_rel_jump_with_cond NC $(two_digits_d $sz_update_img)
+	cat src/f_binbio_event_btn_right_release.update_img.o
+
+	# pop & return
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
+# バイナリ生物環境用のスタートボタンリリースイベントハンドラ
+f_binbio_event_btn_right_release >src/f_binbio_event_btn_right_release.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_event_btn_right_release.o))
+fadr=$(calc16 "${a_binbio_event_btn_right_release}+${fsz}")
 a_binbio_event_btn_start_release=$(four_digits $fadr)
 echo -e "a_binbio_event_btn_start_release=$a_binbio_event_btn_start_release" >>$MAP_FILE_NAME
 f_binbio_event_btn_start_release() {
@@ -7395,6 +7445,7 @@ global_functions() {
 	f_binbio_do_cycle
 	f_binbio_event_btn_a_release
 	f_binbio_event_btn_b_release
+	f_binbio_event_btn_right_release
 	f_binbio_event_btn_start_release
 	f_binbio_event_btn_select_release
 }
@@ -7892,6 +7943,15 @@ btn_release_handler() {
 	sz=$(stat -c '%s' src/btn_release_handler.2.o)
 	lr35902_rel_jump_with_cond Z $(two_digits_d $sz)
 	cat src/btn_release_handler.2.o
+
+	# →ボタンの確認
+	lr35902_test_bitN_of_reg $GBOS_RIGHT_KEY_BITNUM regA
+	(
+		lr35902_call $a_binbio_event_btn_right_release
+	) >src/btn_release_handler.right.o
+	sz=$(stat -c '%s' src/btn_release_handler.right.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz)
+	cat src/btn_release_handler.right.o
 
 	# セレクトボタンの確認
 	lr35902_test_bitN_of_reg $GBOS_SELECT_KEY_BITNUM regA

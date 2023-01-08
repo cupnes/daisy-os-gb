@@ -94,3 +94,4 @@ GBOS_VIEW_IMG_STAT_DURING_IMG_DISP=02	# 画像表示中
 
 # slide show
 SS_CURRENT_FILE_NUM_INIT=00	# 現在のスライドのファイル番号の初期値
+SS_LAST_FILE_NUM=01	# 最後のスライドのファイル番号
