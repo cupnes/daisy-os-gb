@@ -8155,6 +8155,7 @@ event_driven() {
 			# tdq消費待ちである場合
 
 			# 画像表示関数を再呼び出し
+			lr35902_set_reg regA $BINBIO_EVENT_BTN_A_RELEASE_FILE_NUM
 			lr35902_call $a_view_img
 		) >src/event_driven.during_wait_tdqemp.o
 		local sz_during_wait_tdqemp=$(stat -c '%s' src/event_driven.during_wait_tdqemp.o)
