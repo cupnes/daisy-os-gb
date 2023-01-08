@@ -1079,13 +1079,6 @@ f_view_img() {
 	lr35902_set_reg regA ${GBOS_LCDC_BASE}
 	lr35902_copy_to_ioport_from_regA $GB_IO_LCDC
 
-	# 繰り返し使用する処理をファイル書き出し
-	## ループを脱出
-	(
-		lr35902_rel_jump $(two_digits_d 2)
-	) >src/f_view_img.break.o
-	local sz_break=$(stat -c '%s' src/f_view_img.break.o)
-
 	# タイル定義領域の内容をVRAMのタイルパターンテーブル(0x8000〜)へコピー
 	## regBCへタイル定義領域サイズを取得
 	lr35902_copyinc_to_regA_from_ptrHL
@@ -1111,8 +1104,7 @@ f_view_img() {
 		lr35902_or_to_regA regC
 		lr35902_or_to_regA regB
 		lr35902_compare_regA_and 00
-		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_break)
-		cat src/f_view_img.break.o
+		lr35902_rel_jump_with_cond Z 02
 	) >src/f_view_img.cpy_de_hl.o
 	cat src/f_view_img.cpy_de_hl.o
 	local sz_cpy_de_hl=$(stat -c '%s' src/f_view_img.cpy_de_hl.o)
@@ -1154,7 +1146,7 @@ f_view_img() {
 		local sz_fwd_de=$(stat -c '%s' src/f_view_img.fwd_de.o)
 
 		# regHLからregDEへ表示領域の縦方向のタイル数分コピー
-		## regCへ表示領域の縦方向のタイル数を設定
+		## regCへ表示領域の横方向のタイル数を設定
 		lr35902_set_reg regC $GB_DISP_WIDTH_T
 		## regCの数だけregHLからregDEへコピー
 		(
@@ -1169,8 +1161,7 @@ f_view_img() {
 			lr35902_dec regC
 
 			# regC == 0 ならループを脱出
-			lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_break)
-			cat src/f_view_img.break.o
+			lr35902_rel_jump_with_cond Z 02
 		) >src/f_view_img.cpy_line.o
 		cat src/f_view_img.cpy_line.o
 		local sz_cpy_line=$(stat -c '%s' src/f_view_img.cpy_line.o)
@@ -1179,16 +1170,8 @@ f_view_img() {
 		# regB--
 		lr35902_dec regB
 
-		# regB == 0 ?
-		(
-			# regB == 0 の場合
-
-			# ループを脱出
-			lr35902_rel_jump $(two_digits_d $((sz_fwd_de + 2)))
-		) >src/f_view_img.break_bg.o
-		local sz_break_bg=$(stat -c '%s' src/f_view_img.break_bg.o)
-		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_break_bg)
-		cat src/f_view_img.break_bg.o
+		# regB == 0 ならループを脱出
+		lr35902_rel_jump_with_cond Z $(two_digits_d $((sz_fwd_de + 2)))
 
 		# regDEを表示領域外のタイル数分進める
 		cat src/f_view_img.fwd_de.o
