@@ -89,6 +89,37 @@ GBOS_TMRR_BASE_TH=dc	# タイルミラー領域ベースアドレス(上位8ビ�
 GBOS_TOFS_MASK_TH=03	# タイルアドレスオフセット部マスク(上位8ビット)
 GBOS_TMRR_END_PLUS1_TH=e0	# タイルミラー領域最終アドレス+1(上位8ビット)
 
+# 初期タイルデータをVRAMのタイルデータ領域へロード
+# ※ regAF・regDE・regHLは破壊される
+load_all_tiles() {
+	local rel_sz
+	local bc_radix='obase=16;ibase=16;'
+	local bc_form="${GBOS_TILE_DATA_START}+${GBOS_NUM_ALL_TILE_BYTES}"
+	local end_addr=$(echo "${bc_radix}${bc_form}" | bc)
+	local end_addr_th=$(echo $end_addr | cut -c-2)
+	local end_addr_bh=$(echo $end_addr | cut -c3-)
+	lr35902_set_reg regDE $GBOS_ROM_TILE_DATA_START
+	lr35902_set_reg regHL $GBOS_TILE_DATA_START
+	(
+		lr35902_copy_to_from regA ptrDE
+		lr35902_copyinc_to_ptrHL_from_regA
+		lr35902_copy_to_from regA regH
+		lr35902_compare_regA_and $end_addr_th
+		(
+			lr35902_copy_to_from regA regL
+			lr35902_compare_regA_and $end_addr_bh
+			lr35902_rel_jump_with_cond Z 03
+		) >src/load_all_tiles.1.o
+		rel_sz=$(stat -c '%s' src/load_all_tiles.1.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $rel_sz)
+		cat src/load_all_tiles.1.o
+		lr35902_inc regDE
+	) >src/load_all_tiles.2.o
+	cat src/load_all_tiles.2.o
+	rel_sz=$(stat -c '%s' src/load_all_tiles.2.o)
+	lr35902_rel_jump $(two_comp_d $((rel_sz + 2)))
+}
+
 # 符号なしの2バイト値同士の比較
 # in  : regHL - 引かれる値
 #     : regDE - 引く値
@@ -1200,10 +1231,135 @@ f_view_img() {
 	lr35902_return
 }
 
-# タイルデータを復帰する周期ハンドラを登録する関数
+# 画像ファイルの表示を終了する
 f_view_img >src/f_view_img.o
 fsz=$(to16 $(stat -c '%s' src/f_view_img.o))
 fadr=$(calc16 "${a_view_img}+${fsz}")
+a_quit_img=$(four_digits $fadr)
+echo -e "a_quit_img=$a_quit_img" >>$MAP_FILE_NAME
+f_quit_img() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regBC
+	lr35902_push_reg regDE
+	lr35902_push_reg regHL
+
+	# V-Blankの開始を待つ
+	# ※ regAFは破壊される
+	gb_wait_for_vblank_to_start
+
+	# LCDを停止する
+	# - 停止の間はVRAMとOAMに自由にアクセスできる(vblankとか関係なく)
+	lr35902_set_reg regA ${GBOS_LCDC_BASE}
+	lr35902_copy_to_ioport_from_regA $GB_IO_LCDC
+
+	# VRAMの背景マップ領域をタイルミラー領域からコピーする形で復帰
+	# 表示領域のタイルを1行ずつタイルミラー領域から復帰する
+	## regHLへタイルミラー領域ベースアドレス設定
+	lr35902_set_reg regHL $GBOS_TMRR_BASE
+	## regDEへ背景マップ領域ベースアドレス設定
+	lr35902_set_reg regDE $GBOS_BG_TILEMAP_START
+	## regBへ表示領域の縦方向のタイル数(行数)を設定
+	lr35902_set_reg regB $GB_DISP_HEIGHT_T
+	## regBが0になるまでregHLからregDEへ表示領域の縦方向のタイル数ずつコピー
+	(
+		# ジャンプサイズ計算のため予めファイル書き出し
+		## regHLとregDEを表示領域外のタイル数分進める処理
+		(
+			# regCへ表示領域外のタイル数を設定
+			lr35902_set_reg regC $(calc16_2 "${GB_SC_WIDTH_T}-${GB_DISP_WIDTH_T}")
+
+			# regBをregAへ退避
+			lr35902_copy_to_from regA regB
+
+			# regB = 0
+			lr35902_clear_reg regB
+
+			# regHL += regBC
+			lr35902_add_to_regHL regBC
+
+			# regDE += regBC
+			## regHLをスタックへ退避
+			lr35902_push_reg regHL
+			## regHL = regDE
+			lr35902_copy_to_from regL regE
+			lr35902_copy_to_from regH regD
+			## regHL += regBC
+			lr35902_add_to_regHL regBC
+			## regDE = regHL
+			lr35902_copy_to_from regE regL
+			lr35902_copy_to_from regD regH
+			## regHLをスタックから復帰
+			lr35902_pop_reg regHL
+
+			# regBをregAから復帰
+			lr35902_copy_to_from regB regA
+		) >src/f_quit_img.fwd_hl_de.o
+		local sz_fwd_hl_de=$(stat -c '%s' src/f_quit_img.fwd_hl_de.o)
+
+		# regHLからregDEへ表示領域の縦方向のタイル数分コピー
+		## regCへ表示領域の横方向のタイル数を設定
+		lr35902_set_reg regC $GB_DISP_WIDTH_T
+		## regCの数だけregHLからregDEへコピー
+		(
+			# regA = ptrHL, regHL++
+			lr35902_copyinc_to_regA_from_ptrHL
+
+			# ptrDE = regA, regDE++
+			lr35902_copy_to_from ptrDE regA
+			lr35902_inc regDE
+
+			# regC--
+			lr35902_dec regC
+
+			# regC == 0 ならループを脱出
+			lr35902_rel_jump_with_cond Z 02
+		) >src/f_quit_img.cpy_line.o
+		cat src/f_quit_img.cpy_line.o
+		local sz_cpy_line=$(stat -c '%s' src/f_quit_img.cpy_line.o)
+		lr35902_rel_jump $(two_comp_d $((sz_cpy_line + 2)))	# 2
+
+		# regB--
+		lr35902_dec regB
+
+		# regB == 0 ならループを脱出
+		lr35902_rel_jump_with_cond Z $(two_digits_d $((sz_fwd_hl_de + 2)))
+
+		# regHLとregDEを表示領域外のタイル数分進める
+		cat src/f_quit_img.fwd_hl_de.o
+	) >src/f_quit_img.restore_bg.o
+	cat src/f_quit_img.restore_bg.o
+	local sz_restore_bg=$(stat -c '%s' src/f_quit_img.restore_bg.o)
+	lr35902_rel_jump $(two_comp_d $((sz_restore_bg + 2)))	# 2
+
+	# VRAMのタイルパターンテーブルを初期化(元に戻す)
+	# ※ regAF・regDE・regHLは破壊される
+	load_all_tiles
+
+	# スプライトオンでLCD再開
+	lr35902_set_reg regA $(calc16 "${GBOS_LCDC_BASE}+${GB_LCDC_BIT_DE}")
+	lr35902_copy_to_ioport_from_regA $GB_IO_LCDC
+
+	# 変数mouse_enableにマウス有効化設定
+	lr35902_set_reg regA 01
+	lr35902_copy_to_addr_from_regA $var_mouse_enable
+
+	# 変数view_img_stateに画像表示なしを設定
+	lr35902_set_reg regA $GBOS_VIEW_IMG_STAT_NONE
+	lr35902_copy_to_addr_from_regA $var_view_img_state
+
+	# pop & return
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regDE
+	lr35902_pop_reg regBC
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
+# タイルデータを復帰する周期ハンドラを登録する関数
+f_quit_img >src/f_quit_img.o
+fsz=$(to16 $(stat -c '%s' src/f_quit_img.o))
+fadr=$(calc16 "${a_quit_img}+${fsz}")
 a_rstr_tiles=$(four_digits $fadr)
 echo -e "a_rstr_tiles=$a_rstr_tiles" >>$MAP_FILE_NAME
 f_rstr_tiles() {
@@ -6968,6 +7124,25 @@ echo -e "a_binbio_event_btn_b_release=$a_binbio_event_btn_b_release" >>$MAP_FILE
 f_binbio_event_btn_b_release() {
 	# push
 	lr35902_push_reg regAF
+
+	# 何らかの画像処理中か?
+	lr35902_copy_to_regA_from_addr $var_view_img_state
+	lr35902_compare_regA_and $GBOS_VIEW_IMG_STAT_NONE
+	(
+		# 何らかの画像処理中である場合
+
+		# 画像表示終了関数を呼び出し
+		lr35902_call $a_quit_img
+
+		# pop & return
+		lr35902_pop_reg regAF
+		lr35902_return
+	) >src/f_binbio_event_btn_b_release.quit_img.o
+	local sz_quit_img=$(stat -c '%s' src/f_binbio_event_btn_b_release.quit_img.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_quit_img)
+	cat src/f_binbio_event_btn_b_release.quit_img.o
+
+	# push
 	lr35902_push_reg regDE
 	lr35902_push_reg regHL
 
@@ -7161,6 +7336,7 @@ global_functions() {
 	f_clr_win_cyc
 	f_tn_to_addr
 	f_view_img
+	f_quit_img
 	f_rstr_tiles
 	f_rstr_tiles_cyc
 	f_view_dir
@@ -7254,35 +7430,6 @@ gbos_const() {
 	char_tiles
 	dd if=/dev/zero bs=1 count=$GBOS_TILERSV_AREA_BYTES 2>/dev/null
 	global_functions
-}
-
-load_all_tiles() {
-	local rel_sz
-	local bc_radix='obase=16;ibase=16;'
-	local bc_form="${GBOS_TILE_DATA_START}+${GBOS_NUM_ALL_TILE_BYTES}"
-	local end_addr=$(echo "${bc_radix}${bc_form}" | bc)
-	local end_addr_th=$(echo $end_addr | cut -c-2)
-	local end_addr_bh=$(echo $end_addr | cut -c3-)
-	lr35902_set_reg regDE $GBOS_ROM_TILE_DATA_START
-	lr35902_set_reg regHL $GBOS_TILE_DATA_START
-	(
-		lr35902_copy_to_from regA ptrDE
-		lr35902_copyinc_to_ptrHL_from_regA
-		lr35902_copy_to_from regA regH
-		lr35902_compare_regA_and $end_addr_th
-		(
-			lr35902_copy_to_from regA regL
-			lr35902_compare_regA_and $end_addr_bh
-			lr35902_rel_jump_with_cond Z 03
-		) >src/load_all_tiles.1.o
-		rel_sz=$(stat -c '%s' src/load_all_tiles.1.o)
-		lr35902_rel_jump_with_cond NZ $(two_digits_d $rel_sz)
-		cat src/load_all_tiles.1.o
-		lr35902_inc regDE
-	) >src/load_all_tiles.2.o
-	cat src/load_all_tiles.2.o
-	rel_sz=$(stat -c '%s' src/load_all_tiles.2.o)
-	lr35902_rel_jump $(two_comp_d $((rel_sz + 2)))
 }
 
 lay_tiles_in_grid() {
