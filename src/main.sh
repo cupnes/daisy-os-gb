@@ -7871,7 +7871,7 @@ update_mouse_cursor() {
 }
 
 # ボタンリリースに応じた処理
-# in : regA - リリースされたボタン(上位4ビット)
+# in : regA - リリースされたボタン
 btn_release_handler() {
 	local sz
 
@@ -8125,7 +8125,6 @@ event_driven() {
 
 	# ボタンのリリースがあった場合それに応じた処理を実施
 	lr35902_copy_to_from regA regB
-	lr35902_and_to_regA $GBOS_BTN_KEY_MASK
 	(
 		# ボタンリリースがあれば応じた処理を実施
 		btn_release_handler
