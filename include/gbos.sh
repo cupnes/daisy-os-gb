@@ -92,7 +92,10 @@ GBOS_VIEW_IMG_STAT_NONE=00	# 画像表示なし
 GBOS_VIEW_IMG_STAT_WAIT_FOR_TDQEMP=01	# tdq消費待ち
 GBOS_VIEW_IMG_STAT_DURING_IMG_DISP=02	# 画像表示中
 
+# 0x4000〜の領域のバンク番号の初期値
+GBOS_ROM_BANK_NO_INIT=01
+
 # slide show
-SS_FIRST_FILE_NUM=00	# 最初のスライドのファイル番号
-SS_LAST_FILE_NUM=01	# 最後のスライドのファイル番号
-SS_CURRENT_FILE_NUM_INIT=$SS_FIRST_FILE_NUM	# 現在のスライドのファイル番号の初期値
+SS_FIRST_BANK_FILE_NUM=10	# 最初のスライドのバンク・ファイル番号
+SS_LAST_BANK_FILE_NUM=21	# 最後のスライドのバンク・ファイル番号
+SS_CURRENT_BANK_FILE_NUM_INIT=$SS_FIRST_BANK_FILE_NUM	# 現在のスライドのファイル番号の初期値

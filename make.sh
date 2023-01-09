@@ -191,6 +191,15 @@ print_fs_rom() {
 
 	# 標準出力へ出力
 	cat ${FS_ROM_NAME}_?.img
+
+	# サイズを2MB - 16KB(2080768 bytes)にするためのパディング
+	## 必要なパディングサイズを算出
+	sz=2080768
+	for f in $(ls ${FS_ROM_NAME}_?.img); do
+		sz=$((sz - (16 * 1024)))
+	done
+	## 標準出力へパディングを出力
+	dd if=/dev/zero bs=1 count=$sz status=none
 }
 
 print_rom() {

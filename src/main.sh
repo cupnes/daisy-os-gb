@@ -1009,7 +1009,9 @@ f_tn_to_addr() {
 }
 
 # 画像ファイルを表示
-# in : regA - 表示するファイル番号(0始まり)
+# in : regA - 表示する画像を指定する値(画像指定値)
+#             - 上位4ビット：バンク番号
+#             - 下位4ビット：ファイル番号(0始まり)
 # ※ VRAMのタイルパターンテーブル(0x8000〜)は破壊される
 f_tn_to_addr >src/f_tn_to_addr.o
 fsz=$(to16 $(stat -c '%s' src/f_tn_to_addr.o))
@@ -1021,7 +1023,7 @@ f_view_img() {
 	lr35902_push_reg regAF
 	lr35902_push_reg regBC
 
-	# ファイル番号をregBへ退避
+	# 画像指定値をregBへ退避
 	lr35902_copy_to_from regB regA
 
 	# tdq.statにemptyフラグはセットされているか?
@@ -1047,6 +1049,30 @@ f_view_img() {
 	lr35902_push_reg regDE
 	lr35902_push_reg regHL
 
+	# regCへ画像指定値からバンク番号を抽出
+	lr35902_copy_to_from regC regB
+	lr35902_shift_right_logical regC
+	lr35902_shift_right_logical regC
+	lr35902_shift_right_logical regC
+	lr35902_shift_right_logical regC
+
+	# 指定されたバンク番号 == 現在のバンク番号 ?
+	lr35902_copy_to_regA_from_addr $var_current_rom_bank_no
+	lr35902_compare_regA_and regC
+	(
+		# 指定されたバンク番号 != 現在のバンク番号 の場合
+
+		# 指定されたバンク番号をMBCへ設定
+		lr35902_copy_to_from regA regC
+		lr35902_copy_to_addr_from_regA $GB_MBC_ROM_BANK_ADDR
+
+		# 現在のバンク番号変数を更新
+		lr35902_copy_to_addr_from_regA $var_current_rom_bank_no
+	) >src/f_view_img.set_mbc.o
+	local sz_set_mbc=$(stat -c '%s' src/f_view_img.set_mbc.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_set_mbc)
+	cat src/f_view_img.set_mbc.o
+
 	# regHLへ描画する画像データアドレスを取得
 	## 「ファイルシステムベースアドレス」から「最初のファイルの『ファイルデータへのオフセット』」へのオフセット
 	local file_ofs_1st_ofs=0008
@@ -1059,8 +1085,9 @@ f_view_img() {
 	lr35902_set_reg regDE $file_ofs_1st_ofs
 	## regHL += regDE し、regHLへ最初のファイルの『ファイルデータへのオフセット』のアドレスを設定
 	lr35902_add_to_regHL regDE
-	## regA = regB(ファイル番号)
+	## regAへ指定されたファイル番号を設定
 	lr35902_copy_to_from regA regB
+	lr35902_and_to_regA 0f
 	## regA == 0 ?
 	lr35902_compare_regA_and 00
 	(
@@ -7106,8 +7133,8 @@ f_binbio_event_btn_a_release() {
 	# push
 	lr35902_push_reg regAF
 
-	# 現在のスライドのファイル番号を変数から取得
-	lr35902_copy_to_regA_from_addr $var_ss_current_file_num
+	# 現在のスライドのバンク・ファイル番号を変数から取得
+	lr35902_copy_to_regA_from_addr $var_ss_current_bank_file_num
 
 	# 画像表示
 	lr35902_call $a_view_img
@@ -7282,22 +7309,78 @@ f_binbio_event_btn_right_release() {
 	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_nothing_return)
 	cat src/f_binbio_event_btn_right_release.nothing_return.o
 
-	# regAへ現在のスライドのファイル番号を取得
-	lr35902_copy_to_regA_from_addr $var_ss_current_file_num
+	# regAへ現在のスライドのバンク・ファイル番号を取得
+	lr35902_copy_to_regA_from_addr $var_ss_current_bank_file_num
 
-	# regA < 最後のスライドのファイル番号 ?
-	lr35902_compare_regA_and $SS_LAST_FILE_NUM
+	# regA < 最後のスライドのバンク・ファイル番号 ?
+	lr35902_compare_regA_and $SS_LAST_BANK_FILE_NUM
 	(
-		# regA < 最後のスライドのファイル番号 の場合
+		# regA < 最後のスライドのバンク・ファイル番号 の場合
 
-		# regA++
-		lr35902_inc regA
+		# push
+		lr35902_push_reg regBC
+
+		# regAをregBへ退避
+		lr35902_copy_to_from regB regA
+
+		# regCへ現在のバンクの最後のファイル番号(現在のバンクのファイル数 - 1)を取得
+		lr35902_copy_to_regA_from_addr $GBOS_FS_BASE_ROM
+		lr35902_sub_to_regA 01
+		lr35902_copy_to_from regC regA
+
+		# regAへ現在のスライドのファイル番号を取得
+		lr35902_copy_to_from regA regB
+		lr35902_and_to_regA 0f
+
+		# regA(現在のスライドのファイル番号) < regC(現在のバンクの最後のファイル番号) ?
+		lr35902_compare_regA_and regC
+		(
+			# regA < regC の場合
+
+			# regAへ現在のスライドのバンク・ファイル番号をregBから復帰
+			lr35902_copy_to_from regA regB
+
+			# regA++
+			# ※ 桁上がりはしない想定(regAの下位4ビットは16未満である想定)
+			lr35902_inc regA
+		) >src/f_binbio_event_btn_right_release.inc_filenum.o
+		(
+			# regA >= regC の場合
+
+			# regAへ現在のスライドのバンク・ファイル番号をregBから復帰
+			lr35902_copy_to_from regA regB
+
+			# regAの上位・下位4ビットを入れ替える
+			lr35902_swap_nibbles regA
+
+			# regA++
+			# (バンク番号をインクリメント)
+			# ※ 桁上がりはしない想定(regAの下位4ビットは16未満である想定)
+			lr35902_inc regA
+
+			# regAの上位・下位4ビットを入れ替える
+			lr35902_swap_nibbles regA
+
+			# regAの下位4ビット(ファイル番号)を0にする
+			lr35902_and_to_regA f0
+
+			# regA < regC の場合の処理を飛ばす
+			local sz_inc_filenum=$(stat -c '%s' src/f_binbio_event_btn_right_release.inc_filenum.o)
+			lr35902_rel_jump $(two_digits_d $sz_inc_filenum)
+		) >src/f_binbio_event_btn_right_release.next_bank.o
+		local sz_next_bank=$(stat -c '%s' src/f_binbio_event_btn_right_release.next_bank.o)
+		lr35902_rel_jump_with_cond C $(two_digits_d $sz_next_bank)
+		cat src/f_binbio_event_btn_right_release.next_bank.o	# regA >= regC の場合
+		cat src/f_binbio_event_btn_right_release.inc_filenum.o	# regA < regC の場合
 
 		# 画像表示
 		lr35902_call $a_view_img
 
-		# 現在のスライドのファイル番号変数を更新
-		lr35902_copy_to_addr_from_regA $var_ss_current_file_num
+		# 現在のスライドのバンク・ファイル番号変数を更新
+		lr35902_copy_to_addr_from_regA $var_ss_current_bank_file_num
+
+		# pop
+		lr35902_pop_reg regBC
 	) >src/f_binbio_event_btn_right_release.update_img.o
 	local sz_update_img=$(stat -c '%s' src/f_binbio_event_btn_right_release.update_img.o)
 	lr35902_rel_jump_with_cond NC $(two_digits_d $sz_update_img)
@@ -7332,22 +7415,88 @@ f_binbio_event_btn_left_release() {
 	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_nothing_return)
 	cat src/f_binbio_event_btn_left_release.nothing_return.o
 
-	# regAへ現在のスライドのファイル番号を取得
-	lr35902_copy_to_regA_from_addr $var_ss_current_file_num
+	# regAへ現在のスライドのバンク・ファイル番号を取得
+	lr35902_copy_to_regA_from_addr $var_ss_current_bank_file_num
 
-	# regA == 最初のスライドのファイル番号 ?
-	lr35902_compare_regA_and $SS_FIRST_FILE_NUM
+	# regA == 最初のスライドのバンク・ファイル番号 ?
+	lr35902_compare_regA_and $SS_FIRST_BANK_FILE_NUM
 	(
-		# regA != 最初のスライドのファイル番号 の場合
+		# regA != 最初のスライドのバンク・ファイル番号 の場合
 
-		# regA--
-		lr35902_dec regA
+		# push
+		lr35902_push_reg regBC
+
+		# regBへregAを退避
+		lr35902_copy_to_from regB regA
+
+		# regAからファイル番号のみを抽出
+		lr35902_and_to_regA 0f
+
+		# regA == 0 ?
+		(
+			# regA == 0 の場合
+			# (ファイル番号 == 0 の場合)
+
+			# regAへ現在のスライドのバンク・ファイル番号を復帰
+			lr35902_copy_to_from regA regB
+
+			# バンク番号を下位4ビットへ持ってくる
+			# (ファイル番号は0なので、この結果の上位4ビットは0)
+			lr35902_swap_nibbles regA
+
+			# regA--
+			lr35902_dec regA
+
+			# regAを新たなバンク番号としてMBCへ設定
+			lr35902_copy_to_addr_from_regA $GB_MBC_ROM_BANK_ADDR
+
+			# 現在のバンク番号変数を更新
+			lr35902_copy_to_addr_from_regA $var_current_rom_bank_no
+
+			# regA内でバンク番号を上位4ビットへ移動
+			lr35902_swap_nibbles regA
+
+			# regB = regA
+			lr35902_copy_to_from regB regA
+
+			# regAへ現在のバンクのファイル数を取得
+			lr35902_copy_to_regA_from_addr $GBOS_FS_BASE_ROM
+
+			# regA -= 1
+			# (regAへ現在のバンクの最後のファイル番号を設定)
+			lr35902_dec regA
+
+			# regA |= regB
+			# (regAの上位4ビットへ現在のバンク番号を設定)
+			lr35902_or_to_regA regB
+		) >src/f_binbio_event_btn_left_release.prev_bank.o
+		(
+			# regA != 0 の場合
+			# (ファイル番号 != 0 の場合)
+
+			# regAへ現在のスライドのバンク・ファイル番号を復帰
+			lr35902_copy_to_from regA regB
+
+			# regA--
+			lr35902_dec regA
+
+			# regA == 0 の場合の処理を飛ばす
+			local sz_prev_bank=$(stat -c '%s' src/f_binbio_event_btn_left_release.prev_bank.o)
+			lr35902_rel_jump $(two_digits_d $sz_prev_bank)
+		) >src/f_binbio_event_btn_left_release.dec_filenum.o
+		local sz_dec_filenum=$(stat -c '%s' src/f_binbio_event_btn_left_release.dec_filenum.o)
+		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_dec_filenum)
+		cat src/f_binbio_event_btn_left_release.dec_filenum.o	# regA != 0 の場合
+		cat src/f_binbio_event_btn_left_release.prev_bank.o	# regA == 0 の場合
 
 		# 画像表示
 		lr35902_call $a_view_img
 
-		# 現在のスライドのファイル番号変数を更新
-		lr35902_copy_to_addr_from_regA $var_ss_current_file_num
+		# 現在のスライドのバンク・ファイル番号変数を更新
+		lr35902_copy_to_addr_from_regA $var_ss_current_bank_file_num
+
+		# pop
+		lr35902_pop_reg regBC
 	) >src/f_binbio_event_btn_left_release.update_img.o
 	local sz_update_img=$(stat -c '%s' src/f_binbio_event_btn_left_release.update_img.o)
 	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_update_img)
@@ -7773,9 +7922,12 @@ init() {
 	# SPをFFFE(HMEMの末尾)に設定
 	lr35902_set_regHL_and_SP fffe
 
-	# # MBCへROMバンク番号1を設定
-	# lr35902_set_reg regA 01
-	# lr35902_copy_to_addr_from_regA $GB_MBC_ROM_BANK_ADDR
+	# MBCへ初期値のROMバンク番号を設定
+	lr35902_set_reg regA $GBOS_ROM_BANK_NO_INIT
+	lr35902_copy_to_addr_from_regA $GB_MBC_ROM_BANK_ADDR
+
+	# 現在のROMバンク番号を変数へ反映
+	lr35902_copy_to_addr_from_regA $var_current_rom_bank_no
 
 	# # カートリッジ搭載RAMの有効化
 	# lr35902_set_reg regA $GB_MBC_RAM_EN_VAL
@@ -7870,8 +8022,8 @@ init() {
 	lr35902_set_reg regA $GBOS_VIEW_IMG_STAT_NONE
 	lr35902_copy_to_addr_from_regA $var_view_img_state
 	# - slide show: 現在のスライドのファイル番号の初期値
-	lr35902_set_reg regA $SS_CURRENT_FILE_NUM_INIT
-	lr35902_copy_to_addr_from_regA $var_ss_current_file_num
+	lr35902_set_reg regA $SS_CURRENT_BANK_FILE_NUM_INIT
+	lr35902_copy_to_addr_from_regA $var_ss_current_bank_file_num
 	# - タイマーハンドラ初期化
 	timer_init_handler
 
@@ -8278,8 +8430,8 @@ event_driven() {
 		(
 			# tdq消費待ちである場合
 
-			# 現在のスライドのファイル番号を変数から取得
-			lr35902_copy_to_regA_from_addr $var_ss_current_file_num
+			# 現在のスライドのバンク・ファイル番号を変数から取得
+			lr35902_copy_to_regA_from_addr $var_ss_current_bank_file_num
 
 			# 画像表示
 			lr35902_call $a_view_img

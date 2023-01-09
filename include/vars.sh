@@ -32,8 +32,8 @@ var_clr_win_nyt=c00d	# - clr_win: 次にクリアするウィンドウタイル�
 var_view_img_state=c00e	# view_img: ステート番号
 var_view_img_ntadr_bh=c00f	# view_img: 次に使用するタイルアドレス(下位8ビット)
 var_view_img_ntadr_th=c010	# view_img: 次に使用するタイルアドレス(上位8ビット)
-var_ss_current_file_num=c011	# slide show: 現在のスライドのファイル番号
-# 0xc012 : 未使用
+var_ss_current_bank_file_num=c011	# slide show: 現在のスライドのバンク・ファイル番号
+var_current_rom_bank_no=c012	# 0x4000〜の領域の現在のバンク番号
 var_view_img_nyt=c013	# view_img: 次に描画するウィンドウタイル座標Y
 var_view_img_nxt=c014	# view_img: 次に描画するウィンドウタイル座標X
 var_win_stat=c015	# ウィンドウステータス
