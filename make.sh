@@ -4,7 +4,7 @@ usage() {
 	echo -e "Usage:\t$0 ACTION [OPTION]"
 	echo
 	echo 'ACTION:'
-	echo -e '\tbuild [--32kb-rom]'
+	echo -e '\tbuild [--32kb-rom] [--2mb-rom-only]'
 	echo -e '\tclean'
 	echo -e '\thelp'
 	echo -e '\trun'
@@ -14,6 +14,8 @@ TARGET=daisy-os
 ROM_FILE_NAME=${TARGET}.gb
 RAM_FILE_NAME=${TARGET}.sav
 EMU=bgb
+# ROM領域のファイルシステムイメージや作業ディレクトリに使用する名前
+FS_ROM_NAME=fs_rom
 
 if [ $# -eq 0 ]; then
 	usage >&2
@@ -125,24 +127,77 @@ print_fs_ram0_orig() {
 	cat fs_ram0_orig.img
 }
 
+# ROM領域のファイルシステムの作業ディレクトリを作成し、
+# ファイルシステムへ格納するファイルを配置
+make_fs_rom_workdir_and_put_files() {
+	# 既に作業ディレクトリが存在していたら何もせずreturn
+	if [ -d $FS_ROM_NAME ]; then
+		return
+	fi
+
+	# 作業ディレクトリ作成
+	mkdir $FS_ROM_NAME
+
+	# ファイルシステムへ格納するファイルを配置
+	## レトロゲーム勉強会#07のスライド
+	## (retrogstudy_07_yohgami_gb_XX.img)
+	for img_path in $(ls files_img/retrogstudy_07_yohgami_gb_??.img); do
+		n=$(echo $img_path | rev | cut -d'.' -f2 | cut -d'_' -f1 | rev)
+		cp $img_path $FS_ROM_NAME/00${n}.img
+	done
+}
+
+# ROM領域の16KB毎のファイルシステムイメージを生成
+print_fs_rom() {
+	make_fs_rom_workdir_and_put_files
+
+	# 16KB毎のファイルシステムイメージ生成
+	local FS_HEAD_SIZE=3
+	local FILE_HEAD_SIZE=9
+	local counter=$FS_HEAD_SIZE
+	local bank_no=1	# ※ 今の実装ではバンク番号は10進数1桁以内の想定なので注意
+	local sz
+	## $bank_noのバンクに格納するファイルを配置するディレクトリ作成
+	mkdir ${FS_ROM_NAME}_${bank_no}
+	## 1ファイルずつ処理
+	for f in $(ls $FS_ROM_NAME); do
+		# ファイルヘッダサイズとファイルサイズの和を算出
+		sz=$((FILE_HEAD_SIZE + $(stat -c '%s' $FS_ROM_NAME/$f)))
+
+		# このファイルを加えるとバンクサイズを超えるか?
+		if [ $((counter + sz)) -gt $GB_ROM_BANK_SIZE ]; then
+			# バンクサイズを超える場合
+
+			# ここまでのファイルリストでファイルシステム生成
+			tools/make_fs ${FS_ROM_NAME}_${bank_no} ${FS_ROM_NAME}_${bank_no}.img
+
+			# 初期化
+			## カウンタをゼロクリア
+			counter=0
+			## バンク番号をインクリメント
+			bank_no=$((bank_no + 1))
+			## 新しいバンク番号でディレクトリ作成
+			mkdir ${FS_ROM_NAME}_${bank_no}
+		fi
+
+		# 現在のバンクのディレクトリへこのファイルをコピー
+		cp $FS_ROM_NAME/$f ${FS_ROM_NAME}_${bank_no}/
+
+		# カウンタにこのファイル分を加える
+		counter=$((counter + sz))
+	done
+	## 最後のバンクのファイルシステム生成
+	tools/make_fs ${FS_ROM_NAME}_${bank_no} ${FS_ROM_NAME}_${bank_no}.img
+
+	# 標準出力へ出力
+	cat ${FS_ROM_NAME}_?.img
+}
+
 print_rom() {
 	# 0x00 0000 - 0x00 3fff: Bank 000 (16KB)
 	print_boot_kern
-	# 0x00 4000 - 0x00 7fff: Bank 001 (16KB)
-	print_fs_system
-	if [ "$opt" == "--32kb-rom" ]; then
-		return
-	fi
-	# 0x00 8000 - 0x00 bfff: Bank 002 (16KB)
-	print_fs_ram0_orig
-
-	# 0x00 c000 - 0x1f bfff: Bank 003 - 126 (1984KB)
-	dd if=/dev/zero bs=K count=1984 2>/dev/null
-
-	# 0x1f c000 - 0x1f ffff: Bank 127 (16KB)
-	dd if=/dev/zero bs=1 count=260 2>/dev/null
-	dd if=logo.gb bs=1 count=48 ibs=1 skip=260
-	dd if=/dev/zero bs=1 count=$(((16 * 1024) - 260 - 48)) 2>/dev/null
+	# 0x00 4000 - : Bank 001 -
+	print_fs_rom
 }
 
 print_fs_ram0() {
@@ -165,7 +220,7 @@ print_ram() {
 
 build() {
 	print_rom >$ROM_FILE_NAME
-	if [ "$opt" == "--32kb-rom" ]; then
+	if [ "$opt" == "--32kb-rom" ] || [ "$opt" == "--2mb-rom-only" ]; then
 		return
 	fi
 	print_ram >$RAM_FILE_NAME
@@ -210,10 +265,13 @@ clean_fs_ram0_orig() {
 	rm -rf fs_ram0_orig.img fs_ram0_orig
 }
 
+clean_fs_rom() {
+	rm -rf $FS_ROM_NAME*
+}
+
 clean_rom() {
 	clean_boot_kern
-	clean_fs_system
-	clean_fs_ram0_orig
+	clean_fs_rom
 	rm -f $ROM_FILE_NAME
 }
 
