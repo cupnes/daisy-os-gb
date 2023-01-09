@@ -59,7 +59,7 @@ two_digits() {
 		echo $val
 		;;
 	*)
-		echo "Error: Invalid digits: %val" 1>&2
+		echo "Error: Invalid digits: $val" 1>&2
 		return 1
 	esac
 }
@@ -80,7 +80,7 @@ four_digits() {
 		echo $val
 		;;
 	*)
-		echo "Error: Invalid digits: %val" 1>&2
+		echo "Error: Invalid digits: $val" 1>&2
 		return 1
 	esac
 }
@@ -150,6 +150,10 @@ create_rootfs() {
 	) >${DST_ROOTFS_IMG}.o
 	cat ${DST_ROOTFS_IMG}.o
 	local sz=$(stat -c '%s' ${DST_ROOTFS_IMG}.o)
+	if [ $sz -gt $GB_BANK_SIZE ]; then
+		echo "Error: Total size (${sz} bytes) > GB_BANK_SIZE (${GB_BANK_SIZE} bytes)" 1>&2
+		return 1
+	fi
 	local padding=$((GB_BANK_SIZE - sz))
 	dd if=/dev/zero bs=1 count=$padding 2>/dev/null
 }
