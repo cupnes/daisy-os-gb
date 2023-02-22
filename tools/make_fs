@@ -21,7 +21,7 @@ if [ $# -eq 1 ]; then
 		exit 0
 	fi
 fi
-if [ $# -lt 2 -o $# -gt 3 ]; then
+if [ $# -lt 2 ] || [ $# -gt 3 ]; then
 	usage
 	exit 1
 fi
