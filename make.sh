@@ -72,7 +72,7 @@ print_boot_kern() {
 		local entry_addr=$(echo $bc_form | bc)
 		bc_form="obase=16;ibase=16;${entry_addr}+10000"
 		local entry_addr_4digits=$(echo $bc_form | bc | cut -c2-5)
-		if [ "$opt" == "--32kb-rom" ]; then
+		if [ "$opt" = "--32kb-rom" ]; then
 			gb_cart_header_no_title $entry_addr_4digits
 		else
 			gb_cart_header_no_title_mbc1 $entry_addr_4digits
@@ -229,7 +229,7 @@ print_ram() {
 
 build() {
 	print_rom >$ROM_FILE_NAME
-	if [ "$opt" == "--32kb-rom" ] || [ "$opt" == "--2mb-rom-only" ]; then
+	if [ "$opt" = "--32kb-rom" ] || [ "$opt" = "--2mb-rom-only" ]; then
 		return
 	fi
 	print_ram >$RAM_FILE_NAME
