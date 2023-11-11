@@ -97,5 +97,5 @@ GBOS_ROM_BANK_NO_INIT=01
 
 # slide show
 SS_FIRST_BANK_FILE_NUM=10	# 最初のスライドのバンク・ファイル番号
-SS_LAST_BANK_FILE_NUM=41	# 最後のスライドのバンク・ファイル番号
+SS_LAST_BANK_FILE_NUM=14	# 最後のスライドのバンク・ファイル番号
 SS_CURRENT_BANK_FILE_NUM_INIT=$SS_FIRST_BANK_FILE_NUM	# 現在のスライドのファイル番号の初期値
