@@ -28,7 +28,8 @@ case "$1" in
 	if [ $# -eq 2 ]; then
 		opt="$2"
 	else
-		opt=''
+		# 指定がない場合のデフォルトは32KB ROM
+		opt='--32kb-rom'
 	fi
 	;;
 'clean')
@@ -171,6 +172,11 @@ print_fs_rom() {
 			# ここまでのファイルリストでファイルシステム生成
 			tools/make_fs ${FS_ROM_NAME}_${bank_no} ${FS_ROM_NAME}_${bank_no}.img
 
+			# 32KB ROM作成時、バンク2以降は作成しないので、この時点でforループを抜ける
+			if [ "$opt" = "--32kb-rom" ]; then
+				break
+			fi
+
 			# 初期化
 			## カウンタをゼロクリア
 			counter=0
@@ -186,15 +192,24 @@ print_fs_rom() {
 		# カウンタにこのファイル分を加える
 		counter=$((counter + sz))
 	done
-	## 最後のバンクのファイルシステム生成
-	tools/make_fs ${FS_ROM_NAME}_${bank_no} ${FS_ROM_NAME}_${bank_no}.img
+	## 32KB ROMでない場合、最後のバンクのファイルシステム生成
+	if [ "$opt" != "--32kb-rom" ]; then
+		tools/make_fs ${FS_ROM_NAME}_${bank_no} ${FS_ROM_NAME}_${bank_no}.img
+	fi
 
 	# 標準出力へ出力
 	cat ${FS_ROM_NAME}_?.img
 
-	# サイズを2MB - 16KB(2080768 bytes)にするためのパディング
+	# FS領域サイズを変数へ設定
+	# (カートリッジROMサイズ - ブート・カーネルバンクサイズ(16KB))
+	if [ "$opt" = "--32kb-rom" ]; then
+		sz=$(((32 - 16) * 1024))
+	else
+		sz=$((((2 * 1024) - 16) * 1024))
+	fi
+
+	# カートリッジROMの残りを埋める
 	## 必要なパディングサイズを算出
-	sz=2080768
 	for f in $(ls ${FS_ROM_NAME}_?.img); do
 		sz=$((sz - (16 * 1024)))
 	done
