@@ -19,6 +19,7 @@ SRC_MAIN_SH=true
 
 # 使用する実験セットを読み込む
 . include/expset_hello.sh
+# . include/expset_daisyworld.sh
 
 rm -f $MAP_FILE_NAME
 
