@@ -39,6 +39,7 @@ BINBIO_TILE_FAMILY_NUM_CELL=04	# 細胞
 BINBIO_EXPSET_HELLO=00	# アルファベットタイルの中から"HELLO"を形成
 BINBIO_EXPSET_DAISY=01	# アルファベットタイルの中から"DAISY"を形成
 BINBIO_EXPSET_HELLOWORLD=02	# 全タイルの中から"こんにちは、せかい!"を形成
+BINBIO_EXPSET_DAISYWORLD=03	# デイジーワールド
 
 # 初期値
 ## システム変数
