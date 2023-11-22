@@ -1,11 +1,18 @@
-if [ "${INCLUDE_EXPSET_DAISYWORLD_SH+is_defined}" ]; then
+if [ "${SRC_EXPSET_HELLO_SH+is_defined}" ]; then
 	return
 fi
-INCLUDE_EXPSET_DAISYWORLD_SH=true
+SRC_EXPSET_HELLO_SH=true
 
 # main.shの中で一通りのシェルスクリプトの読み込みが終わった後でこのファイルが読み込まれる想定
 # なので、このファイル内で個別のシェルスクリプトの読み込みは行っていない。
 
+# 変数
+var_binbio_get_code_comp_hello_counter=c033	# get_code_comp_hello()で使用するカウンタ
+var_binbio_get_code_comp_hello_addr_bh=c034	# get_code_comp_hello()で使用するアドレス(下位8ビット)
+var_binbio_get_code_comp_hello_addr_th=c035	# get_code_comp_hello()で使用するアドレス(上位8ビット)
+
+# バイナリ生物環境の初期化
+# in : regA - 実験セット番号
 f_binbio_init() {
 	# push
 	lr35902_push_reg regAF
@@ -43,8 +50,8 @@ f_binbio_init() {
 	## fitness
 	lr35902_set_reg regA $BINBIO_CELL_FITNESS_INIT
 	lr35902_copyinc_to_ptrHL_from_regA
-	## tile_num = $GBOS_TILE_NUM_DAISY_BLACK
-	lr35902_set_reg regA $GBOS_TILE_NUM_DAISY_BLACK
+	## tile_num = $GBOS_TILE_NUM_CELL
+	lr35902_set_reg regA $GBOS_TILE_NUM_CELL
 	lr35902_copyinc_to_ptrHL_from_regA
 	### 後のためにregBにも設定
 	lr35902_copy_to_from regB regA
@@ -52,10 +59,10 @@ f_binbio_init() {
 	lr35902_set_reg regA 05
 	lr35902_copyinc_to_ptrHL_from_regA
 	## bin_data = (現在の細胞のtile_numへ細胞タイルを設定する命令列)
-	### ld a,$GBOS_TILE_NUM_CELL => 3e $GBOS_TILE_NUM_DAISY_BLACK
+	### ld a,$GBOS_TILE_NUM_CELL => 3e $GBOS_TILE_NUM_CELL
 	lr35902_set_reg regA 3e
 	lr35902_copyinc_to_ptrHL_from_regA
-	lr35902_set_reg regA $GBOS_TILE_NUM_DAISY_BLACK
+	lr35902_set_reg regA $GBOS_TILE_NUM_CELL
 	lr35902_copyinc_to_ptrHL_from_regA
 	### call $a_binbio_cell_set_tile_num => cd a_binbio_cell_set_tile_num
 	lr35902_set_reg regA cd

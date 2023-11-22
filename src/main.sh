@@ -18,8 +18,17 @@ SRC_MAIN_SH=true
 . src/tiles.sh
 
 # 使用する実験セットを読み込む
-. include/expset_hello.sh
-# . include/expset_daisyworld.sh
+# TODO: この仕組みでは実行中に実験セットを変更できないので、
+#       デイジーワールドの実験セットもv0.2.0までの動的に変更できる仕組みに入れ込むようにする
+# 備考:
+# - v0.2.0までは$var_binbio_expset_numによって切り替えられる様にしていたが、
+#   v0.3.0でデイジーワールド実験の実装を急ぐ際に、実装の簡単さのため、このようにした
+# - v0.2.0に入れ込む際、「実験セットの切り替えをスタート/セレクトボタンの他にどうするか」等は要検討
+if [ "$BINBIO_EXPSET_NUM_INIT" = "$BINBIO_EXPSET_DAISYWORLD" ]; then
+	. src/expset_daisyworld.sh
+else
+	. src/expset_hello.sh
+fi
 
 rm -f $MAP_FILE_NAME
 
@@ -6850,7 +6859,7 @@ fsz=$(to16 $(stat -c '%s' src/f_binbio_select_next_cell.o))
 fadr=$(calc16 "${a_binbio_select_next_cell}+${fsz}")
 a_binbio_init=$(four_digits $fadr)
 echo -e "a_binbio_init=$a_binbio_init" >>$MAP_FILE_NAME
-## 定義は実験セットのスクリプト(include/expset_XXX.sh)内にある
+## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
 
 # バイナリ生物環境のリセット
 # in : regA - 実験セット番号
