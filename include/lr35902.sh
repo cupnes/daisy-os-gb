@@ -988,6 +988,7 @@ lr35902_add_to_regHL() {
 #   C - A < (引数で指定された要素)の時にセットされる
 # 動作例：
 #   regA=0x01,regB=0x00 -> Z=0,N=1,H=0,C=0 regA=0x01
+#   regA=0x00,regB=0x01 -> Z=0,N=1,H=1,C=1 regA=0xff
 #   regA=0x0f,regB=0x01 -> Z=0,N=1,H=0,C=0 regA=0x0e
 #   regA=0x10,regB=0x00 -> Z=0,N=1,H=0,C=0 regA=0x10
 #   regA=0x10,regB=0x01 -> Z=0,N=1,H=1,C=0 regA=0x0f
