@@ -3,6 +3,7 @@
 *.lst
 *.img
 *.exe
+*.log
 boot_kern.bin
 map.txt
 daisy-os*.gb

@@ -16,6 +16,8 @@ RAM_FILE_NAME=${TARGET}.sav
 EMU=bgb
 # ROM領域のファイルシステムイメージや作業ディレクトリに使用する名前
 FS_ROM_NAME=fs_rom
+# build時の各種ログを保存するファイル名
+BUILD_LOG_NAME=build.log
 
 if [ $# -eq 0 ]; then
 	usage >&2
@@ -90,6 +92,7 @@ print_boot_kern() {
 		local padding=$((GB_ROM_BANK_SIZE_NOHEAD - num_const_bytes \
 							 - num_main_bytes))
 		dd if=/dev/zero bs=1 count=$padding 2>/dev/null
+		echo "print_boot_kern: num_const_bytes=$num_const_bytes, num_main_bytes=$num_main_bytes, padding=$padding" >>$BUILD_LOG_NAME
 	) >boot_kern.bin
 	cat boot_kern.bin
 }
@@ -243,6 +246,7 @@ print_ram() {
 }
 
 build() {
+	rm -f $BUILD_LOG_NAME
 	print_rom >$ROM_FILE_NAME
 	if [ "$opt" = "--32kb-rom" ] || [ "$opt" = "--2mb-rom-only" ]; then
 		return
@@ -311,6 +315,7 @@ clean_ram() {
 clean() {
 	clean_rom
 	clean_ram
+	rm -f $BUILD_LOG_NAME
 }
 
 $action
