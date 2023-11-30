@@ -143,9 +143,13 @@ make_fs_rom_workdir_and_put_files() {
 	mkdir $FS_ROM_NAME
 
 	# ファイルシステムへ格納するファイルを配置
+	local image_name_head
 	## レトロゲーム勉強会#07のスライド
-	## (retrogstudy_07_yohgami_gb_XX.img)
-	for img_path in $(ls files_img/retrogstudy_07_yohgami_gb_??.img); do
+	# image_name_head='retrogstudy_07_yohgami'
+	## レトロクリエイターズ2023のスライド
+	image_name_head='retrocreators_2023_yohgami'
+
+	for img_path in $(ls files_img/${image_name_head}_gb_??.img); do
 		n=$(echo $img_path | rev | cut -d'.' -f2 | cut -d'_' -f1 | rev)
 		cp $img_path $FS_ROM_NAME/00${n}.img
 	done
