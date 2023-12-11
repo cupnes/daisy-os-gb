@@ -7,7 +7,7 @@ usage() {
 	echo -e '\tbuild [--32kb-rom] [--2mb-rom-only]'
 	echo -e '\tclean'
 	echo -e '\thelp'
-	echo -e '\trun'
+	echo -e '\trun [--browser]'
 }
 
 TARGET=daisy-os
@@ -18,11 +18,41 @@ EMU=bgb
 FS_ROM_NAME=fs_rom
 # build時の各種ログを保存するファイル名
 BUILD_LOG_NAME=build.log
+# 外部GitHubリポジトリをcloneするディレクトリへのパス
+EXTERNAL_GITHUB_REPO_DIR=.
+# ウェブサーバのドキュメントルートのディレクトリへのパス
+# ※ ここに"daisy-os-gb"というディレクトリが作成され、
+# 　 その中にブラウザで動作するエミュレータとDaisyOSのROMファイルが配置される
+# ※ このmake.shを実行するユーザーに書き込み権限と実行権限が存在すること
+WEB_SERVER_DOC_ROOT_DIR=/var/www/html
+BROWSER=firefox
 
 if [ $# -eq 0 ]; then
 	usage >&2
 	exit 1
 fi
+
+run_in_browser() {
+	local binjgb_dir="${EXTERNAL_GITHUB_REPO_DIR}/binjgb"
+
+	if [ ! -d "$binjgb_dir" ]; then
+		git clone https://github.com/binji/binjgb.git $binjgb_dir
+	fi
+
+	local web_server_daisyos_dir=${WEB_SERVER_DOC_ROOT_DIR}/daisy-os-gb
+
+	mkdir -p $web_server_daisyos_dir
+
+	cp $ROM_FILE_NAME $web_server_daisyos_dir/
+
+	cd $binjgb_dir
+
+	cp docs/binjgb.js docs/binjgb.wasm docs/simple.css $web_server_daisyos_dir/
+	sed -r 's%<title>binjgb \(simple\)</title>%<title>DaisyOS GB</title>%' docs/simple.html >${web_server_daisyos_dir}/index.html
+	sed -r "s/^const ROM_FILENAME = '.+';$/const ROM_FILENAME = '$ROM_FILE_NAME';/" docs/simple.js >${web_server_daisyos_dir}/simple.js
+
+	$BROWSER http://localhost/daisy-os-gb
+}
 
 case "$1" in
 'build')
@@ -42,7 +72,11 @@ case "$1" in
 	exit 0
 	;;
 'run')
-	$EMU $ROM_FILE_NAME
+	if [ $# -eq 2 ] && [ "$2" = '--browser' ]; then
+		run_in_browser
+	else
+		$EMU $ROM_FILE_NAME
+	fi
 	exit 0
 	;;
 *)
