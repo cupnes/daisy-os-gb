@@ -59,9 +59,7 @@ var_binbio_surface_temp=c035	# 地表温度(-128〜127)のアドレス
 # ※ フラグレジスタは破壊される
 f_binbio_cell_eval() {
 	# push
-	lr35902_push_reg regBC
 	lr35902_push_reg regHL
-	## TODO
 
 	# 現在の細胞の機械語バイナリ実行結果の後処理
 	## 地表温度がオーバーフローしてしまっている場合、元に戻す
@@ -127,13 +125,34 @@ f_binbio_cell_eval() {
 	## regAへ地表温度を設定
 	lr35902_set_reg regHL $var_binbio_surface_temp
 	lr35902_copy_to_from regA ptrHL
-	## regA < -127 + $DAISY_GROWING_TEMP なら以降の処理を飛ばす
-	## (-127の時点で負の方向の誤差の最大であるため)
-	### TODO
-	## regBへ生育適温を設定
-	lr35902_set_reg regB $DAISY_GROWING_TEMP
-	## regA = regA - regB
-	lr35902_sub_to_regA regB
+	## -129以下の値は8ビットの2の補数で表せない。
+	## そのため、負の方向の誤差は-128までとしておきたい。
+	## 誤差 = 地表温度(regA) - 生育適温($DAISY_GROWING_TEMP)が-128未満の場合は
+	## 誤差 = -128とし、regA - $DAISY_GROWING_TEMPを計算する処理を飛ばす。
+	## なお、regA - $DAISY_GROWING_TEMP < -128 は
+	## regA < $DAISY_GROWING_TEMP - 128 と変形できるので、
+	## 「regA」と「$DAISY_GROWING_TEMP - 128」を比較する。
+	lr35902_compare_regA_and $(calc16_2_two_comp "$DAISY_GROWING_TEMP-80")
+	(
+		# regA < $DAISY_GROWING_TEMP - 128 の場合
+
+		# regAへ誤差として-128(2の補数:0x80)を設定
+		lr35902_set_reg regA 80
+	) >src/expset_daisyworld.f_binbio_cell_eval.e_is_m128.o
+	(
+		# regA >= $DAISY_GROWING_TEMP - 128 の場合
+
+		# regAへ誤差(regA - $DAISY_GROWING_TEMP)を設定
+		lr35902_sub_to_regA $DAISY_GROWING_TEMP
+
+		# regA < $DAISY_GROWING_TEMP - 128 の場合の処理を飛ばす
+		local sz_e_is_m128=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.e_is_m128.o)
+		lr35902_rel_jump $(two_digits_d $sz_e_is_m128)
+	) >src/expset_daisyworld.f_binbio_cell_eval.calc_e.o
+	local sz_calc_e=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.calc_e.o)
+	lr35902_rel_jump_with_cond C $(two_digits_d $sz_calc_e)
+	cat src/expset_daisyworld.f_binbio_cell_eval.calc_e.o
+	cat src/expset_daisyworld.f_binbio_cell_eval.e_is_m128.o
 
 	# 誤差 >= 0?
 	## regAのMSBが0か?
@@ -149,14 +168,25 @@ f_binbio_cell_eval() {
 		(
 			# 現在の細胞 == 白デイジーの場合
 
-			# 適応度 = 128 + 誤差
-			## TODO
+			# 適応度(regA) = 128(0x80) + 誤差(regA)
+			lr35902_add_to_regA 80
 		) >src/expset_daisyworld.f_binbio_cell_eval.st_ge_gt.w.o
 		(
 			# 現在の細胞 == 黒デイジーの場合
 
-			# 適応度 = 128 - 誤差
-			## TODO
+			# push
+			lr35902_push_reg regBC
+
+			# 適応度(regA) = 128(0x80) - 誤差(regA)
+			## regB = regA
+			lr35902_set_reg regB regA
+			## regA = 0x80
+			lr35902_set_reg regA 80
+			## regA -= regB
+			lr35902_sub_to_regA regB
+
+			# pop
+			lr35902_pop_reg regBC
 
 			# 現在の細胞 == 白デイジーの場合の処理を飛ばす
 			local sz_st_ge_gt_w=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.st_ge_gt.w.o)
@@ -172,20 +202,39 @@ f_binbio_cell_eval() {
 
 		# ⽣育適温より低いため、黒デイジーへ⾼い適応度を設定
 
+		# regAへ誤差(regA)の絶対値を設定
+		# この時点でregAは2の補数表現の負の値が設定されている。
+		# そのため、ビット反転と1の加算で絶対値を取得する。
+		## regAの各ビットを反転
+		lr35902_complement_regA
+		## regAへ1を加算
+		lr35902_inc regA
+
 		# 現在の細胞 == 白デイジー?
 		cat src/expset_daisyworld.is_daisy_white.o
 		lr35902_compare_regA_and 01
 		(
 			# 現在の細胞 == 白デイジーの場合
 
-			# 適応度 = 128 - 誤差の絶対値
-			## TODO
+			# push
+			lr35902_push_reg regBC
+
+			# 適応度(regA) = 128(0x80) - 誤差の絶対値(regA)
+			## regB = regA
+			lr35902_set_reg regB regA
+			## regA = 0x80
+			lr35902_set_reg regA 80
+			## regA -= regB
+			lr35902_sub_to_regA regB
+
+			# pop
+			lr35902_pop_reg regBC
 		) >src/expset_daisyworld.f_binbio_cell_eval.st_lt_gt.w.o
 		(
 			# 現在の細胞 == 黒デイジーの場合
 
-			# 適応度 = 128 + 誤差の絶対値
-			## TODO
+			# 適応度(regA) = 128(0x80) + 誤差の絶対値(regA)
+			lr35902_add_to_regA 80
 
 			# 現在の細胞 == 白デイジーの場合の処理を飛ばす
 			local sz_st_lt_gt_w=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.st_lt_gt.w.o)
@@ -206,8 +255,221 @@ f_binbio_cell_eval() {
 	cat src/expset_daisyworld.f_binbio_cell_eval.st_ge_gt.o	# 誤差 >= 0の場合
 
 	# pop & return
-	## TODO
 	lr35902_pop_reg regHL
+	lr35902_return
+}
+
+# コード化合物取得
+# out: regA - 取得したコード化合物
+# ※ フラグレジスタは破壊される
+# ※ 実装にバリエーションを持たせられるように関数に分けている
+## 現在の細胞に不足しているコード化合物を取得する
+## ※ 不足しているコード化合物が無かった場合、
+## 　 自身のbin_dataの最後のコード化合物を取得する
+_f_binbio_get_missing_code_comp() {
+	# push
+	lr35902_push_reg regBC
+	lr35902_push_reg regDE
+	lr35902_push_reg regHL
+
+	# 現在の細胞のアドレスをregHLへ取得
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
+	lr35902_copy_to_from regL regA
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
+	lr35902_copy_to_from regH regA
+
+	# regBへ現在の細胞のbin_sizeを取得
+	## regHLをbin_sizeまで進める
+	lr35902_set_reg regDE 0007
+	lr35902_add_to_regHL regDE
+	## regBへbin_sizeを取得
+	lr35902_copy_to_from regB ptrHL
+
+	# regCへ現在の細胞のcollected_flagsを取得
+	## regHLをcollected_flagsまで進める
+	lr35902_set_reg regDE 0006
+	lr35902_add_to_regHL regDE
+	## regCへcollected_flagsを取得
+	lr35902_copy_to_from regC ptrHL
+
+	# 以降のループで使用するレジスタを初期化
+	## regD: bin_dataの何バイト目か → 0で初期化
+	lr35902_set_reg regD 00
+	## regE: 不足しているコード化合物があったか? → 0で初期化
+	lr35902_set_reg regE 00
+
+	# regBをデクリメントしながら0になるまで繰り返す
+	(
+		# サイズ計算のためループの後半処理を予めファイルへ出力
+		(
+			# regC(collected_flags)を1ビット右ローテート
+			lr35902_copy_to_from regA regC
+			lr35902_rot_regA_right
+			lr35902_copy_to_from regC regA
+
+			# regD(bin_dataの何バイト目か)をインクリメント
+			lr35902_inc regD
+
+			# regB(bin_dataの未チェックバイト数)をデクリメント
+			lr35902_dec regB
+
+			# regB == 0?
+			lr35902_copy_to_from regA regB
+			lr35902_compare_regA_and 00
+		) >src/expset_daisyworld.binbio_get_missing_code_comp.loop_bh.o
+		local sz_loop_bh=$(stat -c '%s' src/expset_daisyworld.binbio_get_missing_code_comp.loop_bh.o)
+
+		# regCのLSB == 0?
+		lr35902_test_bitN_of_reg 0 regC
+		(
+			# regCのLSB == 0の場合
+
+			# regE(不足しているコード化合物があったか?)へ1を設定
+			lr35902_set_reg regE 01
+
+			# ループを抜ける
+			lr35902_rel_jump $(two_digits_d $((sz_loop_bh + 2)))
+		) >src/expset_daisyworld.binbio_get_missing_code_comp.exit_loop.o
+		local sz_exit_loop=$(stat -c '%s' src/expset_daisyworld.binbio_get_missing_code_comp.exit_loop.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_exit_loop)
+		cat src/expset_daisyworld.binbio_get_missing_code_comp.exit_loop.o
+
+		# ループ後半処理を出力
+		cat src/expset_daisyworld.binbio_get_missing_code_comp.loop_bh.o
+	) >src/expset_daisyworld.binbio_get_missing_code_comp.loop.o
+	cat src/expset_daisyworld.binbio_get_missing_code_comp.loop.o
+	local sz_loop=$(stat -c '%s' src/expset_daisyworld.binbio_get_missing_code_comp.loop.o)
+	## regB != 0なら繰り返す
+	lr35902_rel_jump_with_cond NZ $(two_comp_d $((sz_loop + 2)))	# 2
+
+	# regE == 0?
+	lr35902_copy_to_from regA regE
+	lr35902_compare_regA_and 00
+	(
+		# regE == 0(不足しているコード化合物が無かった)の場合
+
+		# regDをデクリメント
+		# (bin_dataの最後のバイトを指すようにする)
+		lr35902_dec regD
+	) >src/expset_daisyworld.binbio_get_missing_code_comp.no_missing_code_comp.o
+	local sz_no_missing_code_comp=$(stat -c '%s' src/expset_daisyworld.binbio_get_missing_code_comp.no_missing_code_comp.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_no_missing_code_comp)
+	cat src/expset_daisyworld.binbio_get_missing_code_comp.no_missing_code_comp.o
+
+	# この時点で、bin_dataの何バイト目を取得するかがregDに設定されている
+
+	# regAへbin_dataのregDバイト目を取得
+	## regHLをbin_dataまで戻す
+	### regBCへ-5(2の補数で0xfffb)を設定
+	lr35902_set_reg regBC fffb
+	### regHL += regBC
+	lr35902_add_to_regHL regBC
+	## regHL += regD
+	lr35902_set_reg regB 00
+	lr35902_copy_to_from regC regD
+	lr35902_add_to_regHL regBC
+	## regAへregHLが指す先のバイトを取得
+	lr35902_copy_to_from regA ptrHL
+
+	# pop & return
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regDE
+	lr35902_pop_reg regBC
+	lr35902_return
+}
+## 本体
+f_binbio_get_code_comp() {
+	_f_binbio_get_missing_code_comp
+}
+
+# 突然変異
+# in : regHL - 対象の細胞のアドレス
+## 白デイジーは黒デイジーへ、黒デイジーは白デイジーへ変異させる
+f_binbio_cell_mutation() {
+	# push
+	lr35902_push_reg regBC
+	lr35902_push_reg regDE
+	lr35902_push_reg regHL
+
+	# regHLをtile_xまで進める
+	lr35902_inc regHL
+
+	# regEへ対象の細胞のタイル座標Xを取得
+	lr35902_copy_to_from regE ptrHL
+
+	# regHLをtile_yまで進める
+	lr35902_inc regHL
+
+	# regDへ対象の細胞のタイル座標Yを取得
+	lr35902_copy_to_from regD ptrHL
+
+	# regHLをtile_numまで進める
+	lr35902_set_reg regBC 0004
+	lr35902_add_to_regHL regBC
+
+	# regAへ対象の細胞のtile_numを取得
+	lr35902_copy_to_from regA ptrHL
+
+	# regA == 白デイジーのタイル?
+	lr35902_compare_regA_and $GBOS_TILE_NUM_DAISY_WHITE
+	(
+		# regA == 白デイジーのタイルの場合
+
+		# 対象の細胞のtile_numを黒デイジーのタイルへ変更
+		lr35902_set_reg regA $GBOS_TILE_NUM_DAISY_BLACK
+		lr35902_copy_to_from ptrHL regA
+
+		# タイル更新用にタイル番号をregBへも設定
+		lr35902_copy_to_from regB regA
+
+		# regHLをbin_dataの4バイト目(bin_data + 3)まで進める
+		lr35902_set_reg regBC 0005
+		lr35902_add_to_regHL regBC
+
+		# bin_dataの4バイト目をinc命令(0x34)へ変更
+		lr35902_set_reg regA 34
+		lr35902_copy_to_from ptrHL regA
+	) >src/expset_daisyworld.binbio_cell_mutation.is_white.o
+	(
+		# regA != 白デイジーのタイルの場合
+
+		# 対象の細胞のtile_numを白デイジーのタイルへ変更
+		lr35902_set_reg regA $GBOS_TILE_NUM_DAISY_WHITE
+		lr35902_copy_to_from ptrHL regA
+
+		# タイル更新用にタイル番号をregBへも設定
+		lr35902_copy_to_from regB regA
+
+		# regHLをbin_dataの4バイト目(bin_data + 3)まで進める
+		lr35902_set_reg regBC 0005
+		lr35902_add_to_regHL regBC
+
+		# bin_dataの4バイト目をdec命令(0x35)へ変更
+		lr35902_set_reg regA 35
+		lr35902_copy_to_from ptrHL regA
+
+		# regA == 白デイジーのタイルの場合の処理を飛ばす
+		local sz_is_white=$(stat -c '%s' src/expset_daisyworld.binbio_cell_mutation.is_white.o)
+		lr35902_rel_jump $(two_digits_d $sz_is_white)
+	) >src/expset_daisyworld.binbio_cell_mutation.is_not_white.o
+	local sz_is_not_white=$(stat -c '%s' src/expset_daisyworld.binbio_cell_mutation.is_not_white.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_is_not_white)
+	cat src/expset_daisyworld.binbio_cell_mutation.is_not_white.o	# regA != 白デイジーのタイルの場合
+	cat src/expset_daisyworld.binbio_cell_mutation.is_white.o	# regA == 白デイジーのタイルの場合
+
+	# 対象の細胞のタイルを更新
+	## タイル座標をVRAMアドレスへ変換
+	lr35902_call $a_tcoord_to_addr
+	## VRAMアドレスと細胞のタイル番号をtdqへエンキュー
+	### VRAMアドレスをregDEへ設定
+	lr35902_copy_to_from regD regH
+	lr35902_copy_to_from regE regL
+	### tdqへエンキューする
+	lr35902_call $a_enq_tdq
+
+	# pop & return
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regDE
 	lr35902_pop_reg regBC
 	lr35902_return
 }
@@ -262,7 +524,7 @@ f_binbio_init() {
 	## bin_data = (黒デイジーの命令列)
 	## 命令列についてはdocs/daisyworld.mdを参照
 	local byte_in_inst
-	for byte_in_inst in 21 $(echo $var_binbio_surface_temp | cut -c3-4) $(echo $var_binbio_surface_temp | cut -c1-2) 35 00; do
+	for byte_in_inst in 21 $(echo $var_binbio_surface_temp | cut -c3-4) $(echo $var_binbio_surface_temp | cut -c1-2) 34 00; do
 		lr35902_set_reg regA $byte_in_inst
 		lr35902_copyinc_to_ptrHL_from_regA
 	done
@@ -283,6 +545,9 @@ f_binbio_init() {
 	lr35902_xor_to_regA regA
 	lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_all_counter_addr_bh
 	lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_all_counter_addr_th
+	## binbio_surface_temp = $DAISY_GROWING_TEMP
+	lr35902_set_reg regA $DAISY_GROWING_TEMP
+	lr35902_copy_to_addr_from_regA $var_binbio_surface_temp
 
 	# 初期細胞をマップへ配置
 	## タイル座標をVRAMアドレスへ変換

@@ -67,13 +67,18 @@ four_digits() {
 		echo $val
 		;;
 	*)
-		echo "Error: Invalid digits: %val" 1>&2
+		echo "Error: Invalid digits: $val" 1>&2
 		return 1
 	esac
 }
 
 two_comp() {
 	local val=$1
+	local current_digits=$(echo -n $val | wc -m)
+	if [ $current_digits -gt 2 ]; then
+		echo "Error: Invalid digits: $val" 1>&2
+		return 1
+	fi
 	local val_up=$(echo $val | tr [:lower:] [:upper:])
 	echo "obase=16;ibase=16;100-${val_up}" | bc
 }
@@ -98,6 +103,17 @@ calc16() {
 calc16_2() {
 	local bc_form=$1
 	two_digits $(calc16 $bc_form)
+}
+
+# 負の値の場合は計算結果を2の補数で出力する
+calc16_2_two_comp() {
+	local bc_form=$1
+	local val=$(calc16 $bc_form)
+	if [ "${val:0:1}" = '-' ]; then
+		two_comp $(echo $val | cut -c2-)
+	else
+		two_digits $val
+	fi
 }
 
 to16() {
