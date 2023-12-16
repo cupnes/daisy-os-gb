@@ -11,6 +11,118 @@ var_binbio_get_code_comp_hello_counter=c033	# get_code_comp_hello()で使用す�
 var_binbio_get_code_comp_hello_addr_bh=c034	# get_code_comp_hello()で使用するアドレス(下位8ビット)
 var_binbio_get_code_comp_hello_addr_th=c035	# get_code_comp_hello()で使用するアドレス(上位8ビット)
 
+# 現在の細胞を評価する
+# out: regA - 評価結果の適応度(0x00〜0xff)
+# ※ フラグレジスタは破壊される
+f_binbio_cell_eval() {
+	# regAへexpset_numを取得
+	lr35902_copy_to_regA_from_addr $var_binbio_expset_num
+
+	# 繰り返し使用する処理をファイル書き出し
+	## regA(評価結果の適応度)に応じてfixフラグをセット/クリアする
+	(
+		# push
+		lr35902_push_reg regBC
+		lr35902_push_reg regHL
+
+		# regBへregAを退避
+		lr35902_copy_to_from regB regA
+
+		# 現在の細胞のアドレスをregHL(のflags)へ取得
+		lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
+		lr35902_copy_to_from regL regA
+		lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
+		lr35902_copy_to_from regH regA
+
+		# regBからregAを復帰
+		lr35902_copy_to_from regA regB
+
+		# regA == CELL_MAX_FITNESS ?
+		lr35902_compare_regA_and $BINBIO_CELL_MAX_FITNESS
+		(
+			# regA == CELL_MAX_FITNESS の場合
+
+			# fixフラグをセットする
+			lr35902_set_bitN_of_reg $BINBIO_CELL_FLAGS_BIT_FIX ptrHL
+		) >src/f_binbio_cell_eval.max_fitness.o
+		(
+			# regA != CELL_MAX_FITNESS の場合
+
+			# fixフラグをクリアする
+			lr35902_res_bitN_of_reg $BINBIO_CELL_FLAGS_BIT_FIX ptrHL
+
+			# regA == CELL_MAX_FITNESS の場合の処理を飛ばす
+			local sz_max_fitness=$(stat -c '%s' src/f_binbio_cell_eval.max_fitness.o)
+			lr35902_rel_jump $(two_digits_d $sz_max_fitness)
+		) >src/f_binbio_cell_eval.not_max_fitness.o
+		local sz_not_max_fitness=$(stat -c '%s' src/f_binbio_cell_eval.not_max_fitness.o)
+		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_not_max_fitness)
+		cat src/f_binbio_cell_eval.not_max_fitness.o	# regA != CELL_MAX_FITNESS の場合
+		cat src/f_binbio_cell_eval.max_fitness.o	# regA == CELL_MAX_FITNESS の場合
+
+		# pop
+		lr35902_pop_reg regHL
+		lr35902_pop_reg regBC
+	) >src/f_binbio_cell_eval.update_fix_flag.o
+
+	# regA == HELLO ?
+	lr35902_compare_regA_and $BINBIO_EXPSET_HELLO
+	(
+		# regA == HELLO の場合
+
+		# 実装関数呼び出し
+		lr35902_call $a_binbio_cell_eval_hello
+
+		# 評価結果に応じてfixフラグをセット/クリアする
+		cat src/f_binbio_cell_eval.update_fix_flag.o
+
+		# return
+		lr35902_return
+	) >src/f_binbio_cell_eval.hello.o
+	local sz_hello=$(stat -c '%s' src/f_binbio_cell_eval.hello.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_hello)
+	cat src/f_binbio_cell_eval.hello.o
+
+	# regA == DAISY ?
+	lr35902_compare_regA_and $BINBIO_EXPSET_DAISY
+	(
+		# regA == DAISY の場合
+
+		# 実装関数呼び出し
+		lr35902_call $a_binbio_cell_eval_daisy
+
+		# 評価結果に応じてfixフラグをセット/クリアする
+		cat src/f_binbio_cell_eval.update_fix_flag.o
+
+		# return
+		lr35902_return
+	) >src/f_binbio_cell_eval.daisy.o
+	local sz_daisy=$(stat -c '%s' src/f_binbio_cell_eval.daisy.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_daisy)
+	cat src/f_binbio_cell_eval.daisy.o
+
+	# regA == HELLOWORLD ?
+	lr35902_compare_regA_and $BINBIO_EXPSET_HELLOWORLD
+	(
+		# regA == HELLOWORLD の場合
+
+		# 実装関数呼び出し
+		lr35902_call $a_binbio_cell_eval_helloworld
+
+		# 評価結果に応じてfixフラグをセット/クリアする
+		cat src/f_binbio_cell_eval.update_fix_flag.o
+
+		# return
+		lr35902_return
+	) >src/f_binbio_cell_eval.helloworld.o
+	local sz_helloworld=$(stat -c '%s' src/f_binbio_cell_eval.helloworld.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_helloworld)
+	cat src/f_binbio_cell_eval.helloworld.o
+
+	# return
+	lr35902_return
+}
+
 # バイナリ生物環境の初期化
 # in : regA - 実験セット番号
 f_binbio_init() {
