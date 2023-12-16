@@ -1143,6 +1143,7 @@ lr35902_xor_to_regA() {
 	fi
 }
 
+# regAの各ビットを反転させる(1の補数)
 lr35902_complement_regA() {
 	echo -en '\x2f'	# cpl
 	echo -e 'cpl\t;4' >>$ASM_LIST_FILE
