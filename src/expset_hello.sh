@@ -6,11 +6,6 @@ SRC_EXPSET_HELLO_SH=true
 # main.shの中で一通りのシェルスクリプトの読み込みが終わった後でこのファイルが読み込まれる想定
 # なので、このファイル内で個別のシェルスクリプトの読み込みは行っていない。
 
-# 変数
-var_binbio_get_code_comp_hello_counter=c033	# get_code_comp_hello()で使用するカウンタ
-var_binbio_get_code_comp_hello_addr_bh=c034	# get_code_comp_hello()で使用するアドレス(下位8ビット)
-var_binbio_get_code_comp_hello_addr_th=c035	# get_code_comp_hello()で使用するアドレス(上位8ビット)
-
 # 現在の細胞を評価する
 # out: regA - 評価結果の適応度(0x00〜0xff)
 # ※ フラグレジスタは破壊される
