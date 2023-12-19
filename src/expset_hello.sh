@@ -123,6 +123,62 @@ f_binbio_cell_eval() {
 	lr35902_return
 }
 
+# コード化合物取得
+# out: regA - 取得したコード化合物
+# ※ フラグレジスタは破壊される
+f_binbio_get_code_comp() {
+	# regAへexpset_numを取得
+	lr35902_copy_to_regA_from_addr $var_binbio_expset_num
+
+	# regA == HELLO ?
+	lr35902_compare_regA_and $BINBIO_EXPSET_HELLO
+	(
+		# regA == HELLO の場合
+
+		# 実装関数呼び出し
+		lr35902_call $a_binbio_get_code_comp_hello
+
+		# return
+		lr35902_return
+	) >src/f_binbio_get_code_comp.hello.o
+	local sz_hello=$(stat -c '%s' src/f_binbio_get_code_comp.hello.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_hello)
+	cat src/f_binbio_get_code_comp.hello.o
+
+	# regA == DAISY ?
+	lr35902_compare_regA_and $BINBIO_EXPSET_DAISY
+	(
+		# regA == DAISY の場合
+
+		# 実装関数呼び出し
+		lr35902_call $a_binbio_get_code_comp_all
+
+		# return
+		lr35902_return
+	) >src/f_binbio_get_code_comp.daisy.o
+	local sz_daisy=$(stat -c '%s' src/f_binbio_get_code_comp.daisy.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_daisy)
+	cat src/f_binbio_get_code_comp.daisy.o
+
+	# regA == HELLOWORLD ?
+	lr35902_compare_regA_and $BINBIO_EXPSET_HELLOWORLD
+	(
+		# regA == HELLOWORLD の場合
+
+		# 実装関数呼び出し
+		lr35902_call $a_binbio_get_code_comp_all
+
+		# return
+		lr35902_return
+	) >src/f_binbio_get_code_comp.helloworld.o
+	local sz_helloworld=$(stat -c '%s' src/f_binbio_get_code_comp.helloworld.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_helloworld)
+	cat src/f_binbio_get_code_comp.helloworld.o
+
+	# return
+	lr35902_return
+}
+
 # バイナリ生物環境の初期化
 # in : regA - 実験セット番号
 f_binbio_init() {
