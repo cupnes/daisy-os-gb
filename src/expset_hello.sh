@@ -179,6 +179,68 @@ f_binbio_get_code_comp() {
 	lr35902_return
 }
 
+# 突然変異
+# in : regHL - 対象の細胞のアドレス
+f_binbio_cell_mutation() {
+	# push
+	lr35902_push_reg regAF
+
+	# regAへexpset_numを取得
+	lr35902_copy_to_regA_from_addr $var_binbio_expset_num
+
+	# regA == HELLO ?
+	lr35902_compare_regA_and $BINBIO_EXPSET_HELLO
+	(
+		# regA == HELLO の場合
+
+		# 実装関数呼び出し
+		lr35902_call $a_binbio_cell_mutation_alphabet
+
+		# pop & return
+		lr35902_pop_reg regAF
+		lr35902_return
+	) >src/f_binbio_cell_mutation.hello.o
+	local sz_hello=$(stat -c '%s' src/f_binbio_cell_mutation.hello.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_hello)
+	cat src/f_binbio_cell_mutation.hello.o
+
+	# regA == DAISY ?
+	lr35902_compare_regA_and $BINBIO_EXPSET_DAISY
+	(
+		# regA == DAISY の場合
+
+		# 実装関数呼び出し
+		lr35902_call $a_binbio_cell_mutation_alphabet
+
+		# pop & return
+		lr35902_pop_reg regAF
+		lr35902_return
+	) >src/f_binbio_cell_mutation.daisy.o
+	local sz_daisy=$(stat -c '%s' src/f_binbio_cell_mutation.daisy.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_daisy)
+	cat src/f_binbio_cell_mutation.daisy.o
+
+	# regA == HELLOWORLD ?
+	lr35902_compare_regA_and $BINBIO_EXPSET_HELLOWORLD
+	(
+		# regA == HELLOWORLD の場合
+
+		# 実装関数呼び出し
+		lr35902_call $a_binbio_cell_mutation_all
+
+		# pop & return
+		lr35902_pop_reg regAF
+		lr35902_return
+	) >src/f_binbio_cell_mutation.helloworld.o
+	local sz_helloworld=$(stat -c '%s' src/f_binbio_cell_mutation.helloworld.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_helloworld)
+	cat src/f_binbio_cell_mutation.helloworld.o
+
+	# pop & return
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
 # バイナリ生物環境の初期化
 # in : regA - 実験セット番号
 f_binbio_init() {

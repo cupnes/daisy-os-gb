@@ -6162,65 +6162,7 @@ fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_mutation_alphabet.o))
 fadr=$(calc16 "${a_binbio_cell_mutation_alphabet}+${fsz}")
 a_binbio_cell_mutation=$(four_digits $fadr)
 echo -e "a_binbio_cell_mutation=$a_binbio_cell_mutation" >>$MAP_FILE_NAME
-f_binbio_cell_mutation() {
-	# push
-	lr35902_push_reg regAF
-
-	# regAへexpset_numを取得
-	lr35902_copy_to_regA_from_addr $var_binbio_expset_num
-
-	# regA == HELLO ?
-	lr35902_compare_regA_and $BINBIO_EXPSET_HELLO
-	(
-		# regA == HELLO の場合
-
-		# 実装関数呼び出し
-		lr35902_call $a_binbio_cell_mutation_alphabet
-
-		# pop & return
-		lr35902_pop_reg regAF
-		lr35902_return
-	) >src/f_binbio_cell_mutation.hello.o
-	local sz_hello=$(stat -c '%s' src/f_binbio_cell_mutation.hello.o)
-	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_hello)
-	cat src/f_binbio_cell_mutation.hello.o
-
-	# regA == DAISY ?
-	lr35902_compare_regA_and $BINBIO_EXPSET_DAISY
-	(
-		# regA == DAISY の場合
-
-		# 実装関数呼び出し
-		lr35902_call $a_binbio_cell_mutation_alphabet
-
-		# pop & return
-		lr35902_pop_reg regAF
-		lr35902_return
-	) >src/f_binbio_cell_mutation.daisy.o
-	local sz_daisy=$(stat -c '%s' src/f_binbio_cell_mutation.daisy.o)
-	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_daisy)
-	cat src/f_binbio_cell_mutation.daisy.o
-
-	# regA == HELLOWORLD ?
-	lr35902_compare_regA_and $BINBIO_EXPSET_HELLOWORLD
-	(
-		# regA == HELLOWORLD の場合
-
-		# 実装関数呼び出し
-		lr35902_call $a_binbio_cell_mutation_all
-
-		# pop & return
-		lr35902_pop_reg regAF
-		lr35902_return
-	) >src/f_binbio_cell_mutation.helloworld.o
-	local sz_helloworld=$(stat -c '%s' src/f_binbio_cell_mutation.helloworld.o)
-	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_helloworld)
-	cat src/f_binbio_cell_mutation.helloworld.o
-
-	# pop & return
-	lr35902_pop_reg regAF
-	lr35902_return
-}
+## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
 
 # 細胞の「分裂」の振る舞い(通常時)
 f_binbio_cell_mutation >src/f_binbio_cell_mutation.o
