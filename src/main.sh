@@ -7217,7 +7217,13 @@ f_binbio_event_btn_start_release() {
 
 	# リセットを実施
 	## regA(引数)を設定
-	lr35902_set_reg regA $BINBIO_EVENT_BTN_START_RELEASE_EXPSET
+	if [ "$BINBIO_EXPSET_NUM_INIT" = "$BINBIO_EXPSET_DAISYWORLD" ]; then
+		# デイジーワールド実験の場合はスタート/セレクトで実験セットを切り換える機能は無効にする
+		# スタートの際は単に現在の実験をリセットするだけ
+		lr35902_set_reg regA $BINBIO_EXPSET_DAISYWORLD
+	else
+		lr35902_set_reg regA $BINBIO_EVENT_BTN_START_RELEASE_EXPSET
+	fi
 	## 関数呼び出し
 	lr35902_call $a_binbio_reset
 
@@ -7236,11 +7242,15 @@ f_binbio_event_btn_select_release() {
 	# push
 	lr35902_push_reg regAF
 
-	# リセットを実施
-	## regA(引数)を設定
-	lr35902_set_reg regA $BINBIO_EVENT_BTN_SELECT_RELEASE_EXPSET
-	## 関数呼び出し
-	lr35902_call $a_binbio_reset
+	# デイジーワールド実験の場合はスタート/セレクトで実験セットを切り換える機能は無効にする
+	# デイジーワールド実験の際、セレクトでは何もしない
+	if [ "$BINBIO_EXPSET_NUM_INIT" != "$BINBIO_EXPSET_DAISYWORLD" ]; then
+		# リセットを実施
+		## regA(引数)を設定
+		lr35902_set_reg regA $BINBIO_EVENT_BTN_SELECT_RELEASE_EXPSET
+		## 関数呼び出し
+		lr35902_call $a_binbio_reset
+	fi
 
 	# pop & return
 	lr35902_pop_reg regAF
