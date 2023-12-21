@@ -4560,6 +4560,7 @@ f_binbio_cell_metabolism_and_motion() {
 	lr35902_set_reg regA c9
 	lr35902_copy_to_from ptrBC regA
 	## BIN_LOAD_ADDRを関数呼び出し
+	## ※ デイジーワールドの実験セットの細胞の命令列ではHLが破壊される
 	lr35902_call $BINBIO_BIN_LOAD_ADDR
 
 	# 評価
