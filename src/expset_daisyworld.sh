@@ -17,6 +17,10 @@ var_binbio_surface_temp=c035	# 地表温度(-128〜127)のアドレス
 ## out : regA - 現在の細胞が白デイジーなら1、それ以外は0
 ## work: regBC, regHL
 {
+	# push
+	lr35902_push_reg regBC
+	lr35902_push_reg regHL
+
 	# 現在の細胞のアドレスをregHLへ取得
 	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
 	lr35902_copy_to_from regL regA
@@ -52,6 +56,10 @@ var_binbio_surface_temp=c035	# 地表温度(-128〜127)のアドレス
 	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_is_daisy_white_isnw)
 	cat src/expset_daisyworld.is_daisy_white.isnw.o	# regA != 白デイジーの場合
 	cat src/expset_daisyworld.is_daisy_white.isw.o	# regA == 白デイジーの場合
+
+	# pop
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regBC
 } >src/expset_daisyworld.is_daisy_white.o
 
 # 現在の細胞を評価する
@@ -59,6 +67,7 @@ var_binbio_surface_temp=c035	# 地表温度(-128〜127)のアドレス
 # ※ フラグレジスタは破壊される
 f_binbio_cell_eval() {
 	# push
+	lr35902_push_reg regBC
 	lr35902_push_reg regHL
 
 	# 現在の細胞の機械語バイナリ実行結果の後処理
@@ -81,20 +90,37 @@ f_binbio_cell_eval() {
 		cat src/expset_daisyworld.is_daisy_white.o
 		lr35902_compare_regA_and 00
 		(
+			# 現在の細胞 == 白デイジーの場合
+
+			# src/expset_daisyworld.is_daisy_white.oでregAが上書き
+			# されてしまっているので、0x80(-128)に戻す
+			lr35902_set_reg regA 80
+		) >src/expset_daisyworld.f_binbio_cell_eval.st_eq_80.w.o
+		(
 			# 現在の細胞 == 黒デイジーの場合
 
 			# 地表温度を0x7fに戻す
 			lr35902_set_reg regA 7f
 			lr35902_copy_to_from ptrHL regA
-		) >src/expset_daisyworld.f_binbio_cell_eval.st_eq_0.b.o
-		local sz_st_eq_0_b=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.st_eq_0.b.o)
-		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_st_eq_0_b)
-		cat src/expset_daisyworld.f_binbio_cell_eval.st_eq_0.b.o
-	) >src/expset_daisyworld.f_binbio_cell_eval.st_eq_0.o
-	local sz_st_eq_0=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.st_eq_0.o)
-	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_st_eq_0)
-	cat src/expset_daisyworld.f_binbio_cell_eval.st_eq_0.o
+
+			# 現在の細胞 == 白デイジーの場合の処理を飛ばす
+			local sz_st_eq_80_w=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.st_eq_80.w.o)
+			lr35902_rel_jump $(two_digits_d $sz_st_eq_80_w)
+		) >src/expset_daisyworld.f_binbio_cell_eval.st_eq_80.b.o
+		local sz_st_eq_80_b=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.st_eq_80.b.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_st_eq_80_b)
+		cat src/expset_daisyworld.f_binbio_cell_eval.st_eq_80.b.o
+		cat src/expset_daisyworld.f_binbio_cell_eval.st_eq_80.w.o
+	) >src/expset_daisyworld.f_binbio_cell_eval.st_eq_80.o
+	local sz_st_eq_80=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.st_eq_80.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_st_eq_80)
+	cat src/expset_daisyworld.f_binbio_cell_eval.st_eq_80.o
 	### regA == 0x7f?
+	### - もし「regA(地表温度) == 0x80 の場合」を実行していて、かつ
+	###   「現在の細胞 == 黒デイジーの場合」を実行していた場合、regAに0x7fが
+	###   設定されていて、以降の「regA(地表温度) == 0x7f の場合」に入って
+	###   しまうが、白デイジーではないので「現在の細胞 == 白デイジーの場合」
+	###   が実行されず、問題ない
 	lr35902_compare_regA_and 7f
 	(
 		# regA(地表温度) == 0x7f の場合
@@ -106,19 +132,31 @@ f_binbio_cell_eval() {
 		cat src/expset_daisyworld.is_daisy_white.o
 		lr35902_compare_regA_and 01
 		(
+			# 現在の細胞 == 黒デイジーの場合
+
+			# src/expset_daisyworld.is_daisy_white.oでregAが上書き
+			# されてしまっているので、0x7f(127)に戻す
+			lr35902_set_reg regA 7f
+		) >src/expset_daisyworld.f_binbio_cell_eval.st_eq_7f.b.o
+		(
 			# 現在の細胞 == 白デイジーの場合
 
 			# 地表温度を0x80に戻す
 			lr35902_set_reg regA 80
 			lr35902_copy_to_from ptrHL regA
-		) >src/expset_daisyworld.f_binbio_cell_eval.st_eq_ff.w.o
-		local sz_st_eq_ff_w=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.st_eq_ff.w.o)
-		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_st_eq_ff_w)
-		cat src/expset_daisyworld.f_binbio_cell_eval.st_eq_ff.w.o
-	) >src/expset_daisyworld.f_binbio_cell_eval.st_eq_ff.o
-	local sz_st_eq_ff=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.st_eq_ff.o)
-	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_st_eq_ff)
-	cat src/expset_daisyworld.f_binbio_cell_eval.st_eq_ff.o
+
+			# 現在の細胞 == 黒デイジーの場合の処理を飛ばす
+			local sz_st_eq_7f_b=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.st_eq_7f.b.o)
+			lr35902_rel_jump $(two_digits_d $sz_st_eq_7f_b)
+		) >src/expset_daisyworld.f_binbio_cell_eval.st_eq_7f.w.o
+		local sz_st_eq_7f_w=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.st_eq_7f.w.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_st_eq_7f_w)
+		cat src/expset_daisyworld.f_binbio_cell_eval.st_eq_7f.w.o
+		cat src/expset_daisyworld.f_binbio_cell_eval.st_eq_7f.b.o
+	) >src/expset_daisyworld.f_binbio_cell_eval.st_eq_7f.o
+	local sz_st_eq_7f=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.st_eq_7f.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_st_eq_7f)
+	cat src/expset_daisyworld.f_binbio_cell_eval.st_eq_7f.o
 
 	# 誤差を算出
 	# (誤差 = 地表温度 - 生育適温)
@@ -136,9 +174,42 @@ f_binbio_cell_eval() {
 	(
 		# regA < $DAISY_GROWING_TEMP - 128 の場合
 
-		# regAへ誤差として-128(2の補数:0x80)を設定
-		lr35902_set_reg regA 80
-	) >src/expset_daisyworld.f_binbio_cell_eval.e_is_m128.o
+		# 例えば $DAISY_GROWING_TEMP = 0x15 の時、
+		# $DAISY_GROWING_TEMP - 128 は2の補数で 0x94 であり、
+		# 「regA >= $DAISY_GROWING_TEMP - 128 の場合」へ本来は
+		# 分岐させたい regA = 0x15 等もここに来てしまう。
+		# そこで、regAが負の値である(2の補数としては0x80以上である)事も
+		# 確認する。
+		## 0x7f < regA
+		### regB = regA
+		lr35902_copy_to_from regB regA
+		### regA = 0x7f
+		lr35902_set_reg regA 7f
+		### regAとregBを比較
+		lr35902_compare_regA_and regB
+		(
+			# 0x7f < regA の場合
+
+			# regAへ誤差として-128(2の補数:0x80)を設定
+			lr35902_set_reg regA 80
+		) >src/expset_daisyworld.f_binbio_cell_eval.e_is_m128.o
+		(
+			# 0x7f >= regA の場合
+
+			# regAへ誤差(regB - $DAISY_GROWING_TEMP)を設定
+			lr35902_copy_to_from regA regB
+			lr35902_sub_to_regA $DAISY_GROWING_TEMP
+
+			# 0x7f < regA の場合の処理を飛ばす
+			local sz_e_is_m128=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.e_is_m128.o)
+			lr35902_rel_jump $(two_digits_d $sz_e_is_m128)
+		) >src/expset_daisyworld.f_binbio_cell_eval.calc_e_2.o
+		### regA < regB?
+		local sz_calc_e_2=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.calc_e_2.o)
+		lr35902_rel_jump_with_cond C $(two_digits_d $sz_calc_e_2)
+		cat src/expset_daisyworld.f_binbio_cell_eval.calc_e_2.o
+		cat src/expset_daisyworld.f_binbio_cell_eval.e_is_m128.o
+	) >src/expset_daisyworld.f_binbio_cell_eval.st_lt.o
 	(
 		# regA >= $DAISY_GROWING_TEMP - 128 の場合
 
@@ -146,13 +217,14 @@ f_binbio_cell_eval() {
 		lr35902_sub_to_regA $DAISY_GROWING_TEMP
 
 		# regA < $DAISY_GROWING_TEMP - 128 の場合の処理を飛ばす
-		local sz_e_is_m128=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.e_is_m128.o)
-		lr35902_rel_jump $(two_digits_d $sz_e_is_m128)
+		local sz_st_lt=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.st_lt.o)
+		lr35902_rel_jump $(two_digits_d $sz_st_lt)
 	) >src/expset_daisyworld.f_binbio_cell_eval.calc_e.o
+	## regA < $DAISY_GROWING_TEMP - 128?
 	local sz_calc_e=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.calc_e.o)
 	lr35902_rel_jump_with_cond C $(two_digits_d $sz_calc_e)
 	cat src/expset_daisyworld.f_binbio_cell_eval.calc_e.o
-	cat src/expset_daisyworld.f_binbio_cell_eval.e_is_m128.o
+	cat src/expset_daisyworld.f_binbio_cell_eval.st_lt.o
 
 	# 誤差 >= 0?
 	## regAのMSBが0か?
@@ -162,31 +234,30 @@ f_binbio_cell_eval() {
 
 		# ⽣育適温より⾼いため、⽩デイジーへ⾼い適応度を設定
 
+		# regAはsrc/expset_daisyworld.is_daisy_white.oで上書きされるので
+		# regBへコピー
+		lr35902_copy_to_from regB regA
+
 		# 現在の細胞 == 白デイジー?
 		cat src/expset_daisyworld.is_daisy_white.o
 		lr35902_compare_regA_and 01
 		(
 			# 現在の細胞 == 白デイジーの場合
 
-			# 適応度(regA) = 128(0x80) + 誤差(regA)
-			lr35902_add_to_regA 80
+			# 適応度(regA) = 128(0x80) + 誤差(regB)
+			## regA = 0x80
+			lr35902_set_reg regA 80
+			## regA += regB
+			lr35902_add_to_regA regB
 		) >src/expset_daisyworld.f_binbio_cell_eval.st_ge_gt.w.o
 		(
 			# 現在の細胞 == 黒デイジーの場合
 
-			# push
-			lr35902_push_reg regBC
-
-			# 適応度(regA) = 128(0x80) - 誤差(regA)
-			## regB = regA
-			lr35902_set_reg regB regA
+			# 適応度(regA) = 128(0x80) - 誤差(regB)
 			## regA = 0x80
 			lr35902_set_reg regA 80
 			## regA -= regB
 			lr35902_sub_to_regA regB
-
-			# pop
-			lr35902_pop_reg regBC
 
 			# 現在の細胞 == 白デイジーの場合の処理を飛ばす
 			local sz_st_ge_gt_w=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.st_ge_gt.w.o)
@@ -210,31 +281,30 @@ f_binbio_cell_eval() {
 		## regAへ1を加算
 		lr35902_inc regA
 
+		# regAはsrc/expset_daisyworld.is_daisy_white.oで上書きされるので
+		# regBへコピー
+		lr35902_copy_to_from regB regA
+
 		# 現在の細胞 == 白デイジー?
 		cat src/expset_daisyworld.is_daisy_white.o
 		lr35902_compare_regA_and 01
 		(
 			# 現在の細胞 == 白デイジーの場合
 
-			# push
-			lr35902_push_reg regBC
-
-			# 適応度(regA) = 128(0x80) - 誤差の絶対値(regA)
-			## regB = regA
-			lr35902_set_reg regB regA
+			# 適応度(regA) = 128(0x80) - 誤差の絶対値(regB)
 			## regA = 0x80
 			lr35902_set_reg regA 80
 			## regA -= regB
 			lr35902_sub_to_regA regB
-
-			# pop
-			lr35902_pop_reg regBC
 		) >src/expset_daisyworld.f_binbio_cell_eval.st_lt_gt.w.o
 		(
 			# 現在の細胞 == 黒デイジーの場合
 
-			# 適応度(regA) = 128(0x80) + 誤差の絶対値(regA)
-			lr35902_add_to_regA 80
+			# 適応度(regA) = 128(0x80) + 誤差の絶対値(regB)
+			## regA = 0x80
+			lr35902_set_reg regA 80
+			## regA += regB
+			lr35902_add_to_regA regB
 
 			# 現在の細胞 == 白デイジーの場合の処理を飛ばす
 			local sz_st_lt_gt_w=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.st_lt_gt.w.o)
@@ -256,6 +326,7 @@ f_binbio_cell_eval() {
 
 	# pop & return
 	lr35902_pop_reg regHL
+	lr35902_pop_reg regBC
 	lr35902_return
 }
 
