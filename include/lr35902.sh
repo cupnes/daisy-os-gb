@@ -182,6 +182,13 @@ lr35902_comp_carry() {
 lr35902_set_reg() {
 	local reg=$1
 	local val=$2
+
+	if [ "${val:0:3}" = 'reg' ]; then
+		echo -n "Error: invalid argument: " 1>&2
+		echo "lr35902_set_reg $reg $val" 1>&2
+		return 1
+	fi
+
 	case $reg in
 	regA)
 		echo -en "\x3e\x${val}"	# ld a,${val}
