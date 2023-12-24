@@ -459,23 +459,10 @@ f_binbio_get_code_comp() {
 f_binbio_cell_mutation() {
 	# push
 	lr35902_push_reg regBC
-	lr35902_push_reg regDE
 	lr35902_push_reg regHL
 
-	# regHLをtile_xまで進める
-	lr35902_inc regHL
-
-	# regEへ対象の細胞のタイル座標Xを取得
-	lr35902_copy_to_from regE ptrHL
-
-	# regHLをtile_yまで進める
-	lr35902_inc regHL
-
-	# regDへ対象の細胞のタイル座標Yを取得
-	lr35902_copy_to_from regD ptrHL
-
 	# regHLをtile_numまで進める
-	lr35902_set_reg regBC 0004
+	lr35902_set_reg regBC 0006
 	lr35902_add_to_regHL regBC
 
 	# regAへ対象の細胞のtile_numを取得
@@ -489,9 +476,6 @@ f_binbio_cell_mutation() {
 		# 対象の細胞のtile_numを黒デイジーのタイルへ変更
 		lr35902_set_reg regA $GBOS_TILE_NUM_DAISY_BLACK
 		lr35902_copy_to_from ptrHL regA
-
-		# タイル更新用にタイル番号をregBへも設定
-		lr35902_copy_to_from regB regA
 
 		# regHLをbin_dataの4バイト目(bin_data + 3)まで進める
 		lr35902_set_reg regBC 0005
@@ -507,9 +491,6 @@ f_binbio_cell_mutation() {
 		# 対象の細胞のtile_numを白デイジーのタイルへ変更
 		lr35902_set_reg regA $GBOS_TILE_NUM_DAISY_WHITE
 		lr35902_copy_to_from ptrHL regA
-
-		# タイル更新用にタイル番号をregBへも設定
-		lr35902_copy_to_from regB regA
 
 		# regHLをbin_dataの4バイト目(bin_data + 3)まで進める
 		lr35902_set_reg regBC 0005
@@ -528,19 +509,8 @@ f_binbio_cell_mutation() {
 	cat src/expset_daisyworld.binbio_cell_mutation.is_not_white.o	# regA != 白デイジーのタイルの場合
 	cat src/expset_daisyworld.binbio_cell_mutation.is_white.o	# regA == 白デイジーのタイルの場合
 
-	# 対象の細胞のタイルを更新
-	## タイル座標をVRAMアドレスへ変換
-	lr35902_call $a_tcoord_to_addr
-	## VRAMアドレスと細胞のタイル番号をtdqへエンキュー
-	### VRAMアドレスをregDEへ設定
-	lr35902_copy_to_from regD regH
-	lr35902_copy_to_from regE regL
-	### tdqへエンキューする
-	lr35902_call $a_enq_tdq
-
 	# pop & return
 	lr35902_pop_reg regHL
-	lr35902_pop_reg regDE
 	lr35902_pop_reg regBC
 	lr35902_return
 }
