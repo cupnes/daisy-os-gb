@@ -5327,7 +5327,8 @@ f_binbio_cell_is_dividable() {
 		lr35902_pop_reg regAF
 
 		# regAをゼロクリア
-		lr35902_xor_to_regA regA
+		# (フラグを変化させないためにXOR命令は使わない)
+		lr35902_set_reg regA 00
 
 		# return
 		lr35902_return
