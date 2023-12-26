@@ -6257,8 +6257,6 @@ f_binbio_cell_division() {
 	lr35902_copy_to_from regA ptrBC
 	lr35902_copyinc_to_ptrHL_from_regA
 	lr35902_inc regBC
-	### 後のためにpush
-	lr35902_push_reg regAF
 	## bin_size = 親のbin_size
 	lr35902_copy_to_from regA ptrBC
 	lr35902_copyinc_to_ptrHL_from_regA
@@ -6274,10 +6272,9 @@ f_binbio_cell_division() {
 	lr35902_copy_to_from ptrHL regA
 
 	# mutation_probabilityに応じて突然変異
-	## mutation_probabilityをregBへ取得
-	lr35902_copy_to_regA_from_addr $var_binbio_mutation_probability
-	lr35902_copy_to_from regB regA
 	# ## 突然変異確率(regB) = 0xff - fitness
+	# ## ※ (2023-12-27追記) この辺りの実装を変えたので
+	# ## 　 この箇所も修正しないと動かないかも
 	# ### 現在のregHLをpush
 	# lr35902_push_reg regHL
 	# ### regHL = SP + 5(pushしていたfitnessのアドレス)
@@ -6294,16 +6291,18 @@ f_binbio_cell_division() {
 	# lr35902_copy_to_from regB regA
 	# ### regHLをpop
 	# lr35902_pop_reg regHL
+	## regHLへ子細胞データの先頭アドレスを設定
+	lr35902_set_reg regBC $(two_comp_4 $(calc16 "${BINBIO_CELL_DATA_SIZE}-1"))
+	lr35902_add_to_regHL regBC
+	## mutation_probabilityをregBへ取得
+	lr35902_copy_to_regA_from_addr $var_binbio_mutation_probability
+	lr35902_copy_to_from regB regA
 	## 0x00〜0xffの間の乱数を生成
 	lr35902_call $a_get_rnd
 	## regA(生成した乱数) < mutation_probability ?
 	lr35902_compare_regA_and regB
 	(
 		# regA < mutation_probability の場合
-
-		# regHLへ子細胞データの先頭アドレスを設定
-		lr35902_set_reg regBC $(two_comp_4 $(calc16 "${BINBIO_CELL_DATA_SIZE}-1"))
-		lr35902_add_to_regHL regBC
 
 		# 突然変異
 		lr35902_call $a_binbio_cell_mutation
@@ -6313,12 +6312,15 @@ f_binbio_cell_division() {
 	cat src/f_binbio_cell_division.3.o
 
 	# 生まれた細胞をマップへ描画
+	## 生まれた細胞のタイル番号をregBへ取得
+	### regHLのアドレスをtile_numまで進める
+	lr35902_set_reg regBC 0006
+	lr35902_add_to_regHL regBC
+	### regBへ生まれた細胞のタイル番号を取得
+	lr35902_copy_to_from regB ptrHL
 	## 生まれた細胞のtile_x,tile_yからVRAMアドレスを算出
 	lr35902_call $a_tcoord_to_addr
-	## 算出したVRAMアドレスと細胞のタイル番号をtdqへエンキュー
-	### regB = 配置するタイル番号
-	#### pushしていた親のtile_numをpop
-	lr35902_pop_reg regBC
+	## 算出/取得したVRAMアドレスと細胞のタイル番号をtdqへエンキュー
 	# #### pushしていた親のfitnessもpop
 	# lr35902_pop_reg regAF
 	### regDE = VRAMアドレス
