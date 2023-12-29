@@ -16,6 +16,7 @@ var_binbio_surface_temp=c035	# 地表温度(-128〜127)のアドレス
 ## 現在の細胞が白デイジーか否か
 ## out : regA - 現在の細胞が白デイジーなら1、それ以外は0
 ## work: regBC, regHL
+## ※ フラグレジスタは破壊される
 {
 	# push
 	lr35902_push_reg regBC
@@ -158,11 +159,10 @@ f_binbio_cell_eval() {
 	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_st_eq_7f)
 	cat src/expset_daisyworld.f_binbio_cell_eval.st_eq_7f.o
 
+	# この時点でregAには地表温度が設定されている
+
 	# 誤差を算出
 	# (誤差 = 地表温度 - 生育適温)
-	## regAへ地表温度を設定
-	lr35902_set_reg regHL $var_binbio_surface_temp
-	lr35902_copy_to_from regA ptrHL
 	## -129以下の値は8ビットの2の補数で表せない。
 	## そのため、負の方向の誤差は-128までとしておきたい。
 	## 誤差 = 地表温度(regA) - 生育適温($DAISY_GROWING_TEMP)が-128未満の場合は
@@ -300,9 +300,10 @@ f_binbio_cell_eval() {
 		(
 			# 現在の細胞 == 黒デイジーの場合
 
-			# 適応度(regA) = 128(0x80) + 誤差の絶対値(regB)
-			## regA = 0x80
-			lr35902_set_reg regA 80
+			# 適応度(regA) = 127(0x80) + 誤差の絶対値(regB)
+			# ※ 誤差の絶対値は最大128なので、加算結果が256以上にならないように127へ足す
+			## regA = 0x7f
+			lr35902_set_reg regA 7f
 			## regA += regB
 			lr35902_add_to_regA regB
 
