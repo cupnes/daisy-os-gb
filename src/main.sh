@@ -6835,11 +6835,14 @@ f_binbio_event_btn_a_release() {
 	# push
 	lr35902_push_reg regAF
 
-	# 現在のスライドのバンク・ファイル番号を変数から取得
-	lr35902_copy_to_regA_from_addr $var_ss_current_bank_file_num
+	# スライドショー機能が無効な場合、以下の処理を出力しない
+	if [ $SS_ENABLE -eq 1 ]; then
+		# 現在のスライドのバンク・ファイル番号を変数から取得
+		lr35902_copy_to_regA_from_addr $var_ss_current_bank_file_num
 
-	# 画像表示
-	lr35902_call $a_view_img
+		# 画像表示
+		lr35902_call $a_view_img
+	fi
 
 	# pop & return
 	lr35902_pop_reg regAF

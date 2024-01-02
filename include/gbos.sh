@@ -96,6 +96,7 @@ GBOS_VIEW_IMG_STAT_DURING_IMG_DISP=02	# 画像表示中
 GBOS_ROM_BANK_NO_INIT=01
 
 # slide show
+SS_ENABLE=0	# スライドショー機能の有効(=1)/無効(=0)
 SS_FIRST_BANK_FILE_NUM=10	# 最初のスライドのバンク・ファイル番号
 SS_LAST_BANK_FILE_NUM=74	# 最後のスライドのバンク・ファイル番号
 SS_CURRENT_BANK_FILE_NUM_INIT=$SS_FIRST_BANK_FILE_NUM	# 現在のスライドのファイル番号の初期値
