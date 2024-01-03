@@ -7,10 +7,10 @@ INCLUDE_CON_SH=true
 . include/tiles.sh
 
 # コンソールの開始タイルアドレス
-CON_TADR_BASE=9862
+CON_TADR_BASE=9805
 
 # 最終行最終文字のアドレス
-CON_TADR_EOP=99f1
+CON_TADR_EOP=9813
 
 # 行末判定定数
 CON_EOL_MASK=1f
