@@ -5618,17 +5618,17 @@ f_binbio_cell_find_free_neighbor() {
 	# 現在の細胞のタイルのタイルミラー領域上のアドレスをregHLへ設定
 	lr35902_call $a_tcoord_to_mrraddr
 
-	# regD(tile_y) == 0 ?
+	# regD(tile_y) == $BINBIO_CELL_DISP_AREA_STY ?
 	lr35902_copy_to_from regA regD
-	lr35902_compare_regA_and 00
+	lr35902_compare_regA_and $BINBIO_CELL_DISP_AREA_STY
 	(
-		# tile_y != 0 の場合
+		# tile_y != $BINBIO_CELL_DISP_AREA_STY の場合
 
-		# regE(tile_x) == 0 ?
+		# regE(tile_x) == $BINBIO_CELL_DISP_AREA_STX ?
 		lr35902_copy_to_from regA regE
-		lr35902_compare_regA_and 00
+		lr35902_compare_regA_and $BINBIO_CELL_DISP_AREA_STX
 		(
-			# tile_x != 0 の場合
+			# tile_x != $BINBIO_CELL_DISP_AREA_STX の場合
 
 			# 左上座標は空か?
 			## アドレスregHLへ左上座標のアドレスを設定
@@ -5690,11 +5690,11 @@ f_binbio_cell_find_free_neighbor() {
 		lr35902_set_reg regBC 0020
 		lr35902_add_to_regHL regBC
 
-		# regE(tile_x) == 表示範囲の右端 ?
+		# regE(tile_x) == $BINBIO_CELL_DISP_AREA_ETX ?
 		lr35902_copy_to_from regA regE
-		lr35902_compare_regA_and $(calc16_2 "${GB_DISP_WIDTH_T}-1")
+		lr35902_compare_regA_and $BINBIO_CELL_DISP_AREA_ETX
 		(
-			# tile_x != 表示範囲の右端 の場合
+			# tile_x != $BINBIO_CELL_DISP_AREA_ETX の場合
 
 			# 右上座標は空か?
 			## アドレスregHLへ右上座標のアドレスを設定
@@ -5733,11 +5733,11 @@ f_binbio_cell_find_free_neighbor() {
 	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_6)
 	cat src/f_binbio_cell_find_free_neighbor.6.o
 
-	# regE(tile_x) == 表示範囲の右端 ?
+	# regE(tile_x) == $BINBIO_CELL_DISP_AREA_ETX ?
 	lr35902_copy_to_from regA regE
-	lr35902_compare_regA_and $(calc16_2 "${GB_DISP_WIDTH_T}-1")
+	lr35902_compare_regA_and $BINBIO_CELL_DISP_AREA_ETX
 	(
-		# tile_x != 表示範囲の右端 の場合
+		# tile_x != $BINBIO_CELL_DISP_AREA_ETX の場合
 
 		# 右座標は空か?
 		## アドレスregHLへ右座標のアドレスを設定
@@ -5768,17 +5768,17 @@ f_binbio_cell_find_free_neighbor() {
 	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_8)
 	cat src/f_binbio_cell_find_free_neighbor.8.o
 
-	# regD(tile_y) == 表示範囲の下端 ?
+	# regD(tile_y) == $BINBIO_CELL_DISP_AREA_ETY ?
 	lr35902_copy_to_from regA regD
-	lr35902_compare_regA_and $(calc16_2 "${GB_DISP_HEIGHT_T}-1")
+	lr35902_compare_regA_and $BINBIO_CELL_DISP_AREA_ETY
 	(
-		# tile_y != 表示範囲の下端 の場合
+		# tile_y != $BINBIO_CELL_DISP_AREA_ETY の場合
 
-		# regE(tile_x) == 表示範囲の右端 ?
+		# regE(tile_x) == $BINBIO_CELL_DISP_AREA_ETX ?
 		lr35902_copy_to_from regA regE
-		lr35902_compare_regA_and $(calc16_2 "${GB_DISP_WIDTH_T}-1")
+		lr35902_compare_regA_and $BINBIO_CELL_DISP_AREA_ETX
 		(
-			# tile_x != 表示範囲の右端 の場合
+			# tile_x != $BINBIO_CELL_DISP_AREA_ETX の場合
 
 			# 右下座標は空か?
 			## アドレスregHLへ右下座標のアドレスを設定
@@ -5840,11 +5840,11 @@ f_binbio_cell_find_free_neighbor() {
 		lr35902_set_reg regBC $(two_comp_4 20)
 		lr35902_add_to_regHL regBC
 
-		# regE(tile_x) == 0 ?
+		# regE(tile_x) == $BINBIO_CELL_DISP_AREA_STX ?
 		lr35902_copy_to_from regA regE
-		lr35902_compare_regA_and 00
+		lr35902_compare_regA_and $BINBIO_CELL_DISP_AREA_STX
 		(
-			# tile_x != 0 の場合
+			# tile_x != $BINBIO_CELL_DISP_AREA_STX の場合
 
 			# 左下座標は空か?
 			## アドレスregHLへ左下座標のアドレスを設定
@@ -5883,11 +5883,11 @@ f_binbio_cell_find_free_neighbor() {
 	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_14)
 	cat src/f_binbio_cell_find_free_neighbor.14.o
 
-	# regE(tile_x) == 0 ?
+	# regE(tile_x) == $BINBIO_CELL_DISP_AREA_STX ?
 	lr35902_copy_to_from regA regE
-	lr35902_compare_regA_and 00
+	lr35902_compare_regA_and $BINBIO_CELL_DISP_AREA_STX
 	(
-		# tile_x != 0 の場合
+		# tile_x != $BINBIO_CELL_DISP_AREA_STX の場合
 
 		# 左座標は空か?
 		## アドレスregHLへ左座標のアドレスを設定
