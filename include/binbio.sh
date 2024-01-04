@@ -51,8 +51,8 @@ BINBIO_CELL_LIFE_DURATION_INIT=c0	# 寿命(兼余命)
 BINBIO_CELL_FITNESS_INIT=80	# 適応度
 
 # 細胞表示領域
-# - 左上隅のタイル座標 = (STX, STY)
-# - 右下隅のタイル座標 = (ETX, ETY)
+## 左上隅のタイル座標 = (STX, STY)
+## 右下隅のタイル座標 = (ETX, ETY)
 BINBIO_CELL_DISP_AREA_STX=00
 if [ "$BINBIO_EXPSET_NUM_INIT" = "$BINBIO_EXPSET_DAISYWORLD" ]; then
 	BINBIO_CELL_DISP_AREA_STY=01
@@ -61,6 +61,8 @@ else
 fi
 BINBIO_CELL_DISP_AREA_ETX=$(calc16_2 "${GB_DISP_WIDTH_T}-1")
 BINBIO_CELL_DISP_AREA_ETY=$(calc16_2 "${GB_DISP_HEIGHT_T}-1")
+## 更新周期
+BINBIO_CELL_DISP_AREA_UPDATE_CYC=0a	# 10
 
 # 関数のチューニングパラメータ
 BINBIO_CELL_EVAL_BASE_FITNESS=7f	# 適応度のベース値

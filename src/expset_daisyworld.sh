@@ -615,6 +615,8 @@ f_binbio_init() {
 	lr35902_xor_to_regA regA
 	lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_all_counter_addr_bh
 	lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_all_counter_addr_th
+	## binbio_status_disp_counter = 0
+	lr35902_copy_to_addr_from_regA $var_binbio_status_disp_counter
 	## binbio_surface_temp = $DAISY_GROWING_TEMP
 	lr35902_set_reg regA $DAISY_GROWING_TEMP
 	lr35902_copy_to_addr_from_regA $var_binbio_surface_temp

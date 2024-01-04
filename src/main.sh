@@ -8306,7 +8306,37 @@ event_driven() {
 
 		# [バイナリ生物周期処理]
 		lr35902_call $a_binbio_do_cycle
-		lr35902_call $a_binbio_update_status_disp
+
+		if [ "$BINBIO_EXPSET_NUM_INIT" = "$BINBIO_EXPSET_DAISYWORLD" ]; then
+			# [ステータス表示領域の更新]
+			lr35902_copy_to_regA_from_addr $var_binbio_status_disp_counter
+			lr35902_compare_regA_and $BINBIO_CELL_DISP_AREA_UPDATE_CYC
+			(
+				# regA < regC(更新周期)の場合
+
+				# カウンタをインクリメント
+				lr35902_inc regA
+				lr35902_copy_to_addr_from_regA $var_binbio_status_disp_counter
+			) >src/event_driven.no_img_proc.regA_lt_update_cyc.o
+			(
+				# regA >= regC(更新周期)の場合
+
+				# ステータス表示領域更新関数を呼び出す
+				lr35902_call $a_binbio_update_status_disp
+
+				# カウンタをゼロクリア
+				lr35902_xor_to_regA regA
+				lr35902_copy_to_addr_from_regA $var_binbio_status_disp_counter
+
+				# regA < regCの場合の処理を飛ばす
+				local sz_no_img_proc_regA_lt_update_cyc=$(stat -c '%s' src/event_driven.no_img_proc.regA_lt_update_cyc.o)
+				lr35902_rel_jump $(two_digits_d $sz_no_img_proc_regA_lt_update_cyc)
+			) >src/event_driven.no_img_proc.regA_ge_update_cyc.o
+			local sz_no_img_proc_regA_ge_update_cyc=$(stat -c '%s' src/event_driven.no_img_proc.regA_ge_update_cyc.o)
+			lr35902_rel_jump_with_cond C $sz_no_img_proc_regA_ge_update_cyc
+			cat src/event_driven.no_img_proc.regA_ge_update_cyc.o	# regA >= regCの場合
+			cat src/event_driven.no_img_proc.regA_lt_update_cyc.o	# regA < regCの場合
+		fi
 	) >src/event_driven.no_img_proc.o
 	(
 		# 何らかの画像表示処理中である場合
