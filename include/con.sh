@@ -14,9 +14,11 @@ CON_TADR_EOP=9813
 
 # 行末判定定数
 CON_EOL_MASK=1f
-CON_EOL_VAL=11
+CON_EOL_VAL=13
 
 # 最終行判定
+# TODO この定数では最終行判定できないのでは?
+#      改ページは動いてほしくないのでひとまずこのままにしておく
 CON_LAST_LINE_MASK=e0
 CON_LAST_LINE_VAL=e0
 
