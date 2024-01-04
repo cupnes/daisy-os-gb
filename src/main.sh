@@ -6815,11 +6815,19 @@ f_binbio_select_next_cell() {
 	lr35902_return
 }
 
-# バイナリ生物環境の初期化
-# in : regA - 実験セット番号
+# ステータス表示領域の更新
 f_binbio_select_next_cell >src/f_binbio_select_next_cell.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_select_next_cell.o))
 fadr=$(calc16 "${a_binbio_select_next_cell}+${fsz}")
+a_binbio_update_status_disp=$(four_digits $fadr)
+echo -e "a_binbio_update_status_disp=$a_binbio_update_status_disp" >>$MAP_FILE_NAME
+## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
+
+# バイナリ生物環境の初期化
+# in : regA - 実験セット番号
+f_binbio_update_status_disp >src/f_binbio_update_status_disp.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_update_status_disp.o))
+fadr=$(calc16 "${a_binbio_update_status_disp}+${fsz}")
 a_binbio_init=$(four_digits $fadr)
 echo -e "a_binbio_init=$a_binbio_init" >>$MAP_FILE_NAME
 ## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
@@ -7530,6 +7538,7 @@ global_functions() {
 	f_binbio_cell_division_fix
 	f_binbio_cell_death
 	f_binbio_select_next_cell
+	f_binbio_update_status_disp
 	f_binbio_init
 	f_binbio_reset
 	f_binbio_do_cycle

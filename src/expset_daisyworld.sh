@@ -8,6 +8,8 @@ SRC_EXPSET_DAISYWORLD_SH=true
 
 # 定数
 DAISY_GROWING_TEMP=14		# デイジーの生育適温(20℃)
+## ステータス表示領域
+STATUS_DISP_TADR_SURFACE_TEMP_VAL=9810	# 地表温度の値の箇所のタイルアドレス
 
 # 変数
 var_binbio_surface_temp=c035	# 地表温度(-128〜127)のアドレス
@@ -513,6 +515,31 @@ f_binbio_cell_mutation() {
 	# pop & return
 	lr35902_pop_reg regHL
 	lr35902_pop_reg regBC
+	lr35902_return
+}
+
+# ステータス表示領域の更新
+f_binbio_update_status_disp() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regHL
+
+	# カーソル位置を温度情報の値の位置へ設定
+	lr35902_set_reg regA $(echo $STATUS_DISP_TADR_SURFACE_TEMP_VAL | cut -c3-4)
+	lr35902_copy_to_addr_from_regA $var_con_tadr_bh
+	lr35902_set_reg regA $(echo $STATUS_DISP_TADR_SURFACE_TEMP_VAL | cut -c1-2)
+	lr35902_copy_to_addr_from_regA $var_con_tadr_th
+
+	# 現在の地表温度をregAへ設定
+	lr35902_set_reg regHL $var_binbio_surface_temp
+	lr35902_copy_to_from regA ptrHL
+
+	# f_print_regA_signed_dec()を呼び出す
+	lr35902_call $a_print_regA_signed_dec
+
+	# pop & return
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regAF
 	lr35902_return
 }
 

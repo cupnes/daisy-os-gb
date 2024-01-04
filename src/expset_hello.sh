@@ -236,6 +236,12 @@ f_binbio_cell_mutation() {
 	lr35902_return
 }
 
+# ステータス表示領域の更新
+f_binbio_update_status_disp() {
+	# HELLO系の実験セットでは呼ばれないため、何もしない
+	:
+}
+
 # バイナリ生物環境の初期化
 # in : regA - 実験セット番号
 f_binbio_init() {
