@@ -9,7 +9,8 @@ SRC_EXPSET_DAISYWORLD_SH=true
 # 定数
 DAISY_GROWING_TEMP=14		# デイジーの生育適温(20℃)
 ## ステータス表示領域
-STATUS_DISP_TADR_SURFACE_TEMP_VAL=9810	# 地表温度の値の箇所のタイルアドレス
+STATUS_DISP_TADR_SURFACE_TEMP_TITLE=9805	# 地表温度のタイトルの箇所のタイルアドレス
+STATUS_DISP_TADR_SURFACE_TEMP_VAL=980e	# 地表温度の値の箇所のタイルアドレス
 
 # 変数
 var_binbio_surface_temp=c035	# 地表温度(-128〜127)のアドレス
@@ -627,6 +628,39 @@ f_binbio_init() {
 	lr35902_copy_to_from regE regL
 	### tdqへエンキューする
 	lr35902_call $a_enq_tdq
+
+	# ステータス表示領域を初期化
+	## カーソル位置を設定
+	lr35902_set_reg regA $(echo $STATUS_DISP_TADR_SURFACE_TEMP_TITLE | cut -c3-4)
+	lr35902_copy_to_addr_from_regA $var_con_tadr_bh
+	lr35902_set_reg regA $(echo $STATUS_DISP_TADR_SURFACE_TEMP_TITLE | cut -c1-2)
+	lr35902_copy_to_addr_from_regA $var_con_tadr_th
+	## "ちひようおんと゛："を配置
+	lr35902_set_reg regB $GBOS_TILE_NUM_HIRA_CHI
+	lr35902_call $a_putch
+	lr35902_set_reg regB $GBOS_TILE_NUM_HIRA_HI
+	lr35902_call $a_putch
+	lr35902_set_reg regB $GBOS_TILE_NUM_HIRA_YO
+	lr35902_call $a_putch
+	lr35902_set_reg regB $GBOS_TILE_NUM_HIRA_U
+	lr35902_call $a_putch
+	lr35902_set_reg regB $GBOS_TILE_NUM_HIRA_O
+	lr35902_call $a_putch
+	lr35902_set_reg regB $GBOS_TILE_NUM_HIRA_N
+	lr35902_call $a_putch
+	lr35902_set_reg regB $GBOS_TILE_NUM_HIRA_TO
+	lr35902_call $a_putch
+	lr35902_set_reg regB $GBOS_TILE_NUM_DAKUTEN
+	lr35902_call $a_putch
+	lr35902_set_reg regB $GBOS_TILE_NUM_COLON
+	lr35902_call $a_putch
+	## 現在の地表温度の値を配置
+	lr35902_call $a_binbio_update_status_disp
+	## "゜Ｃ"を配置
+	lr35902_set_reg regB $GBOS_TILE_NUM_HANDAKUTEN
+	lr35902_call $a_putch
+	lr35902_set_reg regB $(get_alpha_tile_num 'C')
+	lr35902_call $a_putch
 
 	# pop & return
 	lr35902_pop_reg regHL
