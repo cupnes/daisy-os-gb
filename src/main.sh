@@ -8321,6 +8321,7 @@ event_driven() {
 
 		# [バイナリ生物周期処理]
 		lr35902_call $a_binbio_do_cycle
+		lr35902_call $a_binbio_update_status_disp
 	) >src/event_driven.no_img_proc.o
 	(
 		# 何らかの画像表示処理中である場合
