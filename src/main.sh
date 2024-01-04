@@ -2789,13 +2789,188 @@ f_print_regA() {
 	lr35902_return
 }
 
+# regAをコンソールのカーソル位置に符号付き10進数でダンプ
+# 備考:
+# - regAを2の補数表現の値(-128〜127)として扱う
+# - 正の値の場合に'+'は表示しない(スペースを表示する)
+# - 上位の桁に0を表示する
+# - 表示には常に4桁の幅を使用する
+# 出力例:
+# - 123  -> " 123"
+# - 103  -> " 103"
+# - 12   -> " 012"
+# - -12  -> "-012"
+# - -103 -> "-103"
+# - -123 -> "-123"
+# 引数:
+# in : regA - ダンプする値
+f_print_regA >src/f_print_regA.o
+fsz=$(to16 $(stat -c '%s' src/f_print_regA.o))
+fadr=$(calc16 "${a_print_regA}+${fsz}")
+a_print_regA_signed_dec=$(four_digits $fadr)
+echo -e "a_print_regA_signed_dec=$a_print_regA_signed_dec" >>$MAP_FILE_NAME
+f_print_regA_signed_dec() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regBC
+
+	# 符号('-')あるいはスペースを出力
+	## regAのMSB == 0 ?
+	lr35902_test_bitN_of_reg 7 regA
+	(
+		# regAのMSB == 0(regA >= 0) の場合
+
+		# スペースを出力
+		lr35902_set_reg regB $GBOS_TILE_NUM_SPC
+		lr35902_call $a_putch
+	) >src/f_print_regA_signed_dec.regA_positive.o
+	(
+		# regAのMSB == 1(regA < 0) の場合
+
+		# 符号('-')を出力
+		lr35902_set_reg regB $GBOS_TILE_NUM_DASH
+		lr35902_call $a_putch
+
+		# regAの絶対値をregAへ設定
+		## regAの各ビットを反転
+		lr35902_complement_regA
+		## regAへ1を加算
+		lr35902_inc regA
+
+		# regAのMSB == 0 の場合の処理を飛ばす
+		local sz_regA_positive=$(stat -c '%s' src/f_print_regA_signed_dec.regA_positive.o)
+		lr35902_rel_jump $(two_digits_d $sz_regA_positive)
+	) >src/f_print_regA_signed_dec.regA_negative.o
+	local sz_regA_negative=$(stat -c '%s' src/f_print_regA_signed_dec.regA_negative.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_regA_negative)
+	cat src/f_print_regA_signed_dec.regA_negative.o
+	cat src/f_print_regA_signed_dec.regA_positive.o
+
+	# regAが100以上なら'1'を、そうでなければ'0'を出力
+	## regB = regA
+	lr35902_copy_to_from regB regA
+	## regA = 99(0x63)
+	lr35902_set_reg regA 63
+	## regA < regB ?
+	lr35902_compare_regA_and regB
+	(
+		# regA < regB(regAが100以上) の場合
+
+		# regA = regB
+		lr35902_copy_to_from regA regB
+
+		# '1'を出力
+		lr35902_set_reg regB $(get_num_tile_num 1)
+		lr35902_call $a_putch
+
+		# regA -= 100(0x64)
+		lr35902_sub_to_regA 64
+	) >src/f_print_regA_signed_dec.regA_ge_100.o
+	(
+		# regA >= regB(regAが100未満) の場合
+
+		# regA = regB
+		lr35902_copy_to_from regA regB
+
+		# '0'を出力
+		lr35902_set_reg regB $(get_num_tile_num 0)
+		lr35902_call $a_putch
+
+		# regA < regB の場合の処理を飛ばす
+		local sz_regA_ge_100=$(stat -c '%s' src/f_print_regA_signed_dec.regA_ge_100.o)
+		lr35902_rel_jump $(two_digits_d $sz_regA_ge_100)
+	) >src/f_print_regA_signed_dec.regA_lt_100.o
+	local sz_regA_lt_100=$(stat -c '%s' src/f_print_regA_signed_dec.regA_lt_100.o)
+	lr35902_rel_jump_with_cond C $(two_digits_d $sz_regA_lt_100)
+	cat src/f_print_regA_signed_dec.regA_lt_100.o	# regA >= regB の場合
+	cat src/f_print_regA_signed_dec.regA_ge_100.o	# regA < regB の場合
+
+	# regAが20以上なら'2'を、そうでなく10以上なら'1'を、そうでもなければ'0'を出力
+	## regB = regA
+	lr35902_copy_to_from regB regA
+	## regA = 19(0x13)
+	lr35902_set_reg regA 13
+	## regA < regB ?
+	lr35902_compare_regA_and regB
+	(
+		# regA < regB(regAが20以上) の場合
+
+		# regA = regB
+		lr35902_copy_to_from regA regB
+
+		# '2'を出力
+		lr35902_set_reg regB $(get_num_tile_num 2)
+		lr35902_call $a_putch
+
+		# regA -= 20(0x14)
+		lr35902_sub_to_regA 14
+	) >src/f_print_regA_signed_dec.regA_ge_20.o
+	(
+		# regA >= regB(regAが20未満) の場合
+
+		# regA(この時点ではregB)が10以上なら'1'を、そうでないなら'0'を出力
+		## regA = 9
+		lr35902_set_reg regA 09
+		## regA < regB ?
+		lr35902_compare_regA_and regB
+		(
+			# regA < regB(regAが10以上) の場合
+
+			# regA = regB
+			lr35902_copy_to_from regA regB
+
+			# '1'を出力
+			lr35902_set_reg regB $(get_num_tile_num 1)
+			lr35902_call $a_putch
+
+			# regA -= 10(0xa)
+			lr35902_sub_to_regA 0a
+		) >src/f_print_regA_signed_dec.regA_ge_10.o
+		(
+			# regA >= regB(regAが10未満) の場合
+
+			# regA = regB
+			lr35902_copy_to_from regA regB
+
+			# '0'を出力
+			lr35902_set_reg regB $(get_num_tile_num 0)
+			lr35902_call $a_putch
+
+			# regA < regB の場合の処理を飛ばす
+			local sz_regA_ge_10=$(stat -c '%s' src/f_print_regA_signed_dec.regA_ge_10.o)
+			lr35902_rel_jump $(two_digits_d $sz_regA_ge_10)
+		) >src/f_print_regA_signed_dec.regA_lt_10.o
+		local sz_regA_lt_10=$(stat -c '%s' src/f_print_regA_signed_dec.regA_lt_10.o)
+		lr35902_rel_jump_with_cond C $(two_digits_d $sz_regA_lt_10)
+		cat src/f_print_regA_signed_dec.regA_lt_10.o	# regA >= regB の場合
+		cat src/f_print_regA_signed_dec.regA_ge_10.o	# regA < regB の場合
+
+		# regA < regB の場合の処理を飛ばす
+		local sz_regA_ge_20=$(stat -c '%s' src/f_print_regA_signed_dec.regA_ge_20.o)
+		lr35902_rel_jump $(two_digits_d $sz_regA_ge_20)
+	) >src/f_print_regA_signed_dec.regA_lt_20.o
+	local sz_regA_lt_20=$(stat -c '%s' src/f_print_regA_signed_dec.regA_lt_20.o)
+	lr35902_rel_jump_with_cond C $(two_digits_d $sz_regA_lt_20)
+	cat src/f_print_regA_signed_dec.regA_lt_20.o	# regA >= regB の場合
+	cat src/f_print_regA_signed_dec.regA_ge_20.o	# regA < regB の場合
+
+	# regAの値を出力
+	lr35902_call $a_byte_to_tile
+	lr35902_call $a_putch
+
+	# pop & return
+	lr35902_pop_reg regBC
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
 # 指定されたタイル番号に対応する16進の数値を返す
 # in : regA - 数値へ変換するタイル番号
 # out: regB - 数値
 # ※ タイル番号は0x14〜0x1d('0'〜'9')・0x1e〜0x23('A'〜'F')の中で指定すること
-f_print_regA >src/f_print_regA.o
-fsz=$(to16 $(stat -c '%s' src/f_print_regA.o))
-fadr=$(calc16 "${a_print_regA}+${fsz}")
+f_print_regA_signed_dec >src/f_print_regA_signed_dec.o
+fsz=$(to16 $(stat -c '%s' src/f_print_regA_signed_dec.o))
+fadr=$(calc16 "${a_print_regA_signed_dec}+${fsz}")
 a_tile_to_byte=$(four_digits $fadr)
 echo -e "a_tile_to_byte=$a_tile_to_byte" >>$MAP_FILE_NAME
 f_tile_to_byte() {
@@ -7327,6 +7502,7 @@ global_functions() {
 	f_getxy
 	f_click_event
 	f_print_regA
+	f_print_regA_signed_dec
 	f_tile_to_byte
 	f_get_rnd
 	f_tdq_enq
