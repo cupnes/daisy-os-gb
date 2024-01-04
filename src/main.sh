@@ -2813,6 +2813,7 @@ f_print_regA_signed_dec() {
 	# push
 	lr35902_push_reg regAF
 	lr35902_push_reg regBC
+	lr35902_push_reg regDE
 
 	# 符号('-')あるいはスペースを出力
 	## regAのMSB == 0 ?
@@ -2846,6 +2847,7 @@ f_print_regA_signed_dec() {
 	cat src/f_print_regA_signed_dec.regA_negative.o
 	cat src/f_print_regA_signed_dec.regA_positive.o
 
+	# 百の位を出力
 	# regAが100以上なら'1'を、そうでなければ'0'を出力
 	## regB = regA
 	lr35902_copy_to_from regB regA
@@ -2885,80 +2887,63 @@ f_print_regA_signed_dec() {
 	cat src/f_print_regA_signed_dec.regA_lt_100.o	# regA >= regB の場合
 	cat src/f_print_regA_signed_dec.regA_ge_100.o	# regA < regB の場合
 
-	# regAが20以上なら'2'を、そうでなく10以上なら'1'を、そうでもなければ'0'を出力
-	## regB = regA
-	lr35902_copy_to_from regB regA
-	## regA = 19(0x13)
-	lr35902_set_reg regA 13
-	## regA < regB ?
-	lr35902_compare_regA_and regB
+	# 十の位を出力
+	## regB = 1
+	lr35902_set_reg regB 01
+	## regC = 10(0xa)
+	lr35902_set_reg regC 0a
+	## regA < 10 なら以下の処理を飛ばす
+	lr35902_compare_regA_and regC
 	(
-		# regA < regB(regAが20以上) の場合
-
-		# regA = regB
-		lr35902_copy_to_from regA regB
-
-		# '2'を出力
-		lr35902_set_reg regB $(get_num_tile_num 2)
-		lr35902_call $a_putch
-
-		# regA -= 20(0x14)
-		lr35902_sub_to_regA 14
-	) >src/f_print_regA_signed_dec.regA_ge_20.o
-	(
-		# regA >= regB(regAが20未満) の場合
-
-		# regA(この時点ではregB)が10以上なら'1'を、そうでないなら'0'を出力
-		## regA = 9
-		lr35902_set_reg regA 09
-		## regA < regB ?
-		lr35902_compare_regA_and regB
 		(
-			# regA < regB(regAが10以上) の場合
+			# regAをregDへ退避
+			lr35902_copy_to_from regD regA
 
-			# regA = regB
-			lr35902_copy_to_from regA regB
+			# regB += 1
+			lr35902_inc regB
 
-			# '1'を出力
-			lr35902_set_reg regB $(get_num_tile_num 1)
-			lr35902_call $a_putch
+			# regC += 10(0xa)
+			lr35902_copy_to_from regA regC
+			lr35902_add_to_regA 0a
+			lr35902_copy_to_from regC regA
 
-			# regA -= 10(0xa)
-			lr35902_sub_to_regA 0a
-		) >src/f_print_regA_signed_dec.regA_ge_10.o
-		(
-			# regA >= regB(regAが10未満) の場合
+			# regAをregDから復帰
+			lr35902_copy_to_from regA regD
 
-			# regA = regB
-			lr35902_copy_to_from regA regB
+			# regA < regC ?
+			lr35902_compare_regA_and regC
+		) >src/f_print_regA_signed_dec.loop.o
+		cat src/f_print_regA_signed_dec.loop.o
 
-			# '0'を出力
-			lr35902_set_reg regB $(get_num_tile_num 0)
-			lr35902_call $a_putch
+		# regA >= regC なら「regAをregDへ退避」に戻る
+		# (regA < regC ならループを抜ける)
+		local sz_loop=$(stat -c '%s' src/f_print_regA_signed_dec.loop.o)
+		lr35902_rel_jump_with_cond NC $(two_comp_d $((sz_loop + 2)))
 
-			# regA < regB の場合の処理を飛ばす
-			local sz_regA_ge_10=$(stat -c '%s' src/f_print_regA_signed_dec.regA_ge_10.o)
-			lr35902_rel_jump $(two_digits_d $sz_regA_ge_10)
-		) >src/f_print_regA_signed_dec.regA_lt_10.o
-		local sz_regA_lt_10=$(stat -c '%s' src/f_print_regA_signed_dec.regA_lt_10.o)
-		lr35902_rel_jump_with_cond C $(two_digits_d $sz_regA_lt_10)
-		cat src/f_print_regA_signed_dec.regA_lt_10.o	# regA >= regB の場合
-		cat src/f_print_regA_signed_dec.regA_ge_10.o	# regA < regB の場合
+		# regA -= regC - 10(0xa)
+		# (計算の簡単さから、regAに10を足した後、regCを引く)
+		lr35902_add_to_regA 0a
+		lr35902_sub_to_regA regC
+	) >src/f_print_regA_signed_dec.count_tens.o
+	local sz_count_tens=$(stat -c '%s' src/f_print_regA_signed_dec.count_tens.o)
+	lr35902_rel_jump_with_cond C $(two_digits_d $sz_count_tens)
+	cat src/f_print_regA_signed_dec.count_tens.o
+	## regB -= 1
+	lr35902_dec regB
+	## regBを十の位の値として出力する
+	lr35902_copy_to_from regD regA
+	lr35902_copy_to_from regA regB
+	lr35902_call $a_byte_to_tile
+	lr35902_call $a_putch
+	lr35902_copy_to_from regA regD
 
-		# regA < regB の場合の処理を飛ばす
-		local sz_regA_ge_20=$(stat -c '%s' src/f_print_regA_signed_dec.regA_ge_20.o)
-		lr35902_rel_jump $(two_digits_d $sz_regA_ge_20)
-	) >src/f_print_regA_signed_dec.regA_lt_20.o
-	local sz_regA_lt_20=$(stat -c '%s' src/f_print_regA_signed_dec.regA_lt_20.o)
-	lr35902_rel_jump_with_cond C $(two_digits_d $sz_regA_lt_20)
-	cat src/f_print_regA_signed_dec.regA_lt_20.o	# regA >= regB の場合
-	cat src/f_print_regA_signed_dec.regA_ge_20.o	# regA < regB の場合
-
-	# regAの値を出力
+	# 一の位を出力
+	## regAの値を出力
 	lr35902_call $a_byte_to_tile
 	lr35902_call $a_putch
 
 	# pop & return
+	lr35902_pop_reg regDE
 	lr35902_pop_reg regBC
 	lr35902_pop_reg regAF
 	lr35902_return
