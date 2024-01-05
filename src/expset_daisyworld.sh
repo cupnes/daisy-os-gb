@@ -7,13 +7,21 @@ SRC_EXPSET_DAISYWORLD_SH=true
 # なので、このファイル内で個別のシェルスクリプトの読み込みは行っていない。
 
 # 定数
-DAISY_GROWING_TEMP=14		# デイジーの生育適温(20℃)
+## # デイジーの生育適温(20℃)
+DAISY_GROWING_TEMP=14
+## 地表温度をインクリメント/デクリメントする前段カウンタのしきい値
+## 前段カウンタの絶対値がこの値に達したら地表温度をインクリメント/デクリメントする
+SURFACE_TEMP_INCDEC_PREV_COUNTER_TH=0a
 ## ステータス表示領域
 STATUS_DISP_TADR_SURFACE_TEMP_TITLE=9805	# 地表温度のタイトルの箇所のタイルアドレス
 STATUS_DISP_TADR_SURFACE_TEMP_VAL=980e	# 地表温度の値の箇所のタイルアドレス
 
 # 変数
-var_binbio_surface_temp=c035	# 地表温度(-128〜127)のアドレス
+## 地表温度をインクリメント/デクリメントする前段のカウンタのアドレス
+## 黒/白デイジーはこの変数をインクリメント/デクリメントする
+var_binbio_surface_temp_prev_counter=c034
+## 地表温度(-128〜127)のアドレス
+var_binbio_surface_temp=c035
 
 # 繰り返し使用する処理をファイル書き出し
 ## 現在の細胞が白デイジーか否か
@@ -74,95 +82,85 @@ f_binbio_cell_eval() {
 	lr35902_push_reg regBC
 	lr35902_push_reg regHL
 
-	# 現在の細胞の機械語バイナリ実行結果の後処理
-	## 地表温度がオーバーフローしてしまっている場合、元に戻す
-	## TODO: これらの処理は細胞の機械語バイナリの側にあるべきとも考えられるが
-	##       細胞の機械語バイナリサイズを5から変更した場合の影響を鑑みて
-	##       v0.3.0時点ではこのように実装している
-	### regAへ地表温度を設定
-	lr35902_set_reg regHL $var_binbio_surface_temp
-	lr35902_copy_to_from regA ptrHL
-	### regA == 0x80?
-	lr35902_compare_regA_and 80
+	# 前段のカウンタの絶対値がしきい値以上であれば地表温度をインクリメント/デクリメントする
+	## 前段のカウンタ >= 0?
+	lr35902_copy_to_regA_from_addr $var_binbio_surface_temp_prev_counter
+	lr35902_test_bitN_of_reg 7 regA
 	(
-		# regA(地表温度) == 0x80 の場合
+		# 前段のカウンタ >= 0(regAのMSBが0)の場合
 
-		# 現在の細胞が黒デイジーなら正のオーバーフローを起こして0x80(-128)になってしまっているので
-		# 地表温度を0x7f(127)に戻す
-
-		# 現在の細胞 == 黒デイジー?
-		cat src/expset_daisyworld.is_daisy_white.o
-		lr35902_compare_regA_and 00
+		# 前段のカウンタ >= しきい値?
+		lr35902_compare_regA_and $SURFACE_TEMP_INCDEC_PREV_COUNTER_TH
 		(
-			# 現在の細胞 == 白デイジーの場合
+			# 前段のカウンタ >= しきい値の場合
 
-			# src/expset_daisyworld.is_daisy_white.oでregAが上書き
-			# されてしまっているので、0x80(-128)に戻す
-			lr35902_set_reg regA 80
-		) >src/expset_daisyworld.f_binbio_cell_eval.st_eq_80.w.o
-		(
-			# 現在の細胞 == 黒デイジーの場合
+			# 地表温度 != 127(0x7f)?
+			lr35902_copy_to_regA_from_addr $var_binbio_surface_temp
+			lr35902_compare_regA_and 7f
+			(
+				# 地表温度 != 127の場合
 
-			# 地表温度を0x7fに戻す
-			lr35902_set_reg regA 7f
-			lr35902_copy_to_from ptrHL regA
+				# 地表温度をインクリメント
+				lr35902_inc regA
+				lr35902_copy_to_addr_from_regA $var_binbio_surface_temp
+			) >src/expset_daisyworld.f_binbio_cell_eval.prev_counter_positive.ge_th.inc_st.o
+			local sz_prev_counter_positive_ge_th_inc_st=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.prev_counter_positive.ge_th.inc_st.o)
+			lr35902_rel_jump_with_cond Z $(two_digits_d $sz_prev_counter_positive_ge_th_inc_st)
+			cat src/expset_daisyworld.f_binbio_cell_eval.prev_counter_positive.ge_th.inc_st.o
 
-			# 現在の細胞 == 白デイジーの場合の処理を飛ばす
-			local sz_st_eq_80_w=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.st_eq_80.w.o)
-			lr35902_rel_jump $(two_digits_d $sz_st_eq_80_w)
-		) >src/expset_daisyworld.f_binbio_cell_eval.st_eq_80.b.o
-		local sz_st_eq_80_b=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.st_eq_80.b.o)
-		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_st_eq_80_b)
-		cat src/expset_daisyworld.f_binbio_cell_eval.st_eq_80.b.o
-		cat src/expset_daisyworld.f_binbio_cell_eval.st_eq_80.w.o
-	) >src/expset_daisyworld.f_binbio_cell_eval.st_eq_80.o
-	local sz_st_eq_80=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.st_eq_80.o)
-	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_st_eq_80)
-	cat src/expset_daisyworld.f_binbio_cell_eval.st_eq_80.o
-	### regA == 0x7f?
-	### - もし「regA(地表温度) == 0x80 の場合」を実行していて、かつ
-	###   「現在の細胞 == 黒デイジーの場合」を実行していた場合、regAに0x7fが
-	###   設定されていて、以降の「regA(地表温度) == 0x7f の場合」に入って
-	###   しまうが、白デイジーではないので「現在の細胞 == 白デイジーの場合」
-	###   が実行されず、問題ない
-	lr35902_compare_regA_and 7f
+			# 前段のカウンタをゼロクリア
+			lr35902_xor_to_regA regA
+			lr35902_copy_to_addr_from_regA $var_binbio_surface_temp_prev_counter
+		) >src/expset_daisyworld.f_binbio_cell_eval.prev_counter_positive.ge_th.o
+		local sz_prev_counter_positive_ge_th=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.prev_counter_positive.ge_th.o)
+		lr35902_rel_jump_with_cond C $(two_digits_d $sz_prev_counter_positive_ge_th)
+		cat src/expset_daisyworld.f_binbio_cell_eval.prev_counter_positive.ge_th.o
+	) >src/expset_daisyworld.f_binbio_cell_eval.prev_counter_positive.o
 	(
-		# regA(地表温度) == 0x7f の場合
+		# 前段のカウンタ < 0(regAのMSBが1)の場合
 
-		# 現在の細胞が白デイジーなら負のオーバーフローを起こして0x7f(127)になってしまっているので
-		# 地表温度を0x80(-128)に戻す
+		# 前段のカウンタの絶対値を取得
+		lr35902_complement_regA
+		lr35902_inc regA
 
-		# 現在の細胞 == 白デイジー?
-		cat src/expset_daisyworld.is_daisy_white.o
-		lr35902_compare_regA_and 01
+		# 前段のカウンタの絶対値 >= しきい値?
+		lr35902_compare_regA_and $SURFACE_TEMP_INCDEC_PREV_COUNTER_TH
 		(
-			# 現在の細胞 == 黒デイジーの場合
+			# 前段のカウンタの絶対値 >= しきい値の場合
 
-			# src/expset_daisyworld.is_daisy_white.oでregAが上書き
-			# されてしまっているので、0x7f(127)に戻す
-			lr35902_set_reg regA 7f
-		) >src/expset_daisyworld.f_binbio_cell_eval.st_eq_7f.b.o
-		(
-			# 現在の細胞 == 白デイジーの場合
+			# 地表温度 != -128(0x80)?
+			lr35902_copy_to_regA_from_addr $var_binbio_surface_temp
+			lr35902_compare_regA_and 80
+			(
+				# 地表温度 != -128の場合
 
-			# 地表温度を0x80に戻す
-			lr35902_set_reg regA 80
-			lr35902_copy_to_from ptrHL regA
+				# 地表温度をデクリメント
+				lr35902_dec regA
+				lr35902_copy_to_addr_from_regA $var_binbio_surface_temp
+			) >src/expset_daisyworld.f_binbio_cell_eval.prev_counter_negative.ge_th.dec_st.o
+			local sz_prev_counter_negative_ge_th_dec_st=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.prev_counter_negative.ge_th.dec_st.o)
+			lr35902_rel_jump_with_cond Z $(two_digits_d $sz_prev_counter_negative_ge_th_dec_st)
+			cat src/expset_daisyworld.f_binbio_cell_eval.prev_counter_negative.ge_th.dec_st.o
 
-			# 現在の細胞 == 黒デイジーの場合の処理を飛ばす
-			local sz_st_eq_7f_b=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.st_eq_7f.b.o)
-			lr35902_rel_jump $(two_digits_d $sz_st_eq_7f_b)
-		) >src/expset_daisyworld.f_binbio_cell_eval.st_eq_7f.w.o
-		local sz_st_eq_7f_w=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.st_eq_7f.w.o)
-		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_st_eq_7f_w)
-		cat src/expset_daisyworld.f_binbio_cell_eval.st_eq_7f.w.o
-		cat src/expset_daisyworld.f_binbio_cell_eval.st_eq_7f.b.o
-	) >src/expset_daisyworld.f_binbio_cell_eval.st_eq_7f.o
-	local sz_st_eq_7f=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.st_eq_7f.o)
-	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_st_eq_7f)
-	cat src/expset_daisyworld.f_binbio_cell_eval.st_eq_7f.o
+			# 前段のカウンタをゼロクリア
+			lr35902_xor_to_regA regA
+			lr35902_copy_to_addr_from_regA $var_binbio_surface_temp_prev_counter
+		) >src/expset_daisyworld.f_binbio_cell_eval.prev_counter_negative.ge_th.o
+		local sz_prev_counter_negative_ge_th=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.prev_counter_negative.ge_th.o)
+		lr35902_rel_jump_with_cond C $(two_digits_d $sz_prev_counter_negative_ge_th)
+		cat src/expset_daisyworld.f_binbio_cell_eval.prev_counter_negative.ge_th.o
 
-	# この時点でregAには地表温度が設定されている
+		# 前段のカウンタ >= 0の場合の処理を飛ばす
+		local sz_prev_counter_positive=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.prev_counter_positive.o)
+		lr35902_rel_jump $(two_digits_d $sz_prev_counter_positive)
+	) >src/expset_daisyworld.f_binbio_cell_eval.prev_counter_negative.o
+	local sz_prev_counter_negative=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.prev_counter_negative.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_prev_counter_negative)
+	cat src/expset_daisyworld.f_binbio_cell_eval.prev_counter_negative.o
+	cat src/expset_daisyworld.f_binbio_cell_eval.prev_counter_positive.o
+
+	# regAに地表温度を設定
+	lr35902_copy_to_regA_from_addr $var_binbio_surface_temp
 
 	# 誤差を算出
 	# (誤差 = 地表温度 - 生育適温)
@@ -594,7 +592,7 @@ f_binbio_init() {
 	## bin_data = (黒デイジーの命令列)
 	## 命令列についてはdocs/daisyworld.mdを参照
 	local byte_in_inst
-	for byte_in_inst in 21 $(echo $var_binbio_surface_temp | cut -c3-4) $(echo $var_binbio_surface_temp | cut -c1-2) 34 00; do
+	for byte_in_inst in 21 $(echo $var_binbio_surface_temp_prev_counter | cut -c3-4) $(echo $var_binbio_surface_temp_prev_counter | cut -c1-2) 34 00; do
 		lr35902_set_reg regA $byte_in_inst
 		lr35902_copyinc_to_ptrHL_from_regA
 	done
@@ -615,6 +613,8 @@ f_binbio_init() {
 	lr35902_xor_to_regA regA
 	lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_all_counter_addr_bh
 	lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_all_counter_addr_th
+	## binbio_surface_temp_prev_counter = 0
+	lr35902_copy_to_addr_from_regA $var_binbio_surface_temp_prev_counter
 	## binbio_status_disp_counter = 0
 	lr35902_copy_to_addr_from_regA $var_binbio_status_disp_counter
 	## binbio_surface_temp = $DAISY_GROWING_TEMP
