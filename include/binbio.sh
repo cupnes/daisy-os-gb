@@ -43,9 +43,15 @@ BINBIO_EXPSET_DAISYWORLD=03	# デイジーワールド
 
 # 初期値
 ## システム変数
-BINBIO_MUTATION_PROBABILITY_INIT=c0	# 突然変異の発生しやすさ
-BINBIO_EXPSET_NUM_INIT=$BINBIO_EXPSET_DAISYWORLD	# 現在の実験セット番号
-# BINBIO_EXPSET_NUM_INIT=$BINBIO_EXPSET_HELLO	# 現在の実験セット番号
+### 突然変異の発生しやすさを固定で設定する(1=有効/0=無効)
+### - 有効な場合、突然変異の発生しやすさは固定でvar_binbio_mutation_probability
+### - 無効な場合、突然変異の発生しやすさは「0xff - 適応度」
+BINBIO_FIX_MUTATION_PROBABILITY=0
+### 突然変異の発生しやすさ
+BINBIO_MUTATION_PROBABILITY_INIT=c0
+### 現在の実験セット番号
+BINBIO_EXPSET_NUM_INIT=$BINBIO_EXPSET_DAISYWORLD
+# BINBIO_EXPSET_NUM_INIT=$BINBIO_EXPSET_HELLO
 ## 初期細胞
 BINBIO_CELL_LIFE_DURATION_INIT=1e	# 寿命(兼余命)
 BINBIO_CELL_FITNESS_INIT=80	# 適応度
