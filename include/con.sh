@@ -10,7 +10,7 @@ INCLUDE_CON_SH=true
 CON_TADR_BASE=9805
 
 # 最終行最終文字のアドレス
-CON_TADR_EOP=9813
+CON_TADR_EOP=9a33
 
 # 行末判定定数
 # TODO 以下を MASK=1f, VAL=11 から変える際は、
