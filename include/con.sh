@@ -13,6 +13,11 @@ CON_TADR_BASE=9805
 CON_TADR_EOP=9813
 
 # 行末判定定数
+# TODO 以下を MASK=1f, VAL=11 から変える際は、
+#      con_clear()の↓の箇所も併せて変える必要があるのでは?
+#      > # 次の行の行頭のアドレスをregDEへ設定
+#      > # (現在のアドレスに0x11を足す)
+#      (↑の0x11も定数化あるいはシェル芸で算出したい所)
 CON_EOL_MASK=1f
 CON_EOL_VAL=13
 
