@@ -203,7 +203,7 @@
      | `bin_size` | 親の`bin_size` |
      | `bin_data` | 親の`bin_data` |
      | `collected_flags` | 0x00 |
-  4. `mutation_probability`に応じて突然変異
+  4. `mutation_probability`に応じて突然変異(突然変異のしやすさが固定の場合、そうでない場合は[適応度に応じて突然変異のしやすさが決まる](../include/binbio.sh#L46-L51))
      1. 0x00〜0xffの間の乱数を生成
      2. 生成した乱数が`mutation_probability`より小さいなら、突然変異する(`mutation`)
   5. 生まれた細胞をマップへ描画
