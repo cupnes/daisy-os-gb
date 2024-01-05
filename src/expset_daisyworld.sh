@@ -563,13 +563,13 @@ f_binbio_init() {
 	## flags = 0x01
 	lr35902_set_reg regA 01
 	lr35902_copyinc_to_ptrHL_from_regA
-	## tile_x = 10
-	lr35902_set_reg regA 0a
+	## tile_x = $BINBIO_CELL_TILE_X_INIT
+	lr35902_set_reg regA $BINBIO_CELL_TILE_X_INIT
 	lr35902_copyinc_to_ptrHL_from_regA
 	### 後のためにregEにも設定
 	lr35902_copy_to_from regE regA
-	## tile_y = 9
-	lr35902_set_reg regA 09
+	## tile_y = $BINBIO_CELL_TILE_Y_INIT
+	lr35902_set_reg regA $BINBIO_CELL_TILE_Y_INIT
 	lr35902_copyinc_to_ptrHL_from_regA
 	### 後のためにregDにも設定
 	lr35902_copy_to_from regD regA
