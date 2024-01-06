@@ -7,14 +7,14 @@ SRC_EXPSET_DAISYWORLD_SH=true
 # なので、このファイル内で個別のシェルスクリプトの読み込みは行っていない。
 
 # 定数
-## # デイジーの生育適温(20℃)
+## デイジーの生育適温(20℃)
 DAISY_GROWING_TEMP=14
 ## 地表温度をインクリメント/デクリメントする前段カウンタのしきい値
 ## 前段カウンタの絶対値がこの値に達したら地表温度をインクリメント/デクリメントする
 SURFACE_TEMP_INCDEC_PREV_COUNTER_TH=0a
-## ステータス表示領域
-STATUS_DISP_TADR_SURFACE_TEMP_TITLE=9805	# 地表温度のタイトルの箇所のタイルアドレス
-STATUS_DISP_TADR_SURFACE_TEMP_VAL=980e	# 地表温度の値の箇所のタイルアドレス
+## 画面上の各地点のタイルアドレス
+SURFACE_TEMP_TITLE_TADR=9805	# 地表温度のタイトル
+SURFACE_TEMP_VAL_TADR=980e	# 地表温度の値
 
 # 変数
 ## 地表温度をインクリメント/デクリメントする前段のカウンタのアドレス
@@ -524,9 +524,9 @@ f_binbio_update_status_disp() {
 	lr35902_push_reg regHL
 
 	# カーソル位置を温度情報の値の位置へ設定
-	lr35902_set_reg regA $(echo $STATUS_DISP_TADR_SURFACE_TEMP_VAL | cut -c3-4)
+	lr35902_set_reg regA $(echo $SURFACE_TEMP_VAL_TADR | cut -c3-4)
 	lr35902_copy_to_addr_from_regA $var_con_tadr_bh
-	lr35902_set_reg regA $(echo $STATUS_DISP_TADR_SURFACE_TEMP_VAL | cut -c1-2)
+	lr35902_set_reg regA $(echo $SURFACE_TEMP_VAL_TADR | cut -c1-2)
 	lr35902_copy_to_addr_from_regA $var_con_tadr_th
 
 	# 現在の地表温度をregAへ設定
@@ -633,11 +633,11 @@ f_binbio_init() {
 	### tdqへエンキューする
 	lr35902_call $a_enq_tdq
 
-	# ステータス表示領域を初期化
+	# 地表温度情報をマップへ配置
 	## カーソル位置を設定
-	lr35902_set_reg regA $(echo $STATUS_DISP_TADR_SURFACE_TEMP_TITLE | cut -c3-4)
+	lr35902_set_reg regA $(echo $SURFACE_TEMP_TITLE_TADR | cut -c3-4)
 	lr35902_copy_to_addr_from_regA $var_con_tadr_bh
-	lr35902_set_reg regA $(echo $STATUS_DISP_TADR_SURFACE_TEMP_TITLE | cut -c1-2)
+	lr35902_set_reg regA $(echo $SURFACE_TEMP_TITLE_TADR | cut -c1-2)
 	lr35902_copy_to_addr_from_regA $var_con_tadr_th
 	## "ちひようおんと゛："を配置
 	lr35902_set_reg regB $GBOS_TILE_NUM_HIRA_CHI
