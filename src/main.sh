@@ -2564,7 +2564,7 @@ fadr=$(calc16 "${a_clr_con}+${fsz}")
 a_print=$(four_digits $fadr)
 echo -e "a_print=$a_print" >>$MAP_FILE_NAME
 f_print() {
-	# コンソールのcon_clearを呼び出す
+	# コンソールのcon_printを呼び出す
 	con_print
 
 	# return
