@@ -197,7 +197,7 @@ get_hira_tile_num() {
 #                       罫線を描くなら「矩形を描画する関数」とかの方が良いため
 # out: 標準出力 - タイル番号
 get_tile_num() {
-	local ch=$1
+	local ch="$1"
 	case "$ch" in
 	' ')
 		echo $GBOS_TILE_NUM_SPC
@@ -313,8 +313,8 @@ get_tile_num() {
 #                       罫線を描くなら「矩形を描画する関数」とかの方が良いため
 # out: 標準出力 - タイル番号のバイナリデータ
 put_char_tile_data() {
-	local ch=$1
-	local tile_num=$(get_tile_num $ch)
+	local ch="$1"
+	local tile_num=$(get_tile_num "$ch")
 	echo -en "\x$tile_num"
 }
 
@@ -330,8 +330,8 @@ put_str_tile_data() {
 	local i
 	local ch
 	for ((i = 0; i < $len; i++)); do
-		ch=${str:$i:1}
-		put_char_tile_data $ch
+		ch="${str:$i:1}"
+		put_char_tile_data "$ch"
 	done
 	echo -en "\x$GBOS_CTRL_CHR_NULL"
 }
