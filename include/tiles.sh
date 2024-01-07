@@ -317,3 +317,21 @@ put_char_tile_data() {
 	local tile_num=$(get_tile_num $ch)
 	echo -en "\x$tile_num"
 }
+
+# 指定された文字列のタイル番号の並びのバイナリデータを標準出力へ出力
+# (NULL文字で終端する)
+# in : 第1引数  - 文字列
+#                 ※ 対応するタイルが存在する文字のみであること
+# out: 標準出力 - タイル番号が並んだバイナリデータ
+#                 ※ NULL文字(0xff)で終端されている
+put_str_tile_data() {
+	local str=$1
+	local len=${#str}
+	local i
+	local ch
+	for i in {0..11}; do
+		ch=${str:$i:1}
+		put_char_tile_data $ch
+	done
+	echo -en "\x$GBOS_CTRL_CHR_NULL"
+}
