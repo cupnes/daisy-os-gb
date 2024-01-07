@@ -35,6 +35,7 @@ rm -f $MAP_FILE_NAME
 debug_mode=false
 
 GBOS_ROM_TILE_DATA_START=$GB_ROM_FREE_BASE
+GBOS_ROM_CONST_DATA_START=0c00
 GBOS_GFUNC_START=1000
 GBOS_TILE_DATA_START=8000
 GBOS_BG_TILEMAP_START=9800
@@ -102,6 +103,25 @@ GBOS_TMRR_BASE_BH=00	# タイルミラー領域ベースアドレス(下位8ビ�
 GBOS_TMRR_BASE_TH=dc	# タイルミラー領域ベースアドレス(上位8ビット)
 GBOS_TOFS_MASK_TH=03	# タイルアドレスオフセット部マスク(上位8ビット)
 GBOS_TMRR_END_PLUS1_TH=e0	# タイルミラー領域最終アドレス+1(上位8ビット)
+
+# 定数データを出力
+const_data() {
+	local cadr
+
+	a_const_pref_hex=$GBOS_ROM_CONST_DATA_START
+	put_str_tile_data '0X' >src/const_pref_hex.o
+	cat src/const_pref_hex.o
+	sz_const_pref_hex=$(stat -c '%s' src/const_pref_hex.o)
+	echo -e "a_const_pref_hex=$a_const_pref_hex" >>$MAP_FILE_NAME
+
+	cadr=$(four_digits $(calc16 "${a_const_pref_hex}+$(to16 $sz_const_pref_hex)"))
+	a_const_cell_status_str_flag=$cadr
+	put_str_tile_data 'ふらく゛:' >src/const_cell_status_str_flag.o
+	cat src/const_cell_status_str_flag.o
+	sz_const_cell_status_str_flag=$(stat -c '%s' src/const_cell_status_str_flag.o)
+	echo -e "a_const_cell_status_str_flag=$a_const_cell_status_str_flag" >>$MAP_FILE_NAME
+}
+const_data >src/const_data.o
 
 # 初期タイルデータをVRAMのタイルデータ領域へロード
 # ※ regAF・regDE・regHLは破壊される
@@ -7575,12 +7595,34 @@ gbos_vec() {
 }
 
 gbos_const() {
+	# 文字タイルデータを配置
 	char_tiles >src/char_tiles.o
 	cat src/char_tiles.o
+
+	# 文字タイルデータと定数データの間のパディングを配置
 	local sz_char_tiles=$(stat -c '%s' src/char_tiles.o)
-	local sz_tiledata_area=$(bc <<< "ibase=16;$GBOS_GFUNC_START - $GBOS_ROM_TILE_DATA_START")
+	local sz_tiledata_area=$(bc <<< "ibase=16;${GBOS_ROM_CONST_DATA_START^^} - ${GBOS_ROM_TILE_DATA_START^^}")
 	local sz_padding=$((sz_tiledata_area - sz_char_tiles))
+	if [ $sz_padding -lt 0 ]; then
+		echo "Error: Padding size between char tiles and const data < 0 (sz_padding = $sz_padding)" 1>&2
+		return 1
+	fi
 	dd if=/dev/zero bs=1 count=$sz_padding status=none
+
+	# 定数データを配置
+	cat src/const_data.o
+
+	# 定数データとグローバル関数の間のパディングを配置
+	local sz_const_data=$(stat -c '%s' src/const_data.o)
+	local sz_const_data_area=$(bc <<< "ibase=16;${GBOS_GFUNC_START^^} - ${GBOS_ROM_CONST_DATA_START^^}")
+	sz_padding=$((sz_const_data_area - sz_const_data))
+	if [ $sz_padding -lt 0 ]; then
+		echo "Error: Padding size between const data and global functions < 0 (sz_padding = $sz_padding)" 1>&2
+		return 1
+	fi
+	dd if=/dev/zero bs=1 count=$sz_padding status=none
+
+	# グローバル関数を配置
 	global_functions
 }
 

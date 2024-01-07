@@ -1,3 +1,5 @@
+a_const_pref_hex=0c00
+a_const_cell_status_str_flag=0C03
 a_compare_regHL_and_regDE=1000
 a_tcoord_to_addr=1033
 a_wtcoord_to_tcoord=1049

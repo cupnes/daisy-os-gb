@@ -115,7 +115,7 @@ print_boot_kern() {
 			gb_cart_header_no_title_mbc1 $entry_addr_4digits
 		fi
 
-		# 0x0150 - 0x3fff: const(文字タイルデータ, グローバル関数),
+		# 0x0150 - 0x3fff: const(文字タイルデータ, 定数データ, グローバル関数),
 		#                  main(init関数, イベントドリブン関数) (16048バイト),
 		#                  パディング
 		gbos_main >gbos_main.o
