@@ -106,20 +106,48 @@ GBOS_TMRR_END_PLUS1_TH=e0	# タイルミラー領域最終アドレス+1(上位8
 
 # 定数データを出力
 const_data() {
-	local cadr
+	### 文字列データ ###
 
-	a_const_pref_hex=$GBOS_ROM_CONST_DATA_START
-	put_str_tile_data '0X' >src/const_pref_hex.o
-	cat src/const_pref_hex.o
-	sz_const_pref_hex=$(stat -c '%s' src/const_pref_hex.o)
-	echo -e "a_const_pref_hex=$a_const_pref_hex" >>$MAP_FILE_NAME
+	# 定数名と変換元の文字列をTSVへリストアップ
+	# ※ ここで付けた定数名を用いて、文字列データへ以下のシェル変数でアクセスできるようになる
+	# 　 - アドレス: $a_const_<定数名>
+	# 　 - サイズ  : $sz_const_<定数名>
+	cat <<EOF >src/const_data.str.tsv
+pref_hex	0X
+cell_status_str_flag	ふらく゛:
+cell_status_str_coord	さ゛ひよう:
+EOF
 
-	cadr=$(four_digits $(calc16 "${a_const_pref_hex}+$(to16 $sz_const_pref_hex)"))
-	a_const_cell_status_str_flag=$cadr
-	put_str_tile_data 'ふらく゛:' >src/const_cell_status_str_flag.o
-	cat src/const_cell_status_str_flag.o
-	sz_const_cell_status_str_flag=$(stat -c '%s' src/const_cell_status_str_flag.o)
-	echo -e "a_const_cell_status_str_flag=$a_const_cell_status_str_flag" >>$MAP_FILE_NAME
+	# 各文字列をタイル番号のバイナリデータへ変換しファイルと標準出力へ出力
+	local num_lines=$(wc -l src/const_data.str.tsv | cut -d' ' -f1)
+	local i
+	local name
+	local str
+	for ((i = 1; i <= $num_lines; i++)); do
+		name=$(sed -n ${i}p src/const_data.str.tsv | cut -f1)
+		str=$(sed -n ${i}p src/const_data.str.tsv | cut -f2)
+		put_str_tile_data "$str" >src/const_${name}.o
+		cat src/const_${name}.o
+	done
+
+	# 一時マップファイルへ各文字列データのアドレスとサイズを出力
+	# ※ この部分のみ、マップデータの読み込みを行うため、
+	# 　 本体のマップファイルではなく別のファイルへ出力している
+	local next_adr=$GBOS_ROM_CONST_DATA_START
+	local str_name_list=$(cut -f1 src/const_data.str.tsv)
+	local sz
+	for name in $str_name_list; do
+		echo "a_const_${name}=$next_adr"
+		sz=$(stat -c '%s' src/const_${name}.o)
+		echo "sz_const_${name}=$sz"
+		next_adr=$(four_digits $(calc16 "${next_adr}+${sz}"))
+	done >include/const_data.str_map.sh
+
+	# マップデータ読み込み
+	. include/const_data.str_map.sh
+
+	# 本体のマップファイルへ追記
+	cat include/const_data.str_map.sh >>$MAP_FILE_NAME
 }
 const_data >src/const_data.o
 

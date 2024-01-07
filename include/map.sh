@@ -1,5 +1,9 @@
 a_const_pref_hex=0c00
+sz_const_pref_hex=3
 a_const_cell_status_str_flag=0C03
+sz_const_cell_status_str_flag=6
+a_const_cell_status_str_coord=0C09
+sz_const_cell_status_str_coord=7
 a_compare_regHL_and_regDE=1000
 a_tcoord_to_addr=1033
 a_wtcoord_to_tcoord=1049
