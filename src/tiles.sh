@@ -5,15 +5,13 @@ SRC_TILES_SH=true
 
 . include/common.sh
 
-GBOS_GFUNC_START=1000
-
-GBOS_TILEDATA_AREA_BYTES=$(calc16 "${GBOS_GFUNC_START}-150")
+# 全タイル数
+# ※ src/main.shのdump_all_tiles()で使用している
 GBOS_NUM_ALL_TILES=8e
-GBOS_NUM_ALL_TILE_BYTES=$(four_digits $(calc16 "${GBOS_NUM_ALL_TILES}*10"))
 
-tiles_bc_form="ibase=16;${GBOS_TILEDATA_AREA_BYTES}-${GBOS_NUM_ALL_TILE_BYTES}"
-GBOS_TILERSV_AREA_BYTES=$(echo $tiles_bc_form | bc)
-## ddでゼロ埋めするのに使うので10進数で
+# 全タイルの合計バイト数
+# ※ src/main.shのload_all_tiles()とf_rstr_tiles_cyc()で使用している
+GBOS_NUM_ALL_TILE_BYTES=$(four_digits $(calc16 "${GBOS_NUM_ALL_TILES}*10"))
 
 char_tiles() {
 	### タイルデータ(計72(0x48)タイル,1152(0x480)バイト) ###

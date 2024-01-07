@@ -35,6 +35,7 @@ rm -f $MAP_FILE_NAME
 debug_mode=false
 
 GBOS_ROM_TILE_DATA_START=$GB_ROM_FREE_BASE
+GBOS_GFUNC_START=1000
 GBOS_TILE_DATA_START=8000
 GBOS_BG_TILEMAP_START=9800
 GBOS_WINDOW_TILEMAP_START=9c00
@@ -7574,8 +7575,12 @@ gbos_vec() {
 }
 
 gbos_const() {
-	char_tiles
-	dd if=/dev/zero bs=1 count=$GBOS_TILERSV_AREA_BYTES 2>/dev/null
+	char_tiles >src/char_tiles.o
+	cat src/char_tiles.o
+	local sz_char_tiles=$(stat -c '%s' src/char_tiles.o)
+	local sz_tiledata_area=$(bc <<< "ibase=16;$GBOS_GFUNC_START - $GBOS_ROM_TILE_DATA_START")
+	local sz_padding=$((sz_tiledata_area - sz_char_tiles))
+	dd if=/dev/zero bs=1 count=$sz_padding status=none
 	global_functions
 }
 
