@@ -329,7 +329,7 @@ put_str_tile_data() {
 	local len=${#str}
 	local i
 	local ch
-	for i in {0..11}; do
+	for ((i = 0; i < $len; i++)); do
 		ch=${str:$i:1}
 		put_char_tile_data $ch
 	done
