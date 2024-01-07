@@ -6,6 +6,8 @@ INCLUDE_CON_SH=true
 . include/vars.sh
 . include/tiles.sh
 
+### 定数 ###
+
 # コンソールの開始タイルアドレス
 CON_TADR_BASE=9805
 
@@ -27,6 +29,8 @@ CON_EOL_VAL=13
 #      改ページは動いてほしくないのでひとまずこのままにしておく
 CON_LAST_LINE_MASK=e0
 CON_LAST_LINE_VAL=e0
+
+### OSの関数として使用する関数 ###
 
 # コンソールの初期化
 con_init() {
