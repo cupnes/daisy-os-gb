@@ -7439,6 +7439,7 @@ f_binbio_event_btn_select_release() {
 	lr35902_pop_reg regAF
 	lr35902_return
 }
+f_binbio_event_btn_select_release >src/f_binbio_event_btn_select_release.o
 
 # V-Blankハンドラ
 # f_vblank_hdlr() {
@@ -7457,90 +7458,90 @@ f_binbio_event_btn_select_release() {
 
 # 1000h〜の領域に配置される
 global_functions() {
-	f_compare_regHL_and_regDE
-	f_tcoord_to_addr
-	f_wtcoord_to_tcoord
-	f_tcoord_to_mrraddr
-	f_clear_bg
-	f_init_tmrr
-	f_lay_tile_at_tcoord
-	f_lay_tile_at_wtcoord
-	f_lay_tiles_at_tcoord_to_right
-	f_lay_tiles_at_wtcoord_to_right
-	f_lay_tiles_at_tcoord_to_low
-	f_lay_tiles_at_wtcoord_to_low
-	f_objnum_to_addr
-	f_set_objpos
-	f_lay_icon
-	f_clr_win
-	f_view_txt
-	f_view_txt_cyc
-	f_clr_win_cyc
-	f_tn_to_addr
-	f_view_img
-	f_quit_img
-	f_rstr_tiles
-	f_rstr_tiles_cyc
-	f_view_dir
-	f_view_dir_cyc
-	f_check_click_icon_area_x
-	f_check_click_icon_area_y
-	f_init_con
-	f_run_exe
-	f_run_exe_cyc
-	f_init_tdq
-	f_enq_tdq
-	f_byte_to_tile
-	f_get_file_addr_and_type
-	f_right_click_event
-	f_select_rom
-	f_select_ram
-	f_exit_exe
-	f_putch
-	f_clr_con
-	f_print
-	f_putxy
-	f_getxy
-	f_click_event
-	f_print_regA
-	f_print_regA_signed_dec
-	f_tile_to_byte
-	f_get_rnd
-	f_tdq_enq
-	f_binbio_get_tile_family_num
-	f_binbio_cell_set_tile_num
-	f_binbio_cell_eval_family
-	f_binbio_cell_eval_helloworld
-	f_binbio_cell_eval_daisy
-	f_binbio_cell_eval_hello
-	f_binbio_cell_eval
-	f_binbio_cell_metabolism_and_motion
-	f_binbio_get_code_comp_all
-	f_binbio_get_code_comp_hello
-	f_binbio_get_code_comp
-	f_binbio_cell_growth
-	f_binbio_cell_is_dividable
-	f_binbio_clear_cell_data_area
-	f_binbio_find_cell_data_by_tile_xy
-	f_binbio_cell_alloc
-	f_binbio_cell_find_free_neighbor
-	f_binbio_cell_mutation_all
-	f_binbio_cell_mutation_alphabet
-	f_binbio_cell_mutation
-	f_binbio_cell_division
-	f_binbio_cell_division_fix
-	f_binbio_cell_death
-	f_binbio_select_next_cell
-	f_binbio_update_status_disp
-	f_binbio_init
-	f_binbio_reset
-	f_binbio_do_cycle
-	f_binbio_event_btn_a_release
-	f_binbio_event_btn_b_release
-	f_binbio_event_btn_right_release
-	f_binbio_event_btn_left_release
-	f_binbio_event_btn_start_release
-	f_binbio_event_btn_select_release
+	cat src/f_compare_regHL_and_regDE.o
+	cat src/f_tcoord_to_addr.o
+	cat src/f_wtcoord_to_tcoord.o
+	cat src/f_tcoord_to_mrraddr.o
+	cat src/f_clear_bg.o
+	cat src/f_init_tmrr.o
+	cat src/f_lay_tile_at_tcoord.o
+	cat src/f_lay_tile_at_wtcoord.o
+	cat src/f_lay_tiles_at_tcoord_to_right.o
+	cat src/f_lay_tiles_at_wtcoord_to_right.o
+	cat src/f_lay_tiles_at_tcoord_to_low.o
+	cat src/f_lay_tiles_at_wtcoord_to_low.o
+	cat src/f_objnum_to_addr.o
+	cat src/f_set_objpos.o
+	cat src/f_lay_icon.o
+	cat src/f_clr_win.o
+	cat src/f_view_txt.o
+	cat src/f_view_txt_cyc.o
+	cat src/f_clr_win_cyc.o
+	cat src/f_tn_to_addr.o
+	cat src/f_view_img.o
+	cat src/f_quit_img.o
+	cat src/f_rstr_tiles.o
+	cat src/f_rstr_tiles_cyc.o
+	cat src/f_view_dir.o
+	cat src/f_view_dir_cyc.o
+	cat src/f_check_click_icon_area_x.o
+	cat src/f_check_click_icon_area_y.o
+	cat src/f_init_con.o
+	cat src/f_run_exe.o
+	cat src/f_run_exe_cyc.o
+	cat src/f_init_tdq.o
+	cat src/f_enq_tdq.o
+	cat src/f_byte_to_tile.o
+	cat src/f_get_file_addr_and_type.o
+	cat src/f_right_click_event.o
+	cat src/f_select_rom.o
+	cat src/f_select_ram.o
+	cat src/f_exit_exe.o
+	cat src/f_putch.o
+	cat src/f_clr_con.o
+	cat src/f_print.o
+	cat src/f_putxy.o
+	cat src/f_getxy.o
+	cat src/f_click_event.o
+	cat src/f_print_regA.o
+	cat src/f_print_regA_signed_dec.o
+	cat src/f_tile_to_byte.o
+	cat src/f_get_rnd.o
+	cat src/f_tdq_enq.o
+	cat src/f_binbio_get_tile_family_num.o
+	cat src/f_binbio_cell_set_tile_num.o
+	cat src/f_binbio_cell_eval_family.o
+	cat src/f_binbio_cell_eval_helloworld.o
+	cat src/f_binbio_cell_eval_daisy.o
+	cat src/f_binbio_cell_eval_hello.o
+	cat src/f_binbio_cell_eval.o
+	cat src/f_binbio_cell_metabolism_and_motion.o
+	cat src/f_binbio_get_code_comp_all.o
+	cat src/f_binbio_get_code_comp_hello.o
+	cat src/f_binbio_get_code_comp.o
+	cat src/f_binbio_cell_growth.o
+	cat src/f_binbio_cell_is_dividable.o
+	cat src/f_binbio_clear_cell_data_area.o
+	cat src/f_binbio_find_cell_data_by_tile_xy.o
+	cat src/f_binbio_cell_alloc.o
+	cat src/f_binbio_cell_find_free_neighbor.o
+	cat src/f_binbio_cell_mutation_all.o
+	cat src/f_binbio_cell_mutation_alphabet.o
+	cat src/f_binbio_cell_mutation.o
+	cat src/f_binbio_cell_division.o
+	cat src/f_binbio_cell_division_fix.o
+	cat src/f_binbio_cell_death.o
+	cat src/f_binbio_select_next_cell.o
+	cat src/f_binbio_update_status_disp.o
+	cat src/f_binbio_init.o
+	cat src/f_binbio_reset.o
+	cat src/f_binbio_do_cycle.o
+	cat src/f_binbio_event_btn_a_release.o
+	cat src/f_binbio_event_btn_b_release.o
+	cat src/f_binbio_event_btn_right_release.o
+	cat src/f_binbio_event_btn_left_release.o
+	cat src/f_binbio_event_btn_start_release.o
+	cat src/f_binbio_event_btn_select_release.o
 }
 
 gbos_vec() {
