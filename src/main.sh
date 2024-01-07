@@ -2592,13 +2592,31 @@ f_print() {
 	lr35902_return
 }
 
+# 指定されたアドレスの文字列を指定されたタイル座標へ出力する
+# in : regHL - 文字列の先頭アドレス
+#    : regD - タイル座標Y
+#    : regE - タイル座標X
+# ※ con_putxy()とは違い、コンソールのカーソル位置を変更する
+f_print >src/f_print.o
+fsz=$(to16 $(stat -c '%s' src/f_print.o))
+fadr=$(calc16 "${a_print}+${fsz}")
+a_print_xy=$(four_digits $fadr)
+echo -e "a_print_xy=$a_print_xy" >>$MAP_FILE_NAME
+f_print_xy() {
+	# コンソールのcon_print_xyを呼び出す
+	con_print_xy
+
+	# return
+	lr35902_return
+}
+
 # 指定されたコンソール座標に指定された文字を出力
 # in : regB - 出力する文字のタイル番号
 #    : regD - コンソールY座標
 #    : regE - コンソールX座標
-f_print >src/f_print.o
-fsz=$(to16 $(stat -c '%s' src/f_print.o))
-fadr=$(calc16 "${a_print}+${fsz}")
+f_print_xy >src/f_print_xy.o
+fsz=$(to16 $(stat -c '%s' src/f_print_xy.o))
+fadr=$(calc16 "${a_print_xy}+${fsz}")
 a_putxy=$(four_digits $fadr)
 echo -e "a_putxy=$a_putxy" >>$MAP_FILE_NAME
 f_putxy() {
@@ -7521,6 +7539,7 @@ global_functions() {
 	cat src/f_putch.o
 	cat src/f_clr_con.o
 	cat src/f_print.o
+	cat src/f_print_xy.o
 	cat src/f_putxy.o
 	cat src/f_getxy.o
 	cat src/f_click_event.o

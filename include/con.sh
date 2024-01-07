@@ -442,3 +442,32 @@ con_print() {
 	lr35902_pop_reg regHL
 	lr35902_pop_reg regAF
 }
+
+# 指定されたアドレスの文字列を指定されたタイル座標へ出力する
+# in : regHL - 文字列の先頭アドレス
+#    : regD - タイル座標Y
+#    : regE - タイル座標X
+# ※ con_putxy()とは違い、コンソールのカーソル位置を変更する
+con_print_xy() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regHL
+
+	# タイル座標をアドレスへ変換しregHLへ設定
+	lr35902_call $a_tcoord_to_addr
+
+	# 変換して得られたアドレスを$var_con_tadr_{th,bh}へ設定
+	lr35902_copy_to_from regA regL
+	lr35902_copy_to_addr_from_regA $var_con_tadr_bh
+	lr35902_copy_to_from regA regH
+	lr35902_copy_to_addr_from_regA $var_con_tadr_th
+
+	# regHLだけ先にpop
+	lr35902_pop_reg regHL
+
+	# f_print()を呼び出して、指定された文字列を出力
+	lr35902_call $a_print
+
+	# pop
+	lr35902_pop_reg regAF
+}
