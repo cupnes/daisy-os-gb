@@ -12,7 +12,7 @@ DAISY_GROWING_TEMP=14
 ## 地表温度をインクリメント/デクリメントする前段カウンタのしきい値
 ## 前段カウンタの絶対値がこの値に達したら地表温度をインクリメント/デクリメントする
 SURFACE_TEMP_INCDEC_PREV_COUNTER_TH=0a
-## 画面上の各地点のタイル座標/アドレス
+## 画面上のタイル座標/アドレス
 SURFACE_TEMP_TITLE_TCOORD_Y=00	# 地表温度のタイトルのタイル座標Y
 SURFACE_TEMP_TITLE_TCOORD_X=03	# 地表温度のタイトルのタイル座標X
 SURFACE_TEMP_VAL_TADR=980c	# 地表温度の値のタイルアドレス
@@ -51,6 +51,14 @@ OPERATION_B_1_TCOORD_Y=10
 OPERATION_B_1_TCOORD_X=01
 OPERATION_B_2_TCOORD_Y=11
 OPERATION_B_2_TCOORD_X=07
+## 画面上のマウスカーソル座標
+### 地表温度の▲▼ボタンの範囲を示す
+SURFACE_TEMP_UP_DOWN_BEGIN_Y=10	# ▲▼のY座標始端
+SURFACE_TEMP_UP_DOWN_END_Y=17	# ▲▼のY座標終端
+SURFACE_TEMP_UP_BEGIN_X=98	# ▲のX座標始端
+SURFACE_TEMP_UP_END_X=9F	# ▲のX座標終端
+SURFACE_TEMP_DOWN_BEGIN_X=A0	# ▼のX座標始端
+SURFACE_TEMP_DOWN_END_X=A7	# ▼のX座標終端
 
 # 変数
 ## 地表温度をインクリメント/デクリメントする前段のカウンタのアドレス

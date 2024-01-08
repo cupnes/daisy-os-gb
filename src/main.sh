@@ -7094,6 +7094,7 @@ echo -e "a_binbio_event_btn_a_release=$a_binbio_event_btn_a_release" >>$MAP_FILE
 f_binbio_event_btn_a_release() {
 	# push
 	lr35902_push_reg regAF
+	lr35902_push_reg regBC
 
 	# スライドショー機能が無効な場合、以下の処理を出力しない
 	if [ $SS_ENABLE -eq 1 ]; then
@@ -7104,7 +7105,104 @@ f_binbio_event_btn_a_release() {
 		lr35902_call $a_view_img
 	fi
 
+	# デイジーワールド: 地表温度の▲▼ボタンの処理
+	## マウスカーソルY座標 <= ▲▼のY座標終端 ?
+	lr35902_copy_to_regA_from_addr $var_mouse_y
+	lr35902_copy_to_from regB regA
+	lr35902_set_reg regA $SURFACE_TEMP_UP_DOWN_END_Y
+	lr35902_compare_regA_and regB
+	(
+		# regB <= regA (マウスカーソルY座標 <= ▲▼のY座標終端) の場合
+
+		# マウスカーソルY座標 >= ▲▼のY座標始端 ?
+		lr35902_copy_to_from regA regB
+		lr35902_set_reg regB $SURFACE_TEMP_UP_DOWN_BEGIN_Y
+		lr35902_compare_regA_and regB
+		(
+			# regA >= regB (マウスカーソルY座標 >= ▲▼のY座標始端) の場合
+
+			# マウスカーソルX座標 >= ▲のX座標始端 ?
+			lr35902_set_reg regB $SURFACE_TEMP_UP_BEGIN_X
+			lr35902_copy_to_regA_from_addr $var_mouse_x
+			lr35902_compare_regA_and regB
+			(
+				# regA >= regB (マウスカーソルX座標 >= ▲のX座標始端) の場合
+
+				# マウスカーソルX座標 <= ▲のX座標終端 ?
+				lr35902_copy_to_from regB regA
+				lr35902_set_reg regA $SURFACE_TEMP_UP_END_X
+				lr35902_compare_regA_and regB
+				(
+					# regB > regA (マウスカーソルX座標 > ▲のX座標終端) の場合
+
+					# マウスカーソルX座標 <= ▼のX座標終端 ?
+					lr35902_set_reg regA $SURFACE_TEMP_DOWN_END_X
+					lr35902_compare_regA_and regB
+					(
+						# regB <= regA (マウスカーソルX座標 <= ▼のX座標終端) の場合
+
+						# 地表温度 != -128(0x80) ?
+						lr35902_copy_to_regA_from_addr $var_binbio_surface_temp
+						lr35902_compare_regA_and 80
+						(
+							# 地表温度 != -128の場合
+
+							# 地表温度をデクリメント
+							lr35902_dec regA
+							lr35902_copy_to_addr_from_regA $var_binbio_surface_temp
+						) >src/f_binbio_event_btn_a_release.st_ne_80.o
+						local sz_st_ne_80=$(stat -c '%s' src/f_binbio_event_btn_a_release.st_ne_80.o)
+						lr35902_rel_jump_with_cond Z $(two_digits_d $sz_st_ne_80)
+						cat src/f_binbio_event_btn_a_release.st_ne_80.o
+					) >src/f_binbio_event_btn_a_release.mx_le_dxe.o
+					# regB > regA の場合処理を飛ばす
+					local sz_mx_le_dxe=$(stat -c '%s' src/f_binbio_event_btn_a_release.mx_le_dxe.o)
+					lr35902_rel_jump_with_cond C $(two_digits_d $sz_mx_le_dxe)
+					cat src/f_binbio_event_btn_a_release.mx_le_dxe.o
+				) >src/f_binbio_event_btn_a_release.mx_gt_uxe.o
+				(
+					# regB <= regA (マウスカーソルX座標 <= ▲のX座標終端) の場合
+
+					# 地表温度 != 127(0x7f) ?
+					lr35902_copy_to_regA_from_addr $var_binbio_surface_temp
+					lr35902_compare_regA_and 7f
+					(
+						# 地表温度 != 127の場合
+
+						# 地表温度をインクリメント
+						lr35902_inc regA
+						lr35902_copy_to_addr_from_regA $var_binbio_surface_temp
+					) >src/f_binbio_event_btn_a_release.st_ne_7f.o
+					local sz_st_ne_7f=$(stat -c '%s' src/f_binbio_event_btn_a_release.st_ne_7f.o)
+					lr35902_rel_jump_with_cond Z $(two_digits_d $sz_st_ne_7f)
+					cat src/f_binbio_event_btn_a_release.st_ne_7f.o
+
+					# regB > regA の場合の処理を飛ばす
+					local sz_mx_gt_uxe=$(stat -c '%s' src/f_binbio_event_btn_a_release.mx_gt_uxe.o)
+					lr35902_rel_jump $(two_digits_d $sz_mx_gt_uxe)
+				) >src/f_binbio_event_btn_a_release.mx_le_uxe.o
+				local sz_mx_le_uxe=$(stat -c '%s' src/f_binbio_event_btn_a_release.mx_le_uxe.o)
+				lr35902_rel_jump_with_cond C $(two_digits_d $sz_mx_le_uxe)
+				cat src/f_binbio_event_btn_a_release.mx_le_uxe.o # regB <= regA の場合
+				cat src/f_binbio_event_btn_a_release.mx_gt_uxe.o # regB > regA の場合
+			) >src/f_binbio_event_btn_a_release.mx_ge_uxb.o
+			# regA < regB の場合、処理を飛ばす
+			local sz_mx_ge_uxb=$(stat -c '%s' src/f_binbio_event_btn_a_release.mx_ge_uxb.o)
+			lr35902_rel_jump_with_cond C $(two_digits_d $sz_mx_ge_uxb)
+			cat src/f_binbio_event_btn_a_release.mx_ge_uxb.o
+		) >src/f_binbio_event_btn_a_release.my_ge_udyb.o
+		# regA < regB の場合、処理を飛ばす
+		local sz_my_ge_udyb=$(stat -c '%s' src/f_binbio_event_btn_a_release.my_ge_udyb.o)
+		lr35902_rel_jump_with_cond C $(two_digits_d $sz_my_ge_udyb)
+		cat src/f_binbio_event_btn_a_release.my_ge_udyb.o
+	) >src/f_binbio_event_btn_a_release.my_le_udey.o
+	## regB > regA の場合、処理を飛ばす
+	local sz_my_le_udey=$(stat -c '%s' src/f_binbio_event_btn_a_release.my_le_udey.o)
+	lr35902_rel_jump_with_cond C $(two_digits_d $sz_my_le_udey)
+	cat src/f_binbio_event_btn_a_release.my_le_udey.o
+
 	# pop & return
+	lr35902_pop_reg regBC
 	lr35902_pop_reg regAF
 	lr35902_return
 }
