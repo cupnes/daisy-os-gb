@@ -114,6 +114,21 @@ const_data() {
 	# 　 - サイズ  : $sz_const_<定数名>
 	cat <<EOF >src/const_data.str.tsv
 pref_hex	0X
+surface_temp_str_title	ちひようおんと゛:
+surface_temp_str_unit_and_btn	゜C▲▼
+title_str_daisy	て゛いし゛-
+title_str_world	わ-ると゛
+title_str_demo	て゛も
+ver_str_daisy	DAISY
+ver_str_os	OS
+ver_str_ver	V0.3.0
+daisy_desc_str_white	しろのて゛いし゛-🌼:0.1゜Cほうねつ
+daisy_desc_str_black	くろのて゛いし゛-🌻:0.1゜Cちくねつ
+operation_str_title	そうさせつめい
+operation_str_dir	+し゛き-:か-そるいと゛う
+operation_str_a	Aほ゛たん:▲▼ほ゛たんせんたく
+operation_str_b_1	Bほ゛たん:していしたて゛いし゛-を
+operation_str_b_2	まひ゛く(しようきよ)
 cell_status_str_flag	ふらく゛:
 cell_status_str_coord	さ゛ひよう:
 EOF
