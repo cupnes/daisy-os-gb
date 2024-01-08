@@ -12,9 +12,10 @@ DAISY_GROWING_TEMP=14
 ## 地表温度をインクリメント/デクリメントする前段カウンタのしきい値
 ## 前段カウンタの絶対値がこの値に達したら地表温度をインクリメント/デクリメントする
 SURFACE_TEMP_INCDEC_PREV_COUNTER_TH=0a
-## 画面上の各地点のタイルアドレス
-SURFACE_TEMP_TITLE_TADR=9805	# 地表温度のタイトル
-SURFACE_TEMP_VAL_TADR=980e	# 地表温度の値
+## 画面上の各地点のタイル座標/アドレス
+SURFACE_TEMP_TITLE_TCOORD_Y=00	# 地表温度のタイトルのタイル座標Y
+SURFACE_TEMP_TITLE_TCOORD_X=03	# 地表温度のタイトルのタイル座標X
+SURFACE_TEMP_VAL_TADR=980c	# 地表温度の値のタイルアドレス
 CELL_DISP_AREA_FRAME_UPPER_LEFT_TADR=9820	# 細胞表示領域の枠線の左上
 
 # 変数
@@ -637,37 +638,16 @@ f_binbio_init() {
 	lr35902_call $a_enq_tdq
 
 	# 地表温度情報をマップへ配置
-	## カーソル位置を設定
-	lr35902_set_reg regA $(echo $SURFACE_TEMP_TITLE_TADR | cut -c3-4)
-	lr35902_copy_to_addr_from_regA $var_con_tadr_bh
-	lr35902_set_reg regA $(echo $SURFACE_TEMP_TITLE_TADR | cut -c1-2)
-	lr35902_copy_to_addr_from_regA $var_con_tadr_th
-	## "ちひようおんと゛："を配置
-	lr35902_set_reg regB $GBOS_TILE_NUM_HIRA_CHI
-	lr35902_call $a_putch
-	lr35902_set_reg regB $GBOS_TILE_NUM_HIRA_HI
-	lr35902_call $a_putch
-	lr35902_set_reg regB $GBOS_TILE_NUM_HIRA_YO
-	lr35902_call $a_putch
-	lr35902_set_reg regB $GBOS_TILE_NUM_HIRA_U
-	lr35902_call $a_putch
-	lr35902_set_reg regB $GBOS_TILE_NUM_HIRA_O
-	lr35902_call $a_putch
-	lr35902_set_reg regB $GBOS_TILE_NUM_HIRA_N
-	lr35902_call $a_putch
-	lr35902_set_reg regB $GBOS_TILE_NUM_HIRA_TO
-	lr35902_call $a_putch
-	lr35902_set_reg regB $GBOS_TILE_NUM_DAKUTEN
-	lr35902_call $a_putch
-	lr35902_set_reg regB $GBOS_TILE_NUM_COLON
-	lr35902_call $a_putch
+	## カーソル位置を設定しタイトル文字列を配置
+	lr35902_set_reg regHL $a_const_surface_temp_str_title
+	lr35902_set_reg regD $SURFACE_TEMP_TITLE_TCOORD_Y
+	lr35902_set_reg regE $SURFACE_TEMP_TITLE_TCOORD_X
+	lr35902_call $a_print_xy
 	## 現在の地表温度の値を配置
 	lr35902_call $a_binbio_update_status_disp
-	## "゜Ｃ"を配置
-	lr35902_set_reg regB $GBOS_TILE_NUM_HANDAKUTEN
-	lr35902_call $a_putch
-	lr35902_set_reg regB $(get_alpha_tile_num 'C')
-	lr35902_call $a_putch
+	## 単位とボタンを配置
+	lr35902_set_reg regHL $a_const_surface_temp_str_unit_and_btn
+	lr35902_call $a_print
 
 	# 細胞表示領域の枠線をマップへ配置
 	## カーソル位置を"┌"の位置へ設定
