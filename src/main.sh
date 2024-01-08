@@ -136,11 +136,13 @@ EOF
 	local next_adr=$GBOS_ROM_CONST_DATA_START
 	local str_name_list=$(cut -f1 src/const_data.str.tsv)
 	local sz
+	local sz_hex
 	for name in $str_name_list; do
 		echo "a_const_${name}=$next_adr"
 		sz=$(stat -c '%s' src/const_${name}.o)
 		echo "sz_const_${name}=$sz"
-		next_adr=$(four_digits $(calc16 "${next_adr}+${sz}"))
+		sz_hex=$(to16 $sz)
+		next_adr=$(four_digits $(calc16 "${next_adr}+${sz_hex}"))
 	done >include/const_data.str_map.sh
 
 	# マップデータ読み込み
