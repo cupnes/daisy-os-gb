@@ -210,6 +210,12 @@ get_tile_num() {
 	'□')
 		echo $GBOS_TILE_NUM_LIGHT_GRAY
 		;;
+	'▼')
+		echo $GBOS_TILE_NUM_MINI_BTN
+		;;
+	'▲')
+		echo $GBOS_TILE_NUM_MAXI_BTN
+		;;
 	'↑')
 		echo $GBOS_TILE_NUM_UP_ARROW
 		;;
