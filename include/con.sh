@@ -30,6 +30,42 @@ CON_EOL_VAL=13
 CON_LAST_LINE_MASK=e0
 CON_LAST_LINE_VAL=e0
 
+### マクロとして使用する関数 ###
+
+# 指定されたコンソール座標に指定された文字を配置
+# in : 第1引数 - コンソール座標X
+#      第2引数 - コンソール座標Y
+#      第3引数 - 文字
+con_putxy_macro() {
+	local con_coord_x=$1
+	local con_coord_y=$2
+	local ch="$3"
+
+	# 文字をタイル番号へ変換
+	local tile_num=$(get_tile_num "$ch")
+
+	# レジスタを設定し関数呼び出し
+	lr35902_set_reg regB $tile_num
+	lr35902_set_reg regD $con_coord_y
+	lr35902_set_reg regE $con_coord_x
+	lr35902_call $a_putxy
+}
+
+# カーソル位置を設定し文字列を配置
+# in : 第1引数 - カーソル位置のタイル座標X
+#      第2引数 - カーソル位置のタイル座標Y
+#      第3引数 - 文字列のアドレス
+con_print_xy_macro() {
+	local cursor_tcoord_x=$1
+	local cursor_tcoord_y=$2
+	local str_adr=$3
+
+	lr35902_set_reg regHL $str_adr
+	lr35902_set_reg regD $cursor_tcoord_y
+	lr35902_set_reg regE $cursor_tcoord_x
+	lr35902_call $a_print_xy
+}
+
 ### OSの関数として使用する関数 ###
 
 # コンソールの初期化

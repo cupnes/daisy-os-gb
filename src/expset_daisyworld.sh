@@ -17,6 +17,40 @@ SURFACE_TEMP_TITLE_TCOORD_Y=00	# 地表温度のタイトルのタイル座標Y
 SURFACE_TEMP_TITLE_TCOORD_X=03	# 地表温度のタイトルのタイル座標X
 SURFACE_TEMP_VAL_TADR=980c	# 地表温度の値のタイルアドレス
 CELL_DISP_AREA_FRAME_UPPER_LEFT_TADR=9820	# 細胞表示領域の枠線の左上
+### 本作のタイトル
+TITLE_DAISY_TCOORD_Y=02
+TITLE_DAISY_TCOORD_X=0E
+TITLE_WORLD_TCOORD_Y=03
+TITLE_WORLD_TCOORD_X=0E
+TITLE_DEMO_TCOORD_Y=04
+TITLE_DEMO_TCOORD_X=0E
+### バージョン情報
+VER_UPPER_DIVIDER_TCOORD_Y=05
+VER_UPPER_DIVIDER_TCOORD_X=0E
+VER_DAISY_TCOORD_Y=06
+VER_DAISY_TCOORD_X=0E
+VER_OS_TCOORD_Y=07
+VER_OS_TCOORD_X=0E
+VER_VER_TCOORD_Y=08
+VER_VER_TCOORD_X=0E
+VER_LOWER_DIVIDER_TCOORD_Y=09
+VER_LOWER_DIVIDER_TCOORD_X=0E
+### デイジー説明
+DAISY_DESC_WHITE_TCOORD_Y=0A
+DAISY_DESC_WHITE_TCOORD_X=00
+DAISY_DESC_BLACK_TCOORD_Y=0B
+DAISY_DESC_BLACK_TCOORD_X=00
+### 操作説明
+OPERATION_TITLE_TCOORD_Y=0D
+OPERATION_TITLE_TCOORD_X=00
+OPERATION_DIR_TCOORD_Y=0E
+OPERATION_DIR_TCOORD_X=01
+OPERATION_A_TCOORD_Y=0F
+OPERATION_A_TCOORD_X=01
+OPERATION_B_1_TCOORD_Y=10
+OPERATION_B_1_TCOORD_X=01
+OPERATION_B_2_TCOORD_Y=11
+OPERATION_B_2_TCOORD_X=07
 
 # 変数
 ## 地表温度をインクリメント/デクリメントする前段のカウンタのアドレス
@@ -639,10 +673,7 @@ f_binbio_init() {
 
 	# 地表温度情報をマップへ配置
 	## カーソル位置を設定しタイトル文字列を配置
-	lr35902_set_reg regHL $a_const_surface_temp_str_title
-	lr35902_set_reg regD $SURFACE_TEMP_TITLE_TCOORD_Y
-	lr35902_set_reg regE $SURFACE_TEMP_TITLE_TCOORD_X
-	lr35902_call $a_print_xy
+	con_print_xy_macro $SURFACE_TEMP_TITLE_TCOORD_X $SURFACE_TEMP_TITLE_TCOORD_Y $a_const_surface_temp_str_title
 	## 現在の地表温度の値を配置
 	lr35902_call $a_binbio_update_status_disp
 	## 単位とボタンを配置
@@ -734,6 +765,27 @@ f_binbio_init() {
 		lr35902_set_reg regB $GBOS_TILE_NUM_LOWER_BAR
 		lr35902_call $a_putch
 	done
+
+	# タイトル〜操作説明をマップへ配置
+	## タイトルを配置
+	con_print_xy_macro $TITLE_DAISY_TCOORD_X $TITLE_DAISY_TCOORD_Y $a_const_title_str_daisy
+	con_print_xy_macro $TITLE_WORLD_TCOORD_X $TITLE_WORLD_TCOORD_Y $a_const_title_str_world
+	con_print_xy_macro $TITLE_DEMO_TCOORD_X $TITLE_DEMO_TCOORD_Y $a_const_title_str_demo
+	## バージョン情報を配置
+	con_putxy_macro $VER_UPPER_DIVIDER_TCOORD_X $VER_UPPER_DIVIDER_TCOORD_Y '-'
+	con_print_xy_macro $VER_DAISY_TCOORD_X $VER_DAISY_TCOORD_Y $a_const_ver_str_daisy
+	con_print_xy_macro $VER_OS_TCOORD_X $VER_OS_TCOORD_Y $a_const_ver_str_os
+	con_print_xy_macro $VER_VER_TCOORD_X $VER_VER_TCOORD_Y $a_const_ver_str_ver
+	con_putxy_macro $VER_LOWER_DIVIDER_TCOORD_X $VER_LOWER_DIVIDER_TCOORD_Y '-'
+	## デイジー説明を配置
+	con_print_xy_macro $DAISY_DESC_WHITE_TCOORD_X $DAISY_DESC_WHITE_TCOORD_Y $a_const_daisy_desc_str_white
+	con_print_xy_macro $DAISY_DESC_BLACK_TCOORD_X $DAISY_DESC_BLACK_TCOORD_Y $a_const_daisy_desc_str_black
+	## 操作説明を配置
+	con_print_xy_macro $OPERATION_TITLE_TCOORD_X $OPERATION_TITLE_TCOORD_Y $a_const_operation_str_title
+	con_print_xy_macro $OPERATION_DIR_TCOORD_X $OPERATION_DIR_TCOORD_Y $a_const_operation_str_dir
+	con_print_xy_macro $OPERATION_A_TCOORD_X $OPERATION_A_TCOORD_Y $a_const_operation_str_a
+	con_print_xy_macro $OPERATION_B_1_TCOORD_X $OPERATION_B_1_TCOORD_Y $a_const_operation_str_b_1
+	con_print_xy_macro $OPERATION_B_2_TCOORD_X $OPERATION_B_2_TCOORD_Y $a_const_operation_str_b_2
 
 	# pop & return
 	lr35902_pop_reg regHL

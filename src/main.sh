@@ -122,11 +122,11 @@ title_str_demo	て゛も
 ver_str_daisy	DAISY
 ver_str_os	OS
 ver_str_ver	V0.3.0
-daisy_desc_str_white	しろのて゛いし゛-🌼:0.1゜Cほうねつ
-daisy_desc_str_black	くろのて゛いし゛-🌻:0.1゜Cちくねつ
+daisy_desc_str_white	🌼しろのて゛いし゛-:0.1゜Cほうねつ
+daisy_desc_str_black	🌻くろのて゛いし゛-:0.1゜Cちくねつ
 operation_str_title	そうさせつめい
 operation_str_dir	+し゛き-:か-そるいと゛う
-operation_str_a	Aほ゛たん:▲▼ほ゛たんせんたく
+operation_str_a	Aほ゛たん:▲▼ほ゛たんそうさ
 operation_str_b_1	Bほ゛たん:していしたて゛いし゛-を
 operation_str_b_2	まひ゛く(しようきよ)
 cell_status_str_flag	ふらく゛:
