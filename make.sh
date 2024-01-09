@@ -51,6 +51,31 @@ run_in_browser() {
 	sed -r 's%<title>binjgb \(simple\)</title>%<title>DaisyOS GB</title>%' docs/simple.html >${web_server_daisyos_dir}/index.html
 	sed -r "s/^const ROM_FILENAME = '.+';$/const ROM_FILENAME = '$ROM_FILE_NAME';/" docs/simple.js >${web_server_daisyos_dir}/simple.js
 
+	# 緑の色合いで実行するための変更
+	## カートリッジヘッダ: 「0x0143(323) - CGB Flag」を0x00にする
+	echo -ne "\x00" | dd of=$web_server_daisyos_dir/$ROM_FILE_NAME bs=1 seek=323 conv=notrunc status=none
+	## カートリッジヘッダ: 「0x0146(326) - SGB Flag」を0x00にする
+	echo -ne "\x00" | dd of=$web_server_daisyos_dir/$ROM_FILE_NAME bs=1 seek=326 conv=notrunc status=none
+	## カートリッジヘッダ: 「0x014D(333) - Header Checksum」を0xb4にする
+	echo -ne "\xb4" | dd of=$web_server_daisyos_dir/$ROM_FILE_NAME bs=1 seek=333 conv=notrunc status=none
+	## simple.js: DEFAULT_PALETTE_IDXへ83を設定
+	sed -i -r "s/^const DEFAULT_PALETTE_IDX = [0-9]+;$/const DEFAULT_PALETTE_IDX = 83;/" ${web_server_daisyos_dir}/simple.js
+	## simple.js: PALETTESの内容を差し替え
+	local palettes_begin_ln=$(grep -n '^const PALETTES = \[' ${web_server_daisyos_dir}/simple.js | cut -d':' -f1)
+	sed -i -r '/^const PALETTES = \[/,/^\];/d' ${web_server_daisyos_dir}/simple.js
+	cat <<EOF >run_in_browser.new_palettes.txt
+const PALETTES = [
+  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
+  22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+  41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59,
+  60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78,
+  79, 80, 81, 82, 83,
+];
+EOF
+	local new_palettes=$(sed -r -e 's/$/\\n/' -e '$s/\\n//' run_in_browser.new_palettes.txt | tr -d '\n')
+	sed -i "${palettes_begin_ln}i$new_palettes" ${web_server_daisyos_dir}/simple.js
+	rm run_in_browser.new_palettes.txt
+
 	$BROWSER http://localhost/daisy-os-gb
 }
 
