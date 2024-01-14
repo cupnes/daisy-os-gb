@@ -131,6 +131,10 @@ operation_str_b_1	Bほ゛たん:していしたて゛いし゛-を
 operation_str_b_2	まひ゛く(しようきよ)
 cell_status_str_flag	ふらく゛:
 cell_status_str_coord	さ゛ひよう:
+cell_status_str_life_left_duration	よめい/し゛ゆみよう:
+cell_status_str_fitness	てきおうと゛:
+cell_status_str_bin_data_size	は゛いなり:(さいす゛:
+cell_status_str_collected_flags	しゆとくふらく゛:
 EOF
 
 	# 各文字列をタイル番号のバイナリデータへ変換しファイルと標準出力へ出力
