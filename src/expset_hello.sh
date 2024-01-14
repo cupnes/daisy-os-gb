@@ -242,6 +242,13 @@ f_binbio_update_status_disp() {
 	:
 }
 
+# 細胞ステータス情報を画面へ配置
+# in : regHL - 対象の細胞のアドレス
+f_binbio_place_cell_info() {
+	# HELLO系の実験セットでは呼ばれないため、何もしない
+	:
+}
+
 # バイナリ生物環境の初期化
 # in : regA - 実験セット番号
 f_binbio_init() {

@@ -13,18 +13,22 @@ DAISY_GROWING_TEMP=14
 ## 前段カウンタの絶対値がこの値に達したら地表温度をインクリメント/デクリメントする
 SURFACE_TEMP_INCDEC_PREV_COUNTER_TH=0a
 ## 画面上のタイル座標/アドレス
-SURFACE_TEMP_TITLE_TCOORD_Y=00	# 地表温度のタイトルのタイル座標Y
-SURFACE_TEMP_TITLE_TCOORD_X=03	# 地表温度のタイトルのタイル座標X
-SURFACE_TEMP_VAL_TADR=980c	# 地表温度の値のタイルアドレス
+### 地表温度
+### TODO 「タイトル(TITLE)」というより「ラベル(LABEL)」
+SURFACE_TEMP_TITLE_TCOORD_Y=00	# タイトルのタイル座標Y
+SURFACE_TEMP_TITLE_TCOORD_X=03	# タイトルのタイル座標X
+SURFACE_TEMP_VAL_TADR=980c	# 値のタイルアドレス
+### 細胞表示
 CELL_DISP_AREA_FRAME_UPPER_LEFT_TADR=9820	# 細胞表示領域の枠線の左上
-### 本作のタイトル
+### 説明表示
+#### 本作のタイトル
 TITLE_DAISY_TCOORD_Y=02
 TITLE_DAISY_TCOORD_X=0E
 TITLE_WORLD_TCOORD_Y=03
 TITLE_WORLD_TCOORD_X=0E
 TITLE_DEMO_TCOORD_Y=04
 TITLE_DEMO_TCOORD_X=0E
-### バージョン情報
+#### バージョン情報
 VER_UPPER_DIVIDER_TCOORD_Y=05
 VER_UPPER_DIVIDER_TCOORD_X=0E
 VER_DAISY_TCOORD_Y=06
@@ -35,12 +39,12 @@ VER_VER_TCOORD_Y=08
 VER_VER_TCOORD_X=0E
 VER_LOWER_DIVIDER_TCOORD_Y=09
 VER_LOWER_DIVIDER_TCOORD_X=0E
-### デイジー説明
+#### デイジー説明
 DAISY_DESC_WHITE_TCOORD_Y=0A
 DAISY_DESC_WHITE_TCOORD_X=00
 DAISY_DESC_BLACK_TCOORD_Y=0B
 DAISY_DESC_BLACK_TCOORD_X=00
-### 操作説明
+#### 操作説明
 OPERATION_TITLE_TCOORD_Y=0D
 OPERATION_TITLE_TCOORD_X=00
 OPERATION_DIR_TCOORD_Y=0E
@@ -51,6 +55,37 @@ OPERATION_B_1_TCOORD_Y=10
 OPERATION_B_1_TCOORD_X=01
 OPERATION_B_2_TCOORD_Y=11
 OPERATION_B_2_TCOORD_X=07
+### 細胞情報表示
+#### フラグ
+FLAGS_LABEL_TCOORD_Y=02
+FLAGS_LABEL_TCOORD_X=0E
+FLAGS_PREF_VAL_TCOORD_Y=03
+FLAGS_PREF_VAL_TCOORD_X=10
+#### タイル座標
+TCOORD_LABEL_TCOORD_Y=05
+TCOORD_LABEL_TCOORD_X=0E
+TCOORD_OPEN_BRACKET_TCOORD_Y=06
+TCOORD_OPEN_BRACKET_TCOORD_X=0E
+TCOORD_X_VAL_TADR=98CF
+TCOORD_Y_VAL_TADR=98EF
+#### 余命/寿命
+LIFE_LEFT_DURATION_TCOORD_Y=0A
+LIFE_LEFT_DURATION_LABEL_TCOORD_X=00
+LIFE_LEFT_VAL_TCOORD_X=0B
+#### 適応度
+FITNESS_TCOORD_Y=0C
+FITNESS_LABEL_TCOORD_X=00
+FITNESS_VAL_TCOORD_X=07
+#### バイナリデータ・サイズ
+BIN_DATA_SIZE_LABEL_SIZE_VAL_TCOORD_Y=0E
+BIN_DATA_SIZE_LABEL_TCOORD_X=00
+BIN_SIZE_VAL_TCOORD_X=0C
+BIN_DATA_PREF_VAL_TCOORD_Y=0F
+BIN_DATA_PREF_VAL_TCOORD_X=04
+#### 取得フラグ
+COLLECTED_FLAGS_LABEL_VAL_TCOORD_Y=11
+COLLECTED_FLAGS_LABEL_TCOORD_X=00
+COLLECTED_FLAGS_UNIT_VAL_TCOORD_X=09
 ## 画面上のマウスカーソル座標
 ### 地表温度の▲▼ボタンの範囲を示す
 SURFACE_TEMP_UP_DOWN_BEGIN_Y=10	# ▲▼のY座標始端
@@ -582,6 +617,213 @@ f_binbio_update_status_disp() {
 
 	# pop & return
 	lr35902_pop_reg regHL
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
+# 細胞ステータス情報を画面へ配置
+# in : regHL - 対象の細胞のアドレス
+f_binbio_place_cell_info() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regBC
+	lr35902_push_reg regDE	# con_print_xy_macro()で変更する
+	lr35902_push_reg regHL
+
+	# フラグを配置
+	## regAへflagsを取得
+	lr35902_copy_to_from regA ptrHL
+	## aliveフラグ == 0 ?
+	lr35902_test_bitN_of_reg 0 regA
+	(
+		# aliveフラグ == 0 の場合
+
+		# pop & return
+		lr35902_pop_reg regAF
+		lr35902_return
+	) >src/expset_daisyworld.f_binbio_place_cell_info.alive_eq_0.o
+	local sz_alive_eq_0=$(stat -c '%s' src/expset_daisyworld.f_binbio_place_cell_info.alive_eq_0.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_alive_eq_0)
+	cat src/expset_daisyworld.f_binbio_place_cell_info.alive_eq_0.o
+	## regHLをregBCへ退避
+	lr35902_copy_to_from regC regL
+	lr35902_copy_to_from regB regH
+	## ラベルを配置
+	con_print_xy_macro $FLAGS_LABEL_TCOORD_X $FLAGS_LABEL_TCOORD_Y $a_const_cell_status_str_flags
+	## 16進数の接頭辞を配置
+	con_print_xy_macro $FLAGS_PREF_VAL_TCOORD_X $FLAGS_PREF_VAL_TCOORD_Y $a_const_pref_hex
+	## 値を配置
+	lr35902_call $a_print_regA
+
+	# タイル座標を配置
+	## ラベルを配置
+	con_print_xy_macro $TCOORD_LABEL_TCOORD_X $TCOORD_LABEL_TCOORD_Y $a_const_cell_status_str_coord
+	## regBCからregHLを復帰
+	lr35902_copy_to_from regL regC
+	lr35902_copy_to_from regH regB
+	## '('を配置
+	con_putxy_macro $TCOORD_OPEN_BRACKET_TCOORD_X $TCOORD_OPEN_BRACKET_TCOORD_Y '('
+	## X座標の値を配置
+	### カーソル位置を設定
+	con_set_cursor $TCOORD_X_VAL_TADR
+	### regHLをtile_xまで進める
+	lr35902_inc regHL
+	### regAへtile_xを取得
+	lr35902_copy_to_from regA ptrHL
+	### regAの値を10進数で配置
+	lr35902_call $a_print_regA_signed_dec
+	## '、'を配置
+	lr35902_set_reg regB $GBOS_TILE_NUM_TOUTEN
+	lr35902_call $a_putch
+	## Y座標の値を配置
+	### カーソル位置を設定
+	con_set_cursor $TCOORD_Y_VAL_TADR
+	### regHLをtile_yまで進める
+	lr35902_inc regHL
+	### regAへtile_yを取得
+	lr35902_copy_to_from regA ptrHL
+	### regAの値を10進数で配置
+	lr35902_call $a_print_regA_signed_dec
+	## ')'を配置
+	lr35902_set_reg regB $GBOS_TILE_NUM_CLOSE_BRACKET
+	lr35902_call $a_putch
+
+	# 余命/寿命を配置
+	## regHLをregBCへ退避
+	lr35902_copy_to_from regC regL
+	lr35902_copy_to_from regB regH
+	## ラベルを配置
+	con_print_xy_macro $LIFE_LEFT_DURATION_LABEL_TCOORD_X $LIFE_LEFT_DURATION_TCOORD_Y $a_const_cell_status_str_life_left_duration
+	## 余命の値を配置
+	### life_leftのアドレスをregHLへ設定
+	lr35902_set_reg regHL 0002
+	lr35902_add_to_regHL regBC
+	### regAへlife_leftを取得
+	lr35902_copy_to_from regA ptrHL
+	### regAの値を10進数で配置
+	lr35902_call $a_print_regA_signed_dec
+	## '/'を配置
+	lr35902_set_reg regB $GBOS_TILE_NUM_SLASH
+	lr35902_call $a_putch
+	## 寿命の値を配置
+	### life_durationのアドレスをregHLへ設定
+	lr35902_set_reg regBC $(two_comp_4 1)
+	lr35902_add_to_regHL regBC
+	### regAへlife_durationを取得
+	lr35902_copy_to_from regA ptrHL
+	### regAの値を10進数で配置
+	lr35902_call $a_print_regA_signed_dec
+
+	# 適応度を配置
+	## regHLをregBCへ退避
+	lr35902_copy_to_from regC regL
+	lr35902_copy_to_from regB regH
+	## ラベルを配置
+	con_print_xy_macro $FITNESS_LABEL_TCOORD_X $FITNESS_TCOORD_Y $a_const_cell_status_str_fitness
+	## 16進数の接頭辞を配置
+	lr35902_set_reg regHL $a_const_pref_hex
+	lr35902_call $a_print
+	## 値を配置
+	### fitnessのアドレスをregHLへ設定
+	lr35902_set_reg regHL 0002
+	lr35902_add_to_regHL regBC
+	### regAへfitnessを取得
+	lr35902_copy_to_from regA ptrHL
+	### regAの値を10進数で配置
+	lr35902_call $a_print_regA
+
+	# バイナリとサイズを配置
+	## regHLをregBCへ退避
+	lr35902_copy_to_from regC regL
+	lr35902_copy_to_from regB regH
+	## ラベルを配置
+	con_print_xy_macro $BIN_DATA_SIZE_LABEL_TCOORD_X $BIN_DATA_SIZE_LABEL_SIZE_VAL_TCOORD_Y $a_const_cell_status_str_bin_data_size
+	## サイズの値を配置
+	### bin_sizeのアドレスをregHLへ設定
+	lr35902_set_reg regHL 0002
+	lr35902_add_to_regHL regBC
+	### regAへbin_sizeを取得
+	lr35902_copy_to_from regA ptrHL
+	### regAの値を10進数で配置
+	lr35902_call $a_print_regA_signed_dec
+	## ')'を配置
+	lr35902_set_reg regB $GBOS_TILE_NUM_CLOSE_BRACKET
+	lr35902_call $a_putch
+	## regHLをregBCへ退避
+	lr35902_copy_to_from regC regL
+	lr35902_copy_to_from regB regH
+	## 16進数の接頭辞を配置
+	con_print_xy_macro $BIN_DATA_PREF_VAL_TCOORD_X $BIN_DATA_PREF_VAL_TCOORD_Y $a_const_pref_hex
+	## regBCからregHLを復帰
+	lr35902_copy_to_from regL regC
+	lr35902_copy_to_from regH regB
+	## ※ この時点でregAにはサイズが設定されている
+	## バイナリを配置
+	### regA == 0 ?
+	lr35902_compare_regA_and 00
+	(
+		# regA != 0 の場合
+
+		# regHLをbin_dataのアドレスまで進める
+		lr35902_inc regHL
+
+		# regCへregA(サイズ)をコピー
+		lr35902_copy_to_from regC regA
+
+		# 1バイトずつ半角スペース区切りで配置
+		(
+			# アドレスregHLの値をregAへ取得
+			lr35902_copy_to_from regA ptrHL
+
+			# regAの値を16進数で配置
+			lr35902_call $a_print_regA
+
+			# アドレスregHLを進める
+			lr35902_inc regHL
+
+			# ' 'を配置
+			lr35902_set_reg regB $GBOS_TILE_NUM_SPC
+			lr35902_call $a_putch
+
+			# regCをデクリメント
+			lr35902_dec regC
+
+			# regCと0を比較
+			lr35902_copy_to_from regA regC
+			lr35902_compare_regA_and 00
+		) >src/expset_daisyworld.f_binbio_place_cell_info.bin_data_loop.o
+		cat src/expset_daisyworld.f_binbio_place_cell_info.bin_data_loop.o
+		local sz_bin_data_loop=$(stat -c '%s' src/expset_daisyworld.f_binbio_place_cell_info.bin_data_loop.o)
+		## regC != 0なら繰り返す
+		lr35902_rel_jump_with_cond NZ $(two_comp_d $((sz_bin_data_loop + 2)))	# 2
+	) >src/expset_daisyworld.f_binbio_place_cell_info.bin_size_ne_0.o
+	local sz_bin_size_ne_0=$(stat -c '%s' src/expset_daisyworld.f_binbio_place_cell_info.bin_size_ne_0.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_bin_size_ne_0)
+	cat src/expset_daisyworld.f_binbio_place_cell_info.bin_size_ne_0.o
+
+	# 取得フラグを配置
+	## ※ この時点でregHLにcollected_flagsのアドレスが設定されている
+	## regHLをregBCへ退避
+	lr35902_copy_to_from regC regL
+	lr35902_copy_to_from regB regH
+	## ラベルを配置
+	con_print_xy_macro $COLLECTED_FLAGS_LABEL_TCOORD_X $COLLECTED_FLAGS_LABEL_VAL_TCOORD_Y $a_const_cell_status_str_collected_flags
+	## 16進数の接頭辞を配置
+	lr35902_set_reg regHL $a_const_pref_hex
+	lr35902_call $a_print
+	## regBCからregHLを復帰
+	lr35902_copy_to_from regL regC
+	lr35902_copy_to_from regH regB
+	## 値を配置
+	### regAへcollected_flagsを取得
+	lr35902_copy_to_from regA ptrHL
+	### regAの値を16進数で配置
+	lr35902_call $a_print_regA
+
+	# pop & return
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regDE
+	lr35902_pop_reg regBC
 	lr35902_pop_reg regAF
 	lr35902_return
 }

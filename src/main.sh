@@ -129,7 +129,7 @@ operation_str_dir	+し゛き-:か-そるいと゛う
 operation_str_a	Aほ゛たん:▲▼ほ゛たんそうさ
 operation_str_b_1	Bほ゛たん:していしたて゛いし゛-を
 operation_str_b_2	まひ゛く(しようきよ)
-cell_status_str_flag	ふらく゛:
+cell_status_str_flags	ふらく゛:
 cell_status_str_coord	さ゛ひよう:
 cell_status_str_life_left_duration	よめい/し゛ゆみよう:
 cell_status_str_fitness	てきおうと゛:
@@ -6904,11 +6904,20 @@ a_binbio_update_status_disp=$(four_digits $fadr)
 echo -e "a_binbio_update_status_disp=$a_binbio_update_status_disp" >>$MAP_FILE_NAME
 ## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
 
-# バイナリ生物環境の初期化
-# in : regA - 実験セット番号
+# 細胞ステータス情報を画面へ配置
+# in : regHL - 対象の細胞のアドレス
 f_binbio_update_status_disp >src/f_binbio_update_status_disp.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_update_status_disp.o))
 fadr=$(calc16 "${a_binbio_update_status_disp}+${fsz}")
+a_binbio_place_cell_info=$(four_digits $fadr)
+echo -e "a_binbio_place_cell_info=$a_binbio_place_cell_info" >>$MAP_FILE_NAME
+## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
+
+# バイナリ生物環境の初期化
+# in : regA - 実験セット番号
+f_binbio_place_cell_info >src/f_binbio_place_cell_info.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_place_cell_info.o))
+fadr=$(calc16 "${a_binbio_place_cell_info}+${fsz}")
 a_binbio_init=$(four_digits $fadr)
 echo -e "a_binbio_init=$a_binbio_init" >>$MAP_FILE_NAME
 ## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
@@ -7720,6 +7729,7 @@ global_functions() {
 	cat src/f_binbio_cell_death.o
 	cat src/f_binbio_select_next_cell.o
 	cat src/f_binbio_update_status_disp.o
+	cat src/f_binbio_place_cell_info.o
 	cat src/f_binbio_init.o
 	cat src/f_binbio_reset.o
 	cat src/f_binbio_do_cycle.o

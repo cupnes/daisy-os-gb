@@ -32,6 +32,17 @@ CON_LAST_LINE_VAL=e0
 
 ### マクロとして使用する関数 ###
 
+# カーソル位置を設定
+# in : 第1引数 - カーソル位置のタイルアドレス
+con_set_cursor() {
+	local tadr=$1
+
+	lr35902_set_reg regA $(echo $tadr | cut -c3-4)
+	lr35902_copy_to_addr_from_regA $var_con_tadr_bh
+	lr35902_set_reg regA $(echo $tadr | cut -c1-2)
+	lr35902_copy_to_addr_from_regA $var_con_tadr_th
+}
+
 # 指定されたコンソール座標に指定された文字を配置
 # in : 第1引数 - コンソール座標X
 #      第2引数 - コンソール座標Y
