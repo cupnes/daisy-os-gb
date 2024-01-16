@@ -2612,10 +2612,29 @@ f_putch() {
 	lr35902_return
 }
 
-# コンソールの描画領域をクリアする
+# 指定したVRAMアドレスから指定した文字数を削除する
+# (指定したVRAMアドレスから指定した文字数分のスペースを配置する)
+# in : regA - 削除する文字数
+#      regD  - VRAMアドレス[15:8]
+#      regE  - VRAMアドレス[7:0]
+# ※ regAは1以上の値であること
 f_putch >src/f_putch.o
 fsz=$(to16 $(stat -c '%s' src/f_putch.o))
 fadr=$(calc16 "${a_putch}+${fsz}")
+a_delch_tadr_num=$(four_digits $fadr)
+echo -e "a_delch_tadr_num=$a_delch_tadr_num" >>$MAP_FILE_NAME
+f_delch_tadr_num() {
+	# コンソールのcon_delch_tadr_numを呼び出す
+	con_delch_tadr_num
+
+	# return
+	lr35902_return
+}
+
+# コンソールの描画領域をクリアする
+f_delch_tadr_num >src/f_delch_tadr_num.o
+fsz=$(to16 $(stat -c '%s' src/f_delch_tadr_num.o))
+fadr=$(calc16 "${a_delch_tadr_num}+${fsz}")
 a_clr_con=$(four_digits $fadr)
 echo -e "a_clr_con=$a_clr_con" >>$MAP_FILE_NAME
 f_clr_con() {
@@ -7693,6 +7712,7 @@ global_functions() {
 	cat src/f_select_ram.o
 	cat src/f_exit_exe.o
 	cat src/f_putch.o
+	cat src/f_delch_tadr_num.o
 	cat src/f_clr_con.o
 	cat src/f_print.o
 	cat src/f_print_xy.o

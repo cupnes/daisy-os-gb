@@ -95,6 +95,45 @@ con_init() {
 	lr35902_pop_reg regAF
 }
 
+# 指定したVRAMアドレスから指定した文字数を削除する
+# (指定したVRAMアドレスから指定した文字数分のスペースを配置する)
+# in : regA - 削除する文字数
+#      regD  - VRAMアドレス[15:8]
+#      regE  - VRAMアドレス[7:0]
+# ※ regAは1以上の値であること
+con_delch_tadr_num() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regBC
+	lr35902_push_reg regDE
+
+	# regBへ' '(スペース)のタイル番号を設定
+	lr35902_set_reg regB $GBOS_TILE_NUM_SPC
+
+	# regAの数だけregDEのアドレスへスペースを配置する
+	(
+		# regDEのアドレスへregBのタイルを配置するエンキュー
+		lr35902_call $a_enq_tdq
+
+		# regDEを1バイト進める
+		lr35902_inc regDE
+
+		# regAをデクリメント
+		lr35902_dec regA
+
+		# regAと0を比較
+		lr35902_compare_regA_and 00
+	) >src/con_del_tadr_num.put_spcs.o
+	cat src/con_del_tadr_num.put_spcs.o
+	local sz_put_spcs=$(stat -c '%s' src/con_del_tadr_num.put_spcs.o)
+	lr35902_rel_jump_with_cond NZ $(two_comp_d $((sz_put_spcs + 2)))	# 2
+
+	# pop
+	lr35902_pop_reg regDE
+	lr35902_pop_reg regBC
+	lr35902_pop_reg regAF
+}
+
 # コンソールの描画領域をクリアする
 # - コンソール描画領域は、ウィンドウ内のdrawableエリア
 con_clear() {
