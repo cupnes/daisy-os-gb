@@ -3,6 +3,7 @@ if [ "${INCLUDE_CON_SH+is_defined}" ]; then
 fi
 INCLUDE_CON_SH=true
 
+. include/gb.sh
 . include/vars.sh
 . include/tiles.sh
 
@@ -31,6 +32,16 @@ CON_LAST_LINE_MASK=e0
 CON_LAST_LINE_VAL=e0
 
 ### マクロとして使用する関数 ###
+
+# タイル座標をタイルアドレスへ変換
+# in : 第1引数 - タイル座標X
+#    : 第2引数 - タイル座標Y
+con_tcoord_to_tadr() {
+	local tcoord_x=$1
+	local tcoord_y=$2
+	local form="${GB_VRAM_BG_TILE_MAP_BASE}+(${GB_SC_WIDTH_T}*${tcoord_y})+${tcoord_x}"
+	echo $(four_digits $(calc16 $form))
+}
 
 # カーソル位置を設定
 # in : 第1引数 - カーソル位置のタイルアドレス
