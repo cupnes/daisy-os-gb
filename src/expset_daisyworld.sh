@@ -596,6 +596,41 @@ f_binbio_cell_mutation() {
 	lr35902_return
 }
 
+# ソフト説明をクリア
+f_binbio_clear_soft_desc() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regDE
+
+	# タイトルをクリア
+	con_delch_tadr_num_macro $TITLE_DAISY_TCOORD_X $TITLE_DAISY_TCOORD_Y $((sz_const_title_str_daisy - 1))
+	con_delch_tadr_num_macro $TITLE_WORLD_TCOORD_X $TITLE_WORLD_TCOORD_Y $((sz_const_title_str_world - 1))
+	con_delch_tadr_num_macro $TITLE_DEMO_TCOORD_X $TITLE_DEMO_TCOORD_Y $((sz_const_title_str_demo - 1))
+
+	# バージョン情報をクリア
+	con_delch_tadr_num_macro $VER_UPPER_DIVIDER_TCOORD_X $VER_UPPER_DIVIDER_TCOORD_Y 1
+	con_delch_tadr_num_macro $VER_DAISY_TCOORD_X $VER_DAISY_TCOORD_Y $((sz_const_ver_str_daisy - 1))
+	con_delch_tadr_num_macro $VER_OS_TCOORD_X $VER_OS_TCOORD_Y $((sz_const_ver_str_os - 1))
+	con_delch_tadr_num_macro $VER_VER_TCOORD_X $VER_VER_TCOORD_Y $((sz_const_ver_str_ver - 1))
+	con_delch_tadr_num_macro $VER_LOWER_DIVIDER_TCOORD_X $VER_LOWER_DIVIDER_TCOORD_Y 1
+
+	# デイジー説明をクリア
+	con_delch_tadr_num_macro $DAISY_DESC_WHITE_TCOORD_X $DAISY_DESC_WHITE_TCOORD_Y $((sz_const_daisy_desc_str_white - 1))
+	con_delch_tadr_num_macro $DAISY_DESC_BLACK_TCOORD_X $DAISY_DESC_BLACK_TCOORD_Y $((sz_const_daisy_desc_str_black - 1))
+
+	# 操作説明をクリア
+	con_delch_tadr_num_macro $OPERATION_TITLE_TCOORD_X $OPERATION_TITLE_TCOORD_Y $((sz_const_operation_str_title - 1))
+	con_delch_tadr_num_macro $OPERATION_DIR_TCOORD_X $OPERATION_DIR_TCOORD_Y $((sz_const_operation_str_dir - 1))
+	con_delch_tadr_num_macro $OPERATION_A_TCOORD_X $OPERATION_A_TCOORD_Y $((sz_const_operation_str_a - 1))
+	con_delch_tadr_num_macro $OPERATION_B_1_TCOORD_X $OPERATION_B_1_TCOORD_Y $((sz_const_operation_str_b_1 - 1))
+	con_delch_tadr_num_macro $OPERATION_B_2_TCOORD_X $OPERATION_B_2_TCOORD_Y $((sz_const_operation_str_b_2 - 1))
+
+	# pop & return
+	lr35902_pop_reg regDE
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
 # ステータス表示領域の更新
 f_binbio_update_status_disp() {
 	# push

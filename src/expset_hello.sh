@@ -236,6 +236,12 @@ f_binbio_cell_mutation() {
 	lr35902_return
 }
 
+# ソフト説明をクリア
+f_binbio_clear_soft_desc() {
+	# HELLO系の実験セットでは呼ばれないため、何もしない
+	:
+}
+
 # ステータス表示領域の更新
 f_binbio_update_status_disp() {
 	# HELLO系の実験セットでは呼ばれないため、何もしない

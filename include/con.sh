@@ -88,6 +88,21 @@ con_print_xy_macro() {
 	lr35902_call $a_print_xy
 }
 
+# 指定したタイル座標から指定した文字数を削除
+# in : 第1引数 - タイル座標X
+#      第2引数 - タイル座標Y
+#      第3引数 - 文字数(10進数)
+con_delch_tadr_num_macro() {
+	local tcoord_x=$1
+	local tcoord_y=$2
+	local num_dec=$3
+	local num_hex=$(two_digits $(to16 $num_dec))
+
+	lr35902_set_reg regA $num_hex
+	lr35902_set_reg regDE $(con_tcoord_to_tadr $tcoord_x $tcoord_y)
+	lr35902_call $a_delch_tadr_num
+}
+
 ### OSの関数として使用する関数 ###
 
 # コンソールの初期化

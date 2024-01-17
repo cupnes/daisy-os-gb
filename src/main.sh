@@ -6915,10 +6915,18 @@ f_binbio_select_next_cell() {
 	lr35902_return
 }
 
-# ステータス表示領域の更新
+# ソフト説明をクリア
 f_binbio_select_next_cell >src/f_binbio_select_next_cell.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_select_next_cell.o))
 fadr=$(calc16 "${a_binbio_select_next_cell}+${fsz}")
+a_binbio_clear_soft_desc=$(four_digits $fadr)
+echo -e "a_binbio_clear_soft_desc=$a_binbio_clear_soft_desc" >>$MAP_FILE_NAME
+## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
+
+# ステータス表示領域の更新
+f_binbio_clear_soft_desc >src/f_binbio_clear_soft_desc.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_clear_soft_desc.o))
+fadr=$(calc16 "${a_binbio_clear_soft_desc}+${fsz}")
 a_binbio_update_status_disp=$(four_digits $fadr)
 echo -e "a_binbio_update_status_disp=$a_binbio_update_status_disp" >>$MAP_FILE_NAME
 ## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
@@ -7636,21 +7644,26 @@ fadr=$(calc16 "${a_binbio_event_btn_start_release}+${fsz}")
 a_binbio_event_btn_select_release=$(four_digits $fadr)
 echo -e "a_binbio_event_btn_select_release=$a_binbio_event_btn_select_release" >>$MAP_FILE_NAME
 f_binbio_event_btn_select_release() {
-	# push
-	lr35902_push_reg regAF
-
 	# デイジーワールド実験の場合はスタート/セレクトで実験セットを切り換える機能は無効にする
 	# デイジーワールド実験の際、セレクトでは何もしない
 	if [ "$BINBIO_EXPSET_NUM_INIT" != "$BINBIO_EXPSET_DAISYWORLD" ]; then
+		# push
+		lr35902_push_reg regAF
+
 		# リセットを実施
 		## regA(引数)を設定
 		lr35902_set_reg regA $BINBIO_EVENT_BTN_SELECT_RELEASE_EXPSET
 		## 関数呼び出し
 		lr35902_call $a_binbio_reset
+
+		# pop
+		lr35902_pop_reg regAF
+	else
+		# ソフト説明をクリア
+		lr35902_call $a_binbio_clear_soft_desc
 	fi
 
-	# pop & return
-	lr35902_pop_reg regAF
+	# return
 	lr35902_return
 }
 f_binbio_event_btn_select_release >src/f_binbio_event_btn_select_release.o
@@ -7748,6 +7761,7 @@ global_functions() {
 	cat src/f_binbio_cell_division_fix.o
 	cat src/f_binbio_cell_death.o
 	cat src/f_binbio_select_next_cell.o
+	cat src/f_binbio_clear_soft_desc.o
 	cat src/f_binbio_update_status_disp.o
 	cat src/f_binbio_place_cell_info.o
 	cat src/f_binbio_init.o
