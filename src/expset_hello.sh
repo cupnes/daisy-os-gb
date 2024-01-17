@@ -6,6 +6,14 @@ SRC_EXPSET_HELLO_SH=true
 # main.shの中で一通りのシェルスクリプトの読み込みが終わった後でこのファイルが読み込まれる想定
 # なので、このファイル内で個別のシェルスクリプトの読み込みは行っていない。
 
+# 定数
+## 画面上のタイル座標/アドレス
+### 細胞表示
+CELL_DISP_AREA_FRAME_UPPER_LEFT_TCOORD_Y=00
+CELL_DISP_AREA_FRAME_UPPER_LEFT_TCOORD_X=00
+CELL_DISP_AREA_FRAME_LOWER_RIGHT_TCOORD_Y=11
+CELL_DISP_AREA_FRAME_LOWER_RIGHT_TCOORD_X=13
+
 # 現在の細胞を評価する
 # out: regA - 評価結果の適応度(0x00〜0xff)
 # ※ フラグレジスタは破壊される
