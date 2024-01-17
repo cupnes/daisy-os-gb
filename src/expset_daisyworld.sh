@@ -1016,7 +1016,7 @@ f_binbio_init() {
 		lr35902_call $a_putch
 	done
 
-	# タイトル〜操作説明をマップへ配置
+	# ソフト説明をマップへ配置
 	## タイトルを配置
 	con_print_xy_macro $TITLE_DAISY_TCOORD_X $TITLE_DAISY_TCOORD_Y $a_const_title_str_daisy
 	con_print_xy_macro $TITLE_WORLD_TCOORD_X $TITLE_WORLD_TCOORD_Y $a_const_title_str_world
