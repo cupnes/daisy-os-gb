@@ -12,6 +12,9 @@ DAISY_GROWING_TEMP=14
 ## 地表温度をインクリメント/デクリメントする前段カウンタのしきい値
 ## 前段カウンタの絶対値がこの値に達したら地表温度をインクリメント/デクリメントする
 SURFACE_TEMP_INCDEC_PREV_COUNTER_TH=0a
+## ステータス表示領域の状態
+STATUS_DISP_SHOW_SOFT_DESC=00	# ソフト説明表示状態
+STATUS_DISP_SHOW_CELL_INFO=01	# 細胞ステータス情報表示状態
 ## 画面上のタイル座標/アドレス
 ### 地表温度
 ### TODO 「タイトル(TITLE)」というより「ラベル(LABEL)」
@@ -71,7 +74,9 @@ TCOORD_LABEL_TCOORD_X=0E
 TCOORD_OPEN_BRACKET_TCOORD_Y=06
 TCOORD_OPEN_BRACKET_TCOORD_X=0E
 TCOORD_X_VAL_TADR=98CF
-TCOORD_Y_VAL_TADR=98EF
+TCOORD_Y_VAL_TCOORD_Y=07
+TCOORD_Y_VAL_TCOORD_X=0F
+TCOORD_Y_VAL_TADR=$(con_tcoord_to_tadr $TCOORD_Y_VAL_TCOORD_X $TCOORD_Y_VAL_TCOORD_Y)
 #### 余命/寿命
 LIFE_LEFT_DURATION_TCOORD_Y=0A
 LIFE_LEFT_DURATION_LABEL_TCOORD_X=00
@@ -100,6 +105,8 @@ SURFACE_TEMP_DOWN_BEGIN_X=A0	# ▼のX座標始端
 SURFACE_TEMP_DOWN_END_X=A7	# ▼のX座標終端
 
 # 変数
+## 現在のステータス表示領域の状態
+var_binbio_status_disp_status=c033
 ## 地表温度をインクリメント/デクリメントする前段のカウンタのアドレス
 ## 黒/白デイジーはこの変数をインクリメント/デクリメントする
 var_binbio_surface_temp_prev_counter=c034
@@ -600,6 +607,41 @@ f_binbio_cell_mutation() {
 	lr35902_return
 }
 
+# ソフト説明を画面へ配置
+f_binbio_place_soft_desc() {
+	# push
+	lr35902_push_reg regDE
+	lr35902_push_reg regHL
+
+	# タイトルを配置
+	con_print_xy_macro $TITLE_DAISY_TCOORD_X $TITLE_DAISY_TCOORD_Y $a_const_title_str_daisy
+	con_print_xy_macro $TITLE_WORLD_TCOORD_X $TITLE_WORLD_TCOORD_Y $a_const_title_str_world
+	con_print_xy_macro $TITLE_DEMO_TCOORD_X $TITLE_DEMO_TCOORD_Y $a_const_title_str_demo
+
+	# バージョン情報を配置
+	con_putxy_macro $VER_UPPER_DIVIDER_TCOORD_X $VER_UPPER_DIVIDER_TCOORD_Y '-'
+	con_print_xy_macro $VER_DAISY_TCOORD_X $VER_DAISY_TCOORD_Y $a_const_ver_str_daisy
+	con_print_xy_macro $VER_OS_TCOORD_X $VER_OS_TCOORD_Y $a_const_ver_str_os
+	con_print_xy_macro $VER_VER_TCOORD_X $VER_VER_TCOORD_Y $a_const_ver_str_ver
+	con_putxy_macro $VER_LOWER_DIVIDER_TCOORD_X $VER_LOWER_DIVIDER_TCOORD_Y '-'
+
+	# デイジー説明を配置
+	con_print_xy_macro $DAISY_DESC_WHITE_TCOORD_X $DAISY_DESC_WHITE_TCOORD_Y $a_const_daisy_desc_str_white
+	con_print_xy_macro $DAISY_DESC_BLACK_TCOORD_X $DAISY_DESC_BLACK_TCOORD_Y $a_const_daisy_desc_str_black
+
+	# 操作説明を配置
+	con_print_xy_macro $OPERATION_TITLE_TCOORD_X $OPERATION_TITLE_TCOORD_Y $a_const_operation_str_title
+	con_print_xy_macro $OPERATION_DIR_TCOORD_X $OPERATION_DIR_TCOORD_Y $a_const_operation_str_dir
+	con_print_xy_macro $OPERATION_A_TCOORD_X $OPERATION_A_TCOORD_Y $a_const_operation_str_a
+	con_print_xy_macro $OPERATION_B_1_TCOORD_X $OPERATION_B_1_TCOORD_Y $a_const_operation_str_b_1
+	con_print_xy_macro $OPERATION_B_2_TCOORD_X $OPERATION_B_2_TCOORD_Y $a_const_operation_str_b_2
+
+	# pop & return
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regDE
+	lr35902_return
+}
+
 # ソフト説明をクリア
 f_binbio_clear_soft_desc() {
 	# push
@@ -867,6 +909,56 @@ f_binbio_place_cell_info() {
 	lr35902_return
 }
 
+# 細胞ステータス情報をクリア
+f_binbio_clear_cell_info() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regDE
+
+	# 関数内で使用する定数を定義
+	local F_PRINT_REGA_LEN=2	# f_print_regA()が出す文字数
+	local F_PRINT_REGA_SIGNED_DEC_LEN=4	# f_print_regA_signed_dec()が出す文字数
+	local BIN_DATA_STR_LEN=14	# bin_data部分の文字数
+	## TODO デイジーワールド実験では常に bin_size == 5 なのでこの様にしているが、もしそれが変わるならこの定数も変える必要がある
+
+	# フラグをクリア
+	## ラベルをクリア
+	con_delch_tadr_num_macro $FLAGS_LABEL_TCOORD_X $FLAGS_LABEL_TCOORD_Y $((sz_const_cell_status_str_flags - 1))
+	## 16進数の接頭辞と値をクリア
+	con_delch_tadr_num_macro $FLAGS_PREF_VAL_TCOORD_X $FLAGS_PREF_VAL_TCOORD_Y $(((sz_const_pref_hex - 1) + F_PRINT_REGA_LEN))
+
+	# タイル座標をクリア
+	## ラベルをクリア
+	con_delch_tadr_num_macro $TCOORD_LABEL_TCOORD_X $TCOORD_LABEL_TCOORD_Y $((sz_const_cell_status_str_coord - 1))
+	## '('とX座標の値と'、'をクリア
+	con_delch_tadr_num_macro $TCOORD_OPEN_BRACKET_TCOORD_X $TCOORD_OPEN_BRACKET_TCOORD_Y $((1 + F_PRINT_REGA_SIGNED_DEC_LEN + 1))
+	## Y座標の値と')'をクリア
+	con_delch_tadr_num_macro $TCOORD_Y_VAL_TCOORD_X $TCOORD_Y_VAL_TCOORD_Y $((F_PRINT_REGA_SIGNED_DEC_LEN + 1))
+
+	# 余命/寿命をクリア
+	## ラベルと値をクリア
+	con_delch_tadr_num_macro $LIFE_LEFT_DURATION_LABEL_TCOORD_X $LIFE_LEFT_DURATION_TCOORD_Y $(((sz_const_cell_status_str_life_left_duration - 1) + F_PRINT_REGA_SIGNED_DEC_LEN + 1 + F_PRINT_REGA_SIGNED_DEC_LEN))
+
+	# 適応度をクリア
+	## ラベルと値をクリア
+	con_delch_tadr_num_macro $FITNESS_LABEL_TCOORD_X $FITNESS_TCOORD_Y $(((sz_const_cell_status_str_fitness - 1) + (sz_const_pref_hex - 1) + F_PRINT_REGA_LEN))
+
+	# バイナリとサイズをクリア
+	## ラベルとサイズの値と')'をクリア
+	con_delch_tadr_num_macro $BIN_DATA_SIZE_LABEL_TCOORD_X $BIN_DATA_SIZE_LABEL_SIZE_VAL_TCOORD_Y $(((sz_const_cell_status_str_bin_data_size - 1) + F_PRINT_REGA_SIGNED_DEC_LEN + 1))
+	## 16進数の接頭辞とバイナリの値をクリア
+	con_delch_tadr_num_macro $BIN_DATA_PREF_VAL_TCOORD_X $BIN_DATA_PREF_VAL_TCOORD_Y $(((sz_const_pref_hex - 1) + BIN_DATA_STR_LEN))
+
+	# 取得フラグをクリア
+	## ラベルと16進数の接頭辞と値をクリア
+	con_delch_tadr_num_macro $COLLECTED_FLAGS_LABEL_TCOORD_X $COLLECTED_FLAGS_LABEL_VAL_TCOORD_Y $(((sz_const_cell_status_str_collected_flags - 1) + (sz_const_pref_hex - 1) + F_PRINT_REGA_LEN))
+
+	# pop & return
+	lr35902_pop_reg regDE
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
 # バイナリ生物環境の初期化
 # in : regA - 実験セット番号
 f_binbio_init() {
@@ -946,6 +1038,9 @@ f_binbio_init() {
 	lr35902_copy_to_addr_from_regA $var_binbio_surface_temp_prev_counter
 	## binbio_status_disp_counter = 0
 	lr35902_copy_to_addr_from_regA $var_binbio_status_disp_counter
+	## binbio_status_disp_status = $STATUS_DISP_SHOW_SOFT_DESC
+	lr35902_set_reg regA $STATUS_DISP_SHOW_SOFT_DESC
+	lr35902_copy_to_addr_from_regA $var_binbio_status_disp_status
 	## binbio_surface_temp = $DAISY_GROWING_TEMP
 	lr35902_set_reg regA $DAISY_GROWING_TEMP
 	lr35902_copy_to_addr_from_regA $var_binbio_surface_temp
@@ -1056,25 +1151,7 @@ f_binbio_init() {
 	done
 
 	# ソフト説明をマップへ配置
-	## タイトルを配置
-	con_print_xy_macro $TITLE_DAISY_TCOORD_X $TITLE_DAISY_TCOORD_Y $a_const_title_str_daisy
-	con_print_xy_macro $TITLE_WORLD_TCOORD_X $TITLE_WORLD_TCOORD_Y $a_const_title_str_world
-	con_print_xy_macro $TITLE_DEMO_TCOORD_X $TITLE_DEMO_TCOORD_Y $a_const_title_str_demo
-	## バージョン情報を配置
-	con_putxy_macro $VER_UPPER_DIVIDER_TCOORD_X $VER_UPPER_DIVIDER_TCOORD_Y '-'
-	con_print_xy_macro $VER_DAISY_TCOORD_X $VER_DAISY_TCOORD_Y $a_const_ver_str_daisy
-	con_print_xy_macro $VER_OS_TCOORD_X $VER_OS_TCOORD_Y $a_const_ver_str_os
-	con_print_xy_macro $VER_VER_TCOORD_X $VER_VER_TCOORD_Y $a_const_ver_str_ver
-	con_putxy_macro $VER_LOWER_DIVIDER_TCOORD_X $VER_LOWER_DIVIDER_TCOORD_Y '-'
-	## デイジー説明を配置
-	con_print_xy_macro $DAISY_DESC_WHITE_TCOORD_X $DAISY_DESC_WHITE_TCOORD_Y $a_const_daisy_desc_str_white
-	con_print_xy_macro $DAISY_DESC_BLACK_TCOORD_X $DAISY_DESC_BLACK_TCOORD_Y $a_const_daisy_desc_str_black
-	## 操作説明を配置
-	con_print_xy_macro $OPERATION_TITLE_TCOORD_X $OPERATION_TITLE_TCOORD_Y $a_const_operation_str_title
-	con_print_xy_macro $OPERATION_DIR_TCOORD_X $OPERATION_DIR_TCOORD_Y $a_const_operation_str_dir
-	con_print_xy_macro $OPERATION_A_TCOORD_X $OPERATION_A_TCOORD_Y $a_const_operation_str_a
-	con_print_xy_macro $OPERATION_B_1_TCOORD_X $OPERATION_B_1_TCOORD_Y $a_const_operation_str_b_1
-	con_print_xy_macro $OPERATION_B_2_TCOORD_X $OPERATION_B_2_TCOORD_Y $a_const_operation_str_b_2
+	lr35902_call $a_binbio_place_soft_desc
 
 	# pop & return
 	lr35902_pop_reg regHL

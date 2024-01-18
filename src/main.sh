@@ -345,13 +345,59 @@ f_compare_regHL_and_regDE() {
 	lr35902_return
 }
 
+# 現在のマウスカーソルが指すタイル座標を取得
+# in : $var_mouse_{x,y}
+# out: regD - タイル座標Y
+#    : regE - タイル座標X
+f_compare_regHL_and_regDE >src/f_compare_regHL_and_regDE.o
+fsz=$(to16 $(stat -c '%s' src/f_compare_regHL_and_regDE.o))
+fadr=$(calc16 "${a_compare_regHL_and_regDE}+${fsz}")
+a_get_mouse_tcoord=$(four_digits $fadr)
+echo -e "a_get_mouse_tcoord=$a_get_mouse_tcoord" >>$MAP_FILE_NAME
+f_get_mouse_tcoord() {
+	# push
+	lr35902_push_reg regAF
+
+	# タイル座標Yを算出
+	## regAへ現在のマウスカーソルY座標を取得
+	lr35902_copy_to_regA_from_addr $var_mouse_y
+	## マウスカーソル座標(My)からピクセル座標(Py)へ変換
+	## Py = My - 16(0x10)
+	lr35902_sub_to_regA 10
+	## ピクセル座標(Py)からタイル座標(Ty)へ変換
+	## Ty = Py / 8 = Py >> 3
+	lr35902_shift_right_logical regA
+	lr35902_shift_right_logical regA
+	lr35902_shift_right_logical regA
+	## regDへ結果を設定
+	lr35902_copy_to_from regD regA
+
+	# タイル座標Xを算出
+	## regAへ現在のマウスカーソルX座標を取得
+	lr35902_copy_to_regA_from_addr $var_mouse_x
+	## マウスカーソル座標(Mx)からピクセル座標(Px)へ変換
+	## Px = Mx - 8
+	lr35902_sub_to_regA 08
+	## ピクセル座標(Px)からタイル座標(Tx)へ変換
+	## Tx = Px / 8 = Px >> 3
+	lr35902_shift_right_logical regA
+	lr35902_shift_right_logical regA
+	lr35902_shift_right_logical regA
+	## regEへ結果を設定
+	lr35902_copy_to_from regE regA
+
+	# pop & return
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
 # タイル座標をアドレスへ変換
 # in : regD  - タイル座標Y
 #      regE  - タイル座標X
 # out: regHL - 9800h〜のアドレスを格納
-f_compare_regHL_and_regDE >src/f_compare_regHL_and_regDE.o
-fsz=$(to16 $(stat -c '%s' src/f_compare_regHL_and_regDE.o))
-fadr=$(calc16 "${a_compare_regHL_and_regDE}+${fsz}")
+f_get_mouse_tcoord >src/f_get_mouse_tcoord.o
+fsz=$(to16 $(stat -c '%s' src/f_get_mouse_tcoord.o))
+fadr=$(calc16 "${a_get_mouse_tcoord}+${fsz}")
 a_tcoord_to_addr=$(four_digits $fadr)
 echo -e "a_tcoord_to_addr=$a_tcoord_to_addr" >>$MAP_FILE_NAME
 f_tcoord_to_addr() {
@@ -5786,11 +5832,35 @@ f_binbio_find_cell_data_by_tile_xy() {
 	lr35902_rel_jump $(two_comp_d $((sz_1 + 2)))
 }
 
-# 細胞データ領域を確保
-# out: regHL - 確保した領域のアドレス(確保できなかった場合はNULL)
+# マウスカーソルが指す細胞のアドレスを返す
+# out: regHL - 細胞アドレス(マウスカーソルが指す座標に細胞が存在しない場合はNULL)
 f_binbio_find_cell_data_by_tile_xy >src/f_binbio_find_cell_data_by_tile_xy.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_find_cell_data_by_tile_xy.o))
 fadr=$(calc16 "${a_binbio_find_cell_data_by_tile_xy}+${fsz}")
+a_binbio_get_pointed_cell_addr=$(four_digits $fadr)
+echo -e "a_binbio_get_pointed_cell_addr=$a_binbio_get_pointed_cell_addr" >>$MAP_FILE_NAME
+f_binbio_get_pointed_cell_addr() {
+	# push
+	lr35902_push_reg regDE
+
+	# 現在のマウスカーソルが指すタイル座標を取得
+	lr35902_call $a_get_mouse_tcoord
+
+	# TODO マウスカーソルが指すタイル座標が細胞表示領域内かのチェックを入れる
+
+	# マウスカーソルが指すタイル座標の細胞のアドレスを取得
+	lr35902_call $a_binbio_find_cell_data_by_tile_xy
+
+	# pop & return
+	lr35902_pop_reg regDE
+	lr35902_return
+}
+
+# 細胞データ領域を確保
+# out: regHL - 確保した領域のアドレス(確保できなかった場合はNULL)
+f_binbio_get_pointed_cell_addr >src/f_binbio_get_pointed_cell_addr.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_get_pointed_cell_addr.o))
+fadr=$(calc16 "${a_binbio_get_pointed_cell_addr}+${fsz}")
 a_binbio_cell_alloc=$(four_digits $fadr)
 echo -e "a_binbio_cell_alloc=$a_binbio_cell_alloc" >>$MAP_FILE_NAME
 f_binbio_cell_alloc() {
@@ -6915,10 +6985,18 @@ f_binbio_select_next_cell() {
 	lr35902_return
 }
 
-# ソフト説明をクリア
+# ソフト説明を画面へ配置
 f_binbio_select_next_cell >src/f_binbio_select_next_cell.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_select_next_cell.o))
 fadr=$(calc16 "${a_binbio_select_next_cell}+${fsz}")
+a_binbio_place_soft_desc=$(four_digits $fadr)
+echo -e "a_binbio_place_soft_desc=$a_binbio_place_soft_desc" >>$MAP_FILE_NAME
+## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
+
+# ソフト説明をクリア
+f_binbio_place_soft_desc >src/f_binbio_place_soft_desc.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_place_soft_desc.o))
+fadr=$(calc16 "${a_binbio_place_soft_desc}+${fsz}")
 a_binbio_clear_soft_desc=$(four_digits $fadr)
 echo -e "a_binbio_clear_soft_desc=$a_binbio_clear_soft_desc" >>$MAP_FILE_NAME
 ## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
@@ -6940,11 +7018,19 @@ a_binbio_place_cell_info=$(four_digits $fadr)
 echo -e "a_binbio_place_cell_info=$a_binbio_place_cell_info" >>$MAP_FILE_NAME
 ## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
 
-# バイナリ生物環境の初期化
-# in : regA - 実験セット番号
+# 細胞ステータス情報をクリア
 f_binbio_place_cell_info >src/f_binbio_place_cell_info.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_place_cell_info.o))
 fadr=$(calc16 "${a_binbio_place_cell_info}+${fsz}")
+a_binbio_clear_cell_info=$(four_digits $fadr)
+echo -e "a_binbio_clear_cell_info=$a_binbio_clear_cell_info" >>$MAP_FILE_NAME
+## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
+
+# バイナリ生物環境の初期化
+# in : regA - 実験セット番号
+f_binbio_clear_cell_info >src/f_binbio_clear_cell_info.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_clear_cell_info.o))
+fadr=$(calc16 "${a_binbio_clear_cell_info}+${fsz}")
 a_binbio_init=$(four_digits $fadr)
 echo -e "a_binbio_init=$a_binbio_init" >>$MAP_FILE_NAME
 ## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
@@ -7620,17 +7706,42 @@ f_binbio_event_btn_start_release() {
 	# push
 	lr35902_push_reg regAF
 
-	# リセットを実施
-	## regA(引数)を設定
-	if [ "$BINBIO_EXPSET_NUM_INIT" = "$BINBIO_EXPSET_DAISYWORLD" ]; then
-		# デイジーワールド実験の場合はスタート/セレクトで実験セットを切り換える機能は無効にする
-		# スタートの際は単に現在の実験をリセットするだけ
-		lr35902_set_reg regA $BINBIO_EXPSET_DAISYWORLD
-	else
+	# 実験セットの初期値がデイジーワールド以外か否か
+	if [ "$BINBIO_EXPSET_NUM_INIT" != "$BINBIO_EXPSET_DAISYWORLD" ]; then
+		# デイジーワールド以外の場合
+
+		# リセットを実施
+		## regA(引数)を設定
 		lr35902_set_reg regA $BINBIO_EVENT_BTN_START_RELEASE_EXPSET
+		## 関数呼び出し
+		lr35902_call $a_binbio_reset
+	else
+		# デイジーワールドの場合
+
+		# 現在のステータス表示領域の状態 == ソフト説明表示状態 ?
+		lr35902_copy_to_regA_from_addr $var_binbio_status_disp_status
+		lr35902_compare_regA_and $STATUS_DISP_SHOW_SOFT_DESC
+		(
+			# 現在のステータス表示領域の状態 == ソフト説明表示状態 の場合
+
+			# pop & return
+			lr35902_pop_reg regAF
+			lr35902_return
+		) >src/f_binbio_event_btn_start_release.showing_soft_desc.o
+		local sz_showing_soft_desc=$(stat -c '%s' src/f_binbio_event_btn_start_release.showing_soft_desc.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_showing_soft_desc)
+		cat src/f_binbio_event_btn_start_release.showing_soft_desc.o
+
+		# 細胞ステータス情報をクリア
+		lr35902_call $a_binbio_clear_cell_info
+
+		# ソフト説明を配置
+		lr35902_call $a_binbio_place_soft_desc
+
+		# 現在のステータス表示領域の状態 = ソフト説明表示状態
+		lr35902_set_reg regA $STATUS_DISP_SHOW_SOFT_DESC
+		lr35902_copy_to_addr_from_regA $var_binbio_status_disp_status
 	fi
-	## 関数呼び出し
-	lr35902_call $a_binbio_reset
 
 	# pop & return
 	lr35902_pop_reg regAF
@@ -7644,26 +7755,69 @@ fadr=$(calc16 "${a_binbio_event_btn_start_release}+${fsz}")
 a_binbio_event_btn_select_release=$(four_digits $fadr)
 echo -e "a_binbio_event_btn_select_release=$a_binbio_event_btn_select_release" >>$MAP_FILE_NAME
 f_binbio_event_btn_select_release() {
-	# デイジーワールド実験の場合はスタート/セレクトで実験セットを切り換える機能は無効にする
-	# デイジーワールド実験の際、セレクトでは何もしない
+	# push
+	lr35902_push_reg regAF
+
+	# 実験セットの初期値がデイジーワールド以外か否か
 	if [ "$BINBIO_EXPSET_NUM_INIT" != "$BINBIO_EXPSET_DAISYWORLD" ]; then
-		# push
-		lr35902_push_reg regAF
+		# デイジーワールド以外の場合
 
 		# リセットを実施
 		## regA(引数)を設定
 		lr35902_set_reg regA $BINBIO_EVENT_BTN_SELECT_RELEASE_EXPSET
 		## 関数呼び出し
 		lr35902_call $a_binbio_reset
+	else
+		# デイジーワールドの場合
+
+		# push
+		lr35902_push_reg regHL
+
+		# カーソルが指す細胞のアドレスを取得
+		lr35902_call $a_binbio_get_pointed_cell_addr
+		## アドレス == NULL の場合はreturn
+		lr35902_xor_to_regA regA
+		lr35902_or_to_regA regL
+		lr35902_or_to_regA regH
+		lr35902_compare_regA_and 00
+		(
+			# アドレス == NULL の場合
+
+			# pop & return
+			lr35902_pop_reg regHL
+			lr35902_pop_reg regAF
+			lr35902_return
+		) >src/f_binbio_event_btn_select_release.adr_nul.o
+		local sz_adr_nul=$(stat -c '%s' src/f_binbio_event_btn_select_release.adr_nul.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_adr_nul)
+		cat src/f_binbio_event_btn_select_release.adr_nul.o
+
+		# 現在のステータス表示領域の状態 == ソフト説明表示状態 ?
+		lr35902_copy_to_regA_from_addr $var_binbio_status_disp_status
+		lr35902_compare_regA_and $STATUS_DISP_SHOW_SOFT_DESC
+		(
+			# 現在のステータス表示領域の状態 == ソフト説明表示状態 の場合
+
+			# ソフト説明をクリア
+			lr35902_call $a_binbio_clear_soft_desc
+
+			# 現在のステータス表示領域の状態 = 細胞ステータス情報表示状態
+			lr35902_set_reg regA $STATUS_DISP_SHOW_CELL_INFO
+			lr35902_copy_to_addr_from_regA $var_binbio_status_disp_status
+		) >src/f_binbio_event_btn_select_release.showing_soft_desc.o
+		local sz_showing_soft_desc=$(stat -c '%s' src/f_binbio_event_btn_select_release.showing_soft_desc.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_showing_soft_desc)
+		cat src/f_binbio_event_btn_select_release.showing_soft_desc.o
+
+		# 取得したアドレスの細胞のステータス情報を配置
+		lr35902_call $a_binbio_place_cell_info
 
 		# pop
-		lr35902_pop_reg regAF
-	else
-		# ソフト説明をクリア
-		lr35902_call $a_binbio_clear_soft_desc
+		lr35902_pop_reg regHL
 	fi
 
-	# return
+	# pop & return
+	lr35902_pop_reg regAF
 	lr35902_return
 }
 f_binbio_event_btn_select_release >src/f_binbio_event_btn_select_release.o
@@ -7686,6 +7840,7 @@ f_binbio_event_btn_select_release >src/f_binbio_event_btn_select_release.o
 # 1000h〜の領域に配置される
 global_functions() {
 	cat src/f_compare_regHL_and_regDE.o
+	cat src/f_get_mouse_tcoord.o
 	cat src/f_tcoord_to_addr.o
 	cat src/f_wtcoord_to_tcoord.o
 	cat src/f_tcoord_to_mrraddr.o
@@ -7752,6 +7907,7 @@ global_functions() {
 	cat src/f_binbio_cell_is_dividable.o
 	cat src/f_binbio_clear_cell_data_area.o
 	cat src/f_binbio_find_cell_data_by_tile_xy.o
+	cat src/f_binbio_get_pointed_cell_addr.o
 	cat src/f_binbio_cell_alloc.o
 	cat src/f_binbio_cell_find_free_neighbor.o
 	cat src/f_binbio_cell_mutation_all.o
@@ -7761,9 +7917,11 @@ global_functions() {
 	cat src/f_binbio_cell_division_fix.o
 	cat src/f_binbio_cell_death.o
 	cat src/f_binbio_select_next_cell.o
+	cat src/f_binbio_place_soft_desc.o
 	cat src/f_binbio_clear_soft_desc.o
 	cat src/f_binbio_update_status_disp.o
 	cat src/f_binbio_place_cell_info.o
+	cat src/f_binbio_clear_cell_info.o
 	cat src/f_binbio_init.o
 	cat src/f_binbio_reset.o
 	cat src/f_binbio_do_cycle.o
