@@ -14,6 +14,18 @@ CELL_DISP_AREA_FRAME_UPPER_LEFT_TCOORD_X=00
 CELL_DISP_AREA_FRAME_LOWER_RIGHT_TCOORD_Y=11
 CELL_DISP_AREA_FRAME_LOWER_RIGHT_TCOORD_X=13
 
+# 評価の実装 - デイジーワールド実験用
+f_binbio_cell_eval_daisyworld() {
+	# HELLO系の実験セットでは呼ばれないため、何もしない
+	:
+}
+
+# 評価の実装 - 固定値を返す
+f_binbio_cell_eval_fixedval() {
+	# HELLO系の実験セットでは呼ばれないため、何もしない
+	:
+}
+
 # 現在の細胞を評価する
 # out: regA - 評価結果の適応度(0x00〜0xff)
 # ※ フラグレジスタは破壊される

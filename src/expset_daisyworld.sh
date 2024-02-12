@@ -12,6 +12,11 @@ DAISY_GROWING_TEMP=14
 ## 地表温度をインクリメント/デクリメントする前段カウンタのしきい値
 ## 前段カウンタの絶対値がこの値に達したら地表温度をインクリメント/デクリメントする
 SURFACE_TEMP_INCDEC_PREV_COUNTER_TH=0a
+## 評価関数番号
+CELL_EVAL_NUM_FIXEDVAL=00	# 固定値を返す
+CELL_EVAL_NUM_DAISYWORLD=$BINBIO_EXPSET_DAISYWORLD	# デイジーワールド実験用(実験セット番号と同じにする)
+## 固定値を返す評価関数が返す固定値の初期値
+CELL_EVAL_FIXEDVAL_VAL_INIT=ff
 ## ステータス表示領域の状態
 STATUS_DISP_SHOW_SOFT_DESC=00	# ソフト説明表示状態
 STATUS_DISP_SHOW_CELL_INFO=01	# 細胞ステータス情報表示状態
@@ -105,6 +110,8 @@ SURFACE_TEMP_DOWN_BEGIN_X=A0	# ▼のX座標始端
 SURFACE_TEMP_DOWN_END_X=A7	# ▼のX座標終端
 
 # 変数
+## 固定値を返す評価関数が返す固定値
+var_binbio_cell_eval_fixedval_val=c032
 ## 現在のステータス表示領域の状態
 var_binbio_status_disp_status=c033
 ## 地表温度をインクリメント/デクリメントする前段のカウンタのアドレス
@@ -163,16 +170,9 @@ var_binbio_surface_temp=c035
 	lr35902_pop_reg regHL
 	lr35902_pop_reg regBC
 } >src/expset_daisyworld.is_daisy_white.o
-
-# 現在の細胞を評価する
-# out: regA - 評価結果の適応度(0x00〜0xff)
-# ※ フラグレジスタは破壊される
-f_binbio_cell_eval() {
-	# push
-	lr35902_push_reg regBC
-	lr35902_push_reg regHL
-
-	# 前段のカウンタの絶対値がしきい値以上であれば地表温度をインクリメント/デクリメントする
+## 前段のカウンタの絶対値がしきい値以上であれば地表温度をインクリメント/デクリメントする
+## work: regAF
+{
 	## 前段のカウンタ >= 0?
 	lr35902_copy_to_regA_from_addr $var_binbio_surface_temp_prev_counter
 	lr35902_test_bitN_of_reg 7 regA
@@ -193,19 +193,19 @@ f_binbio_cell_eval() {
 				# 地表温度をインクリメント
 				lr35902_inc regA
 				lr35902_copy_to_addr_from_regA $var_binbio_surface_temp
-			) >src/expset_daisyworld.f_binbio_cell_eval.prev_counter_positive.ge_th.inc_st.o
-			local sz_prev_counter_positive_ge_th_inc_st=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.prev_counter_positive.ge_th.inc_st.o)
-			lr35902_rel_jump_with_cond Z $(two_digits_d $sz_prev_counter_positive_ge_th_inc_st)
-			cat src/expset_daisyworld.f_binbio_cell_eval.prev_counter_positive.ge_th.inc_st.o
+			) >src/expset_daisyworld.apply_prev_counter.prev_counter_positive.ge_th.inc_st.o
+			sz_apply_prev_counter_prev_counter_positive_ge_th_inc_st=$(stat -c '%s' src/expset_daisyworld.apply_prev_counter.prev_counter_positive.ge_th.inc_st.o)
+			lr35902_rel_jump_with_cond Z $(two_digits_d $sz_apply_prev_counter_prev_counter_positive_ge_th_inc_st)
+			cat src/expset_daisyworld.apply_prev_counter.prev_counter_positive.ge_th.inc_st.o
 
 			# 前段のカウンタをゼロクリア
 			lr35902_xor_to_regA regA
 			lr35902_copy_to_addr_from_regA $var_binbio_surface_temp_prev_counter
-		) >src/expset_daisyworld.f_binbio_cell_eval.prev_counter_positive.ge_th.o
-		local sz_prev_counter_positive_ge_th=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.prev_counter_positive.ge_th.o)
-		lr35902_rel_jump_with_cond C $(two_digits_d $sz_prev_counter_positive_ge_th)
-		cat src/expset_daisyworld.f_binbio_cell_eval.prev_counter_positive.ge_th.o
-	) >src/expset_daisyworld.f_binbio_cell_eval.prev_counter_positive.o
+		) >src/expset_daisyworld.apply_prev_counter.prev_counter_positive.ge_th.o
+		sz_apply_prev_counter_prev_counter_positive_ge_th=$(stat -c '%s' src/expset_daisyworld.apply_prev_counter.prev_counter_positive.ge_th.o)
+		lr35902_rel_jump_with_cond C $(two_digits_d $sz_apply_prev_counter_prev_counter_positive_ge_th)
+		cat src/expset_daisyworld.apply_prev_counter.prev_counter_positive.ge_th.o
+	) >src/expset_daisyworld.apply_prev_counter.prev_counter_positive.o
 	(
 		# 前段のカウンタ < 0(regAのMSBが1)の場合
 
@@ -227,27 +227,39 @@ f_binbio_cell_eval() {
 				# 地表温度をデクリメント
 				lr35902_dec regA
 				lr35902_copy_to_addr_from_regA $var_binbio_surface_temp
-			) >src/expset_daisyworld.f_binbio_cell_eval.prev_counter_negative.ge_th.dec_st.o
-			local sz_prev_counter_negative_ge_th_dec_st=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.prev_counter_negative.ge_th.dec_st.o)
-			lr35902_rel_jump_with_cond Z $(two_digits_d $sz_prev_counter_negative_ge_th_dec_st)
-			cat src/expset_daisyworld.f_binbio_cell_eval.prev_counter_negative.ge_th.dec_st.o
+			) >src/expset_daisyworld.apply_prev_counter.prev_counter_negative.ge_th.dec_st.o
+			sz_apply_prev_counter_prev_counter_negative_ge_th_dec_st=$(stat -c '%s' src/expset_daisyworld.apply_prev_counter.prev_counter_negative.ge_th.dec_st.o)
+			lr35902_rel_jump_with_cond Z $(two_digits_d $sz_apply_prev_counter_prev_counter_negative_ge_th_dec_st)
+			cat src/expset_daisyworld.apply_prev_counter.prev_counter_negative.ge_th.dec_st.o
 
 			# 前段のカウンタをゼロクリア
 			lr35902_xor_to_regA regA
 			lr35902_copy_to_addr_from_regA $var_binbio_surface_temp_prev_counter
-		) >src/expset_daisyworld.f_binbio_cell_eval.prev_counter_negative.ge_th.o
-		local sz_prev_counter_negative_ge_th=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.prev_counter_negative.ge_th.o)
-		lr35902_rel_jump_with_cond C $(two_digits_d $sz_prev_counter_negative_ge_th)
-		cat src/expset_daisyworld.f_binbio_cell_eval.prev_counter_negative.ge_th.o
+		) >src/expset_daisyworld.apply_prev_counter.prev_counter_negative.ge_th.o
+		sz_apply_prev_counter_prev_counter_negative_ge_th=$(stat -c '%s' src/expset_daisyworld.apply_prev_counter.prev_counter_negative.ge_th.o)
+		lr35902_rel_jump_with_cond C $(two_digits_d $sz_apply_prev_counter_prev_counter_negative_ge_th)
+		cat src/expset_daisyworld.apply_prev_counter.prev_counter_negative.ge_th.o
 
 		# 前段のカウンタ >= 0の場合の処理を飛ばす
-		local sz_prev_counter_positive=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.prev_counter_positive.o)
-		lr35902_rel_jump $(two_digits_d $sz_prev_counter_positive)
-	) >src/expset_daisyworld.f_binbio_cell_eval.prev_counter_negative.o
-	local sz_prev_counter_negative=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.prev_counter_negative.o)
-	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_prev_counter_negative)
-	cat src/expset_daisyworld.f_binbio_cell_eval.prev_counter_negative.o
-	cat src/expset_daisyworld.f_binbio_cell_eval.prev_counter_positive.o
+		sz_apply_prev_counter_prev_counter_positive=$(stat -c '%s' src/expset_daisyworld.apply_prev_counter.prev_counter_positive.o)
+		lr35902_rel_jump $(two_digits_d $sz_apply_prev_counter_prev_counter_positive)
+	) >src/expset_daisyworld.apply_prev_counter.prev_counter_negative.o
+	sz_apply_prev_counter_prev_counter_negative=$(stat -c '%s' src/expset_daisyworld.apply_prev_counter.prev_counter_negative.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_apply_prev_counter_prev_counter_negative)
+	cat src/expset_daisyworld.apply_prev_counter.prev_counter_negative.o
+	cat src/expset_daisyworld.apply_prev_counter.prev_counter_positive.o
+} >src/expset_daisyworld.apply_prev_counter.o
+
+# 評価の実装 - デイジーワールド実験用
+# out: regA - 評価結果の適応度(0x00〜0xff)
+# ※ フラグレジスタは破壊される
+f_binbio_cell_eval_daisyworld() {
+	# push
+	lr35902_push_reg regBC
+	lr35902_push_reg regHL
+
+	# 前段のカウンタの絶対値がしきい値以上であれば地表温度をインクリメント/デクリメントする
+	cat src/expset_daisyworld.apply_prev_counter.o
 
 	# regAに地表温度を設定
 	lr35902_copy_to_regA_from_addr $var_binbio_surface_temp
@@ -283,7 +295,7 @@ f_binbio_cell_eval() {
 
 			# regAへ誤差として-128(2の補数:0x80)を設定
 			lr35902_set_reg regA 80
-		) >src/expset_daisyworld.f_binbio_cell_eval.e_is_m128.o
+		) >src/expset_daisyworld.f_binbio_cell_eval_daisyworld.e_is_m128.o
 		(
 			# 0x7f >= regA の場合
 
@@ -292,15 +304,15 @@ f_binbio_cell_eval() {
 			lr35902_sub_to_regA $DAISY_GROWING_TEMP
 
 			# 0x7f < regA の場合の処理を飛ばす
-			local sz_e_is_m128=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.e_is_m128.o)
+			local sz_e_is_m128=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval_daisyworld.e_is_m128.o)
 			lr35902_rel_jump $(two_digits_d $sz_e_is_m128)
-		) >src/expset_daisyworld.f_binbio_cell_eval.calc_e_2.o
+		) >src/expset_daisyworld.f_binbio_cell_eval_daisyworld.calc_e_2.o
 		### regA < regB?
-		local sz_calc_e_2=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.calc_e_2.o)
+		local sz_calc_e_2=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval_daisyworld.calc_e_2.o)
 		lr35902_rel_jump_with_cond C $(two_digits_d $sz_calc_e_2)
-		cat src/expset_daisyworld.f_binbio_cell_eval.calc_e_2.o
-		cat src/expset_daisyworld.f_binbio_cell_eval.e_is_m128.o
-	) >src/expset_daisyworld.f_binbio_cell_eval.st_lt.o
+		cat src/expset_daisyworld.f_binbio_cell_eval_daisyworld.calc_e_2.o
+		cat src/expset_daisyworld.f_binbio_cell_eval_daisyworld.e_is_m128.o
+	) >src/expset_daisyworld.f_binbio_cell_eval_daisyworld.st_lt.o
 	(
 		# regA >= $DAISY_GROWING_TEMP - 128 の場合
 
@@ -308,14 +320,14 @@ f_binbio_cell_eval() {
 		lr35902_sub_to_regA $DAISY_GROWING_TEMP
 
 		# regA < $DAISY_GROWING_TEMP - 128 の場合の処理を飛ばす
-		local sz_st_lt=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.st_lt.o)
+		local sz_st_lt=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval_daisyworld.st_lt.o)
 		lr35902_rel_jump $(two_digits_d $sz_st_lt)
-	) >src/expset_daisyworld.f_binbio_cell_eval.calc_e.o
+	) >src/expset_daisyworld.f_binbio_cell_eval_daisyworld.calc_e.o
 	## regA < $DAISY_GROWING_TEMP - 128?
-	local sz_calc_e=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.calc_e.o)
+	local sz_calc_e=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval_daisyworld.calc_e.o)
 	lr35902_rel_jump_with_cond C $(two_digits_d $sz_calc_e)
-	cat src/expset_daisyworld.f_binbio_cell_eval.calc_e.o
-	cat src/expset_daisyworld.f_binbio_cell_eval.st_lt.o
+	cat src/expset_daisyworld.f_binbio_cell_eval_daisyworld.calc_e.o
+	cat src/expset_daisyworld.f_binbio_cell_eval_daisyworld.st_lt.o
 
 	# 誤差 >= 0?
 	## regAのMSBが0か?
@@ -340,7 +352,7 @@ f_binbio_cell_eval() {
 			lr35902_set_reg regA 80
 			## regA += regB
 			lr35902_add_to_regA regB
-		) >src/expset_daisyworld.f_binbio_cell_eval.st_ge_gt.w.o
+		) >src/expset_daisyworld.f_binbio_cell_eval_daisyworld.st_ge_gt.w.o
 		(
 			# 現在の細胞 == 黒デイジーの場合
 
@@ -351,14 +363,14 @@ f_binbio_cell_eval() {
 			lr35902_sub_to_regA regB
 
 			# 現在の細胞 == 白デイジーの場合の処理を飛ばす
-			local sz_st_ge_gt_w=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.st_ge_gt.w.o)
+			local sz_st_ge_gt_w=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval_daisyworld.st_ge_gt.w.o)
 			lr35902_rel_jump $(two_digits_d $sz_st_ge_gt_w)
-		) >src/expset_daisyworld.f_binbio_cell_eval.st_ge_gt.b.o
-		local sz_st_ge_gt_b=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.st_ge_gt.b.o)
+		) >src/expset_daisyworld.f_binbio_cell_eval_daisyworld.st_ge_gt.b.o
+		local sz_st_ge_gt_b=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval_daisyworld.st_ge_gt.b.o)
 		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_st_ge_gt_b)
-		cat src/expset_daisyworld.f_binbio_cell_eval.st_ge_gt.b.o	# 現在の細胞 == 黒デイジーの場合
-		cat src/expset_daisyworld.f_binbio_cell_eval.st_ge_gt.w.o	# 現在の細胞 == 白デイジーの場合
-	) >src/expset_daisyworld.f_binbio_cell_eval.st_ge_gt.o
+		cat src/expset_daisyworld.f_binbio_cell_eval_daisyworld.st_ge_gt.b.o	# 現在の細胞 == 黒デイジーの場合
+		cat src/expset_daisyworld.f_binbio_cell_eval_daisyworld.st_ge_gt.w.o	# 現在の細胞 == 白デイジーの場合
+	) >src/expset_daisyworld.f_binbio_cell_eval_daisyworld.st_ge_gt.o
 	(
 		# 誤差 < 0(regAのMSBが1)の場合
 
@@ -387,7 +399,7 @@ f_binbio_cell_eval() {
 			lr35902_set_reg regA 80
 			## regA -= regB
 			lr35902_sub_to_regA regB
-		) >src/expset_daisyworld.f_binbio_cell_eval.st_lt_gt.w.o
+		) >src/expset_daisyworld.f_binbio_cell_eval_daisyworld.st_lt_gt.w.o
 		(
 			# 現在の細胞 == 黒デイジーの場合
 
@@ -399,26 +411,84 @@ f_binbio_cell_eval() {
 			lr35902_add_to_regA regB
 
 			# 現在の細胞 == 白デイジーの場合の処理を飛ばす
-			local sz_st_lt_gt_w=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.st_lt_gt.w.o)
+			local sz_st_lt_gt_w=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval_daisyworld.st_lt_gt.w.o)
 			lr35902_rel_jump $(two_digits_d $sz_st_lt_gt_w)
-		) >src/expset_daisyworld.f_binbio_cell_eval.st_lt_gt.b.o
-		local sz_st_lt_gt_b=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.st_lt_gt.b.o)
+		) >src/expset_daisyworld.f_binbio_cell_eval_daisyworld.st_lt_gt.b.o
+		local sz_st_lt_gt_b=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval_daisyworld.st_lt_gt.b.o)
 		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_st_lt_gt_b)
-		cat src/expset_daisyworld.f_binbio_cell_eval.st_lt_gt.b.o	# 現在の細胞 == 黒デイジーの場合
-		cat src/expset_daisyworld.f_binbio_cell_eval.st_lt_gt.w.o	# 現在の細胞 == 白デイジーの場合
+		cat src/expset_daisyworld.f_binbio_cell_eval_daisyworld.st_lt_gt.b.o	# 現在の細胞 == 黒デイジーの場合
+		cat src/expset_daisyworld.f_binbio_cell_eval_daisyworld.st_lt_gt.w.o	# 現在の細胞 == 白デイジーの場合
 
 		# 誤差 >= 0の場合の処理を飛ばす
-		local sz_st_ge_gt=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.st_ge_gt.o)
+		local sz_st_ge_gt=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval_daisyworld.st_ge_gt.o)
 		lr35902_rel_jump $(two_digits_d $sz_st_ge_gt)
-	) >src/expset_daisyworld.f_binbio_cell_eval.st_lt_gt.o
-	local sz_st_lt_gt=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.st_lt_gt.o)
+	) >src/expset_daisyworld.f_binbio_cell_eval_daisyworld.st_lt_gt.o
+	local sz_st_lt_gt=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval_daisyworld.st_lt_gt.o)
 	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_st_lt_gt)
-	cat src/expset_daisyworld.f_binbio_cell_eval.st_lt_gt.o	# 誤差 < 0の場合
-	cat src/expset_daisyworld.f_binbio_cell_eval.st_ge_gt.o	# 誤差 >= 0の場合
+	cat src/expset_daisyworld.f_binbio_cell_eval_daisyworld.st_lt_gt.o	# 誤差 < 0の場合
+	cat src/expset_daisyworld.f_binbio_cell_eval_daisyworld.st_ge_gt.o	# 誤差 >= 0の場合
 
 	# pop & return
 	lr35902_pop_reg regHL
 	lr35902_pop_reg regBC
+	lr35902_return
+}
+
+# 評価の実装 - 固定値を返す
+# out: regA - 評価結果の適応度(0x00〜0xff)
+# ※ フラグレジスタは破壊される
+f_binbio_cell_eval_fixedval() {
+	# 前段のカウンタの絶対値がしきい値以上であれば地表温度をインクリメント/デクリメントする
+	cat src/expset_daisyworld.apply_prev_counter.o
+
+	# regAへ$var_binbio_cell_eval_fixedval_valの値を設定
+	lr35902_copy_to_regA_from_addr $var_binbio_cell_eval_fixedval_val
+
+	# return
+	lr35902_return
+}
+
+# 現在の細胞を評価する
+# out: regA - 評価結果の適応度(0x00〜0xff)
+# ※ フラグレジスタは破壊される
+# ※ デイジーワールド実験ではvar_binbio_expset_numを現在の評価関数番号に使う
+f_binbio_cell_eval() {
+	# regAへexpset_numを取得
+	lr35902_copy_to_regA_from_addr $var_binbio_expset_num
+
+	# regA == DAISYWORLD ?
+	lr35902_compare_regA_and $CELL_EVAL_NUM_DAISYWORLD
+	(
+		# regA == DAISYWORLD の場合
+
+		# 実装関数呼び出し
+		lr35902_call $a_binbio_cell_eval_daisyworld
+
+		# return
+		lr35902_return
+	) >src/expset_daisyworld.f_binbio_cell_eval.daisyworld.o
+	local sz_daisyworld=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.daisyworld.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_daisyworld)
+	cat src/expset_daisyworld.f_binbio_cell_eval.daisyworld.o
+
+	# regA == FIXEDVAL ?
+	lr35902_compare_regA_and $CELL_EVAL_NUM_FIXEDVAL
+	(
+		# regA == FIXEDVAL の場合
+
+		# 実装関数呼び出し
+		lr35902_call $a_binbio_cell_eval_fixedval
+
+		# return
+		lr35902_return
+	) >src/expset_fixedval.f_binbio_cell_eval.fixedval.o
+	local sz_fixedval=$(stat -c '%s' src/expset_fixedval.f_binbio_cell_eval.fixedval.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_fixedval)
+	cat src/expset_fixedval.f_binbio_cell_eval.fixedval.o
+
+	# TODO いずれでもない場合、現在の細胞の適応度をそのまま返す
+
+	# return
 	lr35902_return
 }
 
@@ -1030,6 +1100,9 @@ f_binbio_init() {
 		lr35902_set_reg regA $BINBIO_MUTATION_PROBABILITY_INIT
 		lr35902_copy_to_addr_from_regA $var_binbio_mutation_probability
 	fi
+	## cell_eval_fixedval_val = $CELL_EVAL_FIXEDVAL_VAL_INIT
+	lr35902_set_reg regA $CELL_EVAL_FIXEDVAL_VAL_INIT
+	lr35902_copy_to_addr_from_regA $var_binbio_cell_eval_fixedval_val
 	## get_code_comp_counter_addr = 0x0000
 	lr35902_xor_to_regA regA
 	lr35902_copy_to_addr_from_regA $var_binbio_get_code_comp_all_counter_addr_bh

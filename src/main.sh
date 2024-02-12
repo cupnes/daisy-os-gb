@@ -135,6 +135,9 @@ cell_status_str_life_left_duration	よめい/し゛ゆみよう:
 cell_status_str_fitness	てきおうと゛:
 cell_status_str_bin_data_size	は゛いなり:(さいす゛:
 cell_status_str_collected_flags	しゆとくふらく゛:
+select_cell_eval	ひようかかんすうせんたく
+cell_eval_daisyworld	て゛いし゛-わ-ると゛
+cell_eval_fixedval	つねに255
 EOF
 
 	# 各文字列をタイル番号のバイナリデータへ変換しファイルと標準出力へ出力
@@ -4815,12 +4818,32 @@ f_binbio_cell_eval_hello() {
 	_binbio_cell_eval_hello_ret_distance 'O'
 }
 
-# 現在の細胞を評価する
+# 評価の実装 - デイジーワールド実験用
 # out: regA - 評価結果の適応度(0x00〜0xff)
 # ※ フラグレジスタは破壊される
 f_binbio_cell_eval_hello >src/f_binbio_cell_eval_hello.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_eval_hello.o))
 fadr=$(calc16 "${a_binbio_cell_eval_hello}+${fsz}")
+a_binbio_cell_eval_daisyworld=$(four_digits $fadr)
+echo -e "a_binbio_cell_eval_daisyworld=$a_binbio_cell_eval_daisyworld" >>$MAP_FILE_NAME
+## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
+
+# 評価の実装 - 固定値を返す
+# out: regA - 評価結果の適応度(0x00〜0xff)
+# ※ フラグレジスタは破壊される
+f_binbio_cell_eval_daisyworld >src/f_binbio_cell_eval_daisyworld.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_eval_daisyworld.o))
+fadr=$(calc16 "${a_binbio_cell_eval_daisyworld}+${fsz}")
+a_binbio_cell_eval_fixedval=$(four_digits $fadr)
+echo -e "a_binbio_cell_eval_fixedval=$a_binbio_cell_eval_fixedval" >>$MAP_FILE_NAME
+## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
+
+# 現在の細胞を評価する
+# out: regA - 評価結果の適応度(0x00〜0xff)
+# ※ フラグレジスタは破壊される
+f_binbio_cell_eval_fixedval >src/f_binbio_cell_eval_fixedval.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_eval_fixedval.o))
+fadr=$(calc16 "${a_binbio_cell_eval_fixedval}+${fsz}")
 a_binbio_cell_eval=$(four_digits $fadr)
 echo -e "a_binbio_cell_eval=$a_binbio_cell_eval" >>$MAP_FILE_NAME
 ## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
@@ -7898,6 +7921,8 @@ global_functions() {
 	cat src/f_binbio_cell_eval_helloworld.o
 	cat src/f_binbio_cell_eval_daisy.o
 	cat src/f_binbio_cell_eval_hello.o
+	cat src/f_binbio_cell_eval_daisyworld.o
+	cat src/f_binbio_cell_eval_fixedval.o
 	cat src/f_binbio_cell_eval.o
 	cat src/f_binbio_cell_metabolism_and_motion.o
 	cat src/f_binbio_get_code_comp_all.o
