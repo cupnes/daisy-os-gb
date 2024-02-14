@@ -275,8 +275,13 @@ f_binbio_update_status_disp() {
 }
 
 # 細胞ステータス情報を画面へ配置
-# in : regHL - 対象の細胞のアドレス
-f_binbio_place_cell_info() {
+f_binbio_place_cell_info_labels() {
+	# HELLO系の実験セットでは呼ばれないため、何もしない
+	:
+}
+
+# 細胞ステータス情報を画面へ配置
+f_binbio_place_cell_info_val() {
 	# HELLO系の実験セットでは呼ばれないため、何もしない
 	:
 }

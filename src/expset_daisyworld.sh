@@ -772,9 +772,39 @@ f_binbio_update_status_disp() {
 	lr35902_return
 }
 
-# 細胞ステータス情報を画面へ配置
+# 細胞ステータス情報のラベルを画面へ配置
+f_binbio_place_cell_info_labels() {
+	# push
+	lr35902_push_reg regDE	# con_print_xy_macro()で変更する
+	lr35902_push_reg regHL	# con_print_xy_macro()で変更する
+
+	# フラグのラベルを配置
+	con_print_xy_macro $FLAGS_LABEL_TCOORD_X $FLAGS_LABEL_TCOORD_Y $a_const_cell_status_str_flags
+
+	# タイル座標のラベルを配置
+	con_print_xy_macro $TCOORD_LABEL_TCOORD_X $TCOORD_LABEL_TCOORD_Y $a_const_cell_status_str_coord
+
+	# 余命/寿命のラベルを配置
+	con_print_xy_macro $LIFE_LEFT_DURATION_LABEL_TCOORD_X $LIFE_LEFT_DURATION_TCOORD_Y $a_const_cell_status_str_life_left_duration
+
+	# 適応度のラベルを配置
+	con_print_xy_macro $FITNESS_LABEL_TCOORD_X $FITNESS_TCOORD_Y $a_const_cell_status_str_fitness
+
+	# バイナリとサイズのラベルを配置
+	con_print_xy_macro $BIN_DATA_SIZE_LABEL_TCOORD_X $BIN_DATA_SIZE_LABEL_SIZE_VAL_TCOORD_Y $a_const_cell_status_str_bin_data_size
+
+	# 取得フラグのラベルを配置
+	con_print_xy_macro $COLLECTED_FLAGS_LABEL_TCOORD_X $COLLECTED_FLAGS_LABEL_VAL_TCOORD_Y $a_const_cell_status_str_collected_flags
+
+	# pop & return
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regDE
+	lr35902_return
+}
+
+# 細胞ステータス情報の値を画面へ配置
 # in : regHL - 対象の細胞のアドレス
-f_binbio_place_cell_info() {
+f_binbio_place_cell_info_val() {
 	# push
 	lr35902_push_reg regAF
 	lr35902_push_reg regBC
@@ -799,16 +829,12 @@ f_binbio_place_cell_info() {
 	## regHLをregBCへ退避
 	lr35902_copy_to_from regC regL
 	lr35902_copy_to_from regB regH
-	## ラベルを配置
-	con_print_xy_macro $FLAGS_LABEL_TCOORD_X $FLAGS_LABEL_TCOORD_Y $a_const_cell_status_str_flags
 	## 16進数の接頭辞を配置
 	con_print_xy_macro $FLAGS_PREF_VAL_TCOORD_X $FLAGS_PREF_VAL_TCOORD_Y $a_const_pref_hex
 	## 値を配置
 	lr35902_call $a_print_regA
 
 	# タイル座標を配置
-	## ラベルを配置
-	con_print_xy_macro $TCOORD_LABEL_TCOORD_X $TCOORD_LABEL_TCOORD_Y $a_const_cell_status_str_coord
 	## regBCからregHLを復帰
 	lr35902_copy_to_from regL regC
 	lr35902_copy_to_from regH regB
@@ -840,14 +866,11 @@ f_binbio_place_cell_info() {
 	lr35902_call $a_putch
 
 	# 余命/寿命を配置
-	## regHLをregBCへ退避
-	lr35902_copy_to_from regC regL
-	lr35902_copy_to_from regB regH
-	## ラベルを配置
-	con_print_xy_macro $LIFE_LEFT_DURATION_LABEL_TCOORD_X $LIFE_LEFT_DURATION_TCOORD_Y $a_const_cell_status_str_life_left_duration
 	## 余命の値を配置
+	### カーソル位置を設定
+	con_set_cursor $(con_tcoord_to_tadr $LIFE_LEFT_VAL_TCOORD_X $LIFE_LEFT_DURATION_TCOORD_Y)
 	### life_leftのアドレスをregHLへ設定
-	lr35902_set_reg regHL 0002
+	lr35902_set_reg regBC 0002
 	lr35902_add_to_regHL regBC
 	### regAへlife_leftを取得
 	lr35902_copy_to_from regA ptrHL
@@ -869,8 +892,8 @@ f_binbio_place_cell_info() {
 	## regHLをregBCへ退避
 	lr35902_copy_to_from regC regL
 	lr35902_copy_to_from regB regH
-	## ラベルを配置
-	con_print_xy_macro $FITNESS_LABEL_TCOORD_X $FITNESS_TCOORD_Y $a_const_cell_status_str_fitness
+	## カーソル位置を設定
+	con_set_cursor $(con_tcoord_to_tadr $FITNESS_VAL_TCOORD_X $FITNESS_TCOORD_Y)
 	## 16進数の接頭辞を配置
 	lr35902_set_reg regHL $a_const_pref_hex
 	lr35902_call $a_print
@@ -884,14 +907,11 @@ f_binbio_place_cell_info() {
 	lr35902_call $a_print_regA
 
 	# バイナリとサイズを配置
-	## regHLをregBCへ退避
-	lr35902_copy_to_from regC regL
-	lr35902_copy_to_from regB regH
-	## ラベルを配置
-	con_print_xy_macro $BIN_DATA_SIZE_LABEL_TCOORD_X $BIN_DATA_SIZE_LABEL_SIZE_VAL_TCOORD_Y $a_const_cell_status_str_bin_data_size
 	## サイズの値を配置
+	### カーソル位置を設定
+	con_set_cursor $(con_tcoord_to_tadr $BIN_SIZE_VAL_TCOORD_X $BIN_DATA_SIZE_LABEL_SIZE_VAL_TCOORD_Y)
 	### bin_sizeのアドレスをregHLへ設定
-	lr35902_set_reg regHL 0002
+	lr35902_set_reg regBC 0002
 	lr35902_add_to_regHL regBC
 	### regAへbin_sizeを取得
 	lr35902_copy_to_from regA ptrHL
@@ -957,8 +977,8 @@ f_binbio_place_cell_info() {
 	## regHLをregBCへ退避
 	lr35902_copy_to_from regC regL
 	lr35902_copy_to_from regB regH
-	## ラベルを配置
-	con_print_xy_macro $COLLECTED_FLAGS_LABEL_TCOORD_X $COLLECTED_FLAGS_LABEL_VAL_TCOORD_Y $a_const_cell_status_str_collected_flags
+	## カーソル位置を設定
+	con_set_cursor $(con_tcoord_to_tadr $COLLECTED_FLAGS_UNIT_VAL_TCOORD_X $COLLECTED_FLAGS_LABEL_VAL_TCOORD_Y)
 	## 16進数の接頭辞を配置
 	lr35902_set_reg regHL $a_const_pref_hex
 	lr35902_call $a_print

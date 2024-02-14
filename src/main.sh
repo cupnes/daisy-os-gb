@@ -7032,19 +7032,27 @@ a_binbio_update_status_disp=$(four_digits $fadr)
 echo -e "a_binbio_update_status_disp=$a_binbio_update_status_disp" >>$MAP_FILE_NAME
 ## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
 
-# 細胞ステータス情報を画面へ配置
-# in : regHL - 対象の細胞のアドレス
+# 細胞ステータス情報のラベルを画面へ配置
 f_binbio_update_status_disp >src/f_binbio_update_status_disp.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_update_status_disp.o))
 fadr=$(calc16 "${a_binbio_update_status_disp}+${fsz}")
-a_binbio_place_cell_info=$(four_digits $fadr)
-echo -e "a_binbio_place_cell_info=$a_binbio_place_cell_info" >>$MAP_FILE_NAME
+a_binbio_place_cell_info_labels=$(four_digits $fadr)
+echo -e "a_binbio_place_cell_info_labels=$a_binbio_place_cell_info_labels" >>$MAP_FILE_NAME
+## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
+
+# 細胞ステータス情報の値を画面へ配置
+# in : regHL - 対象の細胞のアドレス
+f_binbio_place_cell_info_labels >src/f_binbio_place_cell_info_labels.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_place_cell_info_labels.o))
+fadr=$(calc16 "${a_binbio_place_cell_info_labels}+${fsz}")
+a_binbio_place_cell_info_val=$(four_digits $fadr)
+echo -e "a_binbio_place_cell_info_val=$a_binbio_place_cell_info_val" >>$MAP_FILE_NAME
 ## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
 
 # 細胞ステータス情報をクリア
-f_binbio_place_cell_info >src/f_binbio_place_cell_info.o
-fsz=$(to16 $(stat -c '%s' src/f_binbio_place_cell_info.o))
-fadr=$(calc16 "${a_binbio_place_cell_info}+${fsz}")
+f_binbio_place_cell_info_val >src/f_binbio_place_cell_info_val.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_place_cell_info_val.o))
+fadr=$(calc16 "${a_binbio_place_cell_info_val}+${fsz}")
 a_binbio_clear_cell_info=$(four_digits $fadr)
 echo -e "a_binbio_clear_cell_info=$a_binbio_clear_cell_info" >>$MAP_FILE_NAME
 ## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
@@ -7833,7 +7841,8 @@ f_binbio_event_btn_select_release() {
 		cat src/f_binbio_event_btn_select_release.showing_soft_desc.o
 
 		# 取得したアドレスの細胞のステータス情報を配置
-		lr35902_call $a_binbio_place_cell_info
+		lr35902_call $a_binbio_place_cell_info_labels
+		lr35902_call $a_binbio_place_cell_info_val
 
 		# pop
 		lr35902_pop_reg regHL
@@ -7945,7 +7954,8 @@ global_functions() {
 	cat src/f_binbio_place_soft_desc.o
 	cat src/f_binbio_clear_soft_desc.o
 	cat src/f_binbio_update_status_disp.o
-	cat src/f_binbio_place_cell_info.o
+	cat src/f_binbio_place_cell_info_labels.o
+	cat src/f_binbio_place_cell_info_val.o
 	cat src/f_binbio_clear_cell_info.o
 	cat src/f_binbio_init.o
 	cat src/f_binbio_reset.o
