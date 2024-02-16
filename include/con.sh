@@ -44,7 +44,8 @@ con_tcoord_to_tadr() {
 }
 
 # カーソル位置を設定
-# in : 第1引数 - カーソル位置のタイルアドレス
+# in  : 第1引数 - カーソル位置のタイルアドレス
+# work: regA
 con_set_cursor() {
 	local tadr=$1
 
@@ -58,6 +59,7 @@ con_set_cursor() {
 # in : 第1引数 - コンソール座標X
 #      第2引数 - コンソール座標Y
 #      第3引数 - 文字
+# work: regB, regDE
 con_putxy_macro() {
 	local con_coord_x=$1
 	local con_coord_y=$2
@@ -77,6 +79,7 @@ con_putxy_macro() {
 # in : 第1引数 - カーソル位置のタイル座標X
 #      第2引数 - カーソル位置のタイル座標Y
 #      第3引数 - 文字列のアドレス
+# work: regDE, regHL
 con_print_xy_macro() {
 	local cursor_tcoord_x=$1
 	local cursor_tcoord_y=$2
@@ -92,6 +95,7 @@ con_print_xy_macro() {
 # in : 第1引数 - タイル座標X
 #      第2引数 - タイル座標Y
 #      第3引数 - 文字数(10進数)
+# work: regA, regDE
 con_delch_tadr_num_macro() {
 	local tcoord_x=$1
 	local tcoord_y=$2
@@ -101,6 +105,118 @@ con_delch_tadr_num_macro() {
 	lr35902_set_reg regA $num_hex
 	lr35902_set_reg regDE $(con_tcoord_to_tadr $tcoord_x $tcoord_y)
 	lr35902_call $a_delch_tadr_num
+}
+
+# 指定されたタイル座標へ指定されたサイズの矩形を罫線で描く
+# in  : 第1引数 - タイル座標X
+#       第2引数 - タイル座標Y
+#       第3引数 - 幅[タイル数]
+#       第4引数 - 高さ[タイル数]
+# work: regA, regB, regDE, regHL
+# ※ 幅と高さはそれぞれ2以上であること
+con_draw_rect_macro() {
+	local tcoord_x=$1
+	local tcoord_y=$2
+	local width=$3
+	local height=$3
+
+	# カーソル位置を指定されたタイル座標へ設定
+	local upper_left_tadr=$(con_tcoord_to_tadr $tcoord_x $tcoord_y)
+	con_set_cursor $upper_left_tadr
+
+	# "┌"を配置
+	lr35902_set_reg regB $GBOS_TILE_NUM_UPPER_LEFT_BAR
+	lr35902_call $a_putch
+
+	# 上側と下側の"─"を配置する数を算出
+	local num_horizontal_bars=$(bc <<< "ibase=16;$width - 2")
+
+	# "─"(上側)を$num_horizontal_bars個分配置
+	for i in $(seq $num_horizontal_bars); do
+		# "─"(上側)を配置
+		lr35902_set_reg regB $GBOS_TILE_NUM_UPPER_BAR
+		lr35902_call $a_putch
+	done
+
+	# "┐"を配置
+	lr35902_set_reg regB $GBOS_TILE_NUM_UPPER_RIGHT_BAR
+	lr35902_call $a_putch
+
+	# 右側と左側の"│"を配置する数を算出
+	local num_vertical_bars=$(bc <<< "ibase=16;$height - 2")
+
+	# カーソル位置をregHLへ取得し、1文字分戻す
+	lr35902_copy_to_regA_from_addr $var_con_tadr_bh
+	lr35902_copy_to_from regL regA
+	lr35902_copy_to_regA_from_addr $var_con_tadr_th
+	lr35902_copy_to_from regH regA
+	lr35902_dec regHL
+
+	# 1行分のタイル数をregDEへ設定
+	lr35902_set_reg regDE $(four_digits $GB_SC_WIDTH_T)
+
+	# "│"(右側)を$num_vertical_bars個分配置
+	for i in $(seq $num_vertical_bars); do
+		# regHLへregDEを加算し、カーソル位置の変数へ設定
+		lr35902_add_to_regHL regDE
+		lr35902_copy_to_from regA regL
+		lr35902_copy_to_addr_from_regA $var_con_tadr_bh
+		lr35902_copy_to_from regA regH
+		lr35902_copy_to_addr_from_regA $var_con_tadr_th
+
+		# "│"(右側)を配置
+		lr35902_set_reg regB $GBOS_TILE_NUM_RIGHT_BAR
+		lr35902_call $a_putch
+	done
+
+	# regHLへregDEを加算し、カーソル位置の変数へ設定
+	lr35902_add_to_regHL regDE
+	lr35902_copy_to_from regA regL
+	lr35902_copy_to_addr_from_regA $var_con_tadr_bh
+	lr35902_copy_to_from regA regH
+	lr35902_copy_to_addr_from_regA $var_con_tadr_th
+
+	# "┘"を配置
+	lr35902_set_reg regB $GBOS_TILE_NUM_LOWER_RIGHT_BAR
+	lr35902_call $a_putch
+
+	# regHLへ"┌"の位置を設定
+	lr35902_set_reg regA $(echo $upper_left_tadr | cut -c3-4)
+	lr35902_copy_to_from regL regA
+	lr35902_set_reg regA $(echo $upper_left_tadr | cut -c1-2)
+	lr35902_copy_to_from regH regA
+
+	# "│"(左側)を$num_vertical_bars個分配置
+	for i in $(seq $num_vertical_bars); do
+		# regHLへregDEを加算し、カーソル位置の変数へ設定
+		lr35902_add_to_regHL regDE
+		lr35902_copy_to_from regA regL
+		lr35902_copy_to_addr_from_regA $var_con_tadr_bh
+		lr35902_copy_to_from regA regH
+		lr35902_copy_to_addr_from_regA $var_con_tadr_th
+
+		# "│"(左側)を配置
+		lr35902_set_reg regB $GBOS_TILE_NUM_LEFT_BAR
+		lr35902_call $a_putch
+	done
+
+	# regHLへregDEを加算し、カーソル位置の変数へ設定
+	lr35902_add_to_regHL regDE
+	lr35902_copy_to_from regA regL
+	lr35902_copy_to_addr_from_regA $var_con_tadr_bh
+	lr35902_copy_to_from regA regH
+	lr35902_copy_to_addr_from_regA $var_con_tadr_th
+
+	# "└"を配置
+	lr35902_set_reg regB $GBOS_TILE_NUM_LOWER_LEFT_BAR
+	lr35902_call $a_putch
+
+	# "─"(下側)を$num_horizontal_bars個分配置
+	for i in $(seq $num_horizontal_bars); do
+		# "─"(上側)を配置
+		lr35902_set_reg regB $GBOS_TILE_NUM_LOWER_BAR
+		lr35902_call $a_putch
+	done
 }
 
 ### OSの関数として使用する関数 ###
