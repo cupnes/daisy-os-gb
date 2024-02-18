@@ -292,6 +292,12 @@ f_binbio_clear_cell_info() {
 	:
 }
 
+# 評価関数設定を画面へ配置
+f_binbio_place_cell_eval_config() {
+	# HELLO系の実験セットでは呼ばれないため、何もしない
+	:
+}
+
 # バイナリ生物環境の初期化
 # in : regA - 実験セット番号
 f_binbio_init() {

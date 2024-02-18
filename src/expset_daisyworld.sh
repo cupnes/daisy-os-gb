@@ -100,6 +100,20 @@ BIN_DATA_PREF_VAL_TCOORD_X=04
 COLLECTED_FLAGS_LABEL_VAL_TCOORD_Y=11
 COLLECTED_FLAGS_LABEL_TCOORD_X=00
 COLLECTED_FLAGS_UNIT_VAL_TCOORD_X=09
+### 評価関数設定
+#### 評価関数選択ラベル
+CELL_EVAL_SEL_LABEL_TCOORD_X=00
+CELL_EVAL_SEL_LABEL_TCOORD_Y=0A
+#### 外枠
+CELL_EVAL_SEL_FRAME_TCOORD_X=00
+CELL_EVAL_SEL_FRAME_TCOORD_Y=0B
+CELL_EVAL_SEL_FRAME_WIDTH=0E
+CELL_EVAL_SEL_FRAME_HEIGHT=07
+#### 関数名
+CELL_EVAL_SEL_DAISYWORLD_TCOORD_X=02
+CELL_EVAL_SEL_DAISYWORLD_TCOORD_Y=0C
+CELL_EVAL_SEL_FIXEDVAL_TCOORD_X=02
+CELL_EVAL_SEL_FIXEDVAL_TCOORD_Y=0C
 ## 画面上のマウスカーソル座標
 ### 地表温度の▲▼ボタンの範囲を示す
 SURFACE_TEMP_UP_DOWN_BEGIN_Y=10	# ▲▼のY座標始端
@@ -1045,6 +1059,78 @@ f_binbio_clear_cell_info() {
 
 	# pop & return
 	lr35902_pop_reg regDE
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
+# 評価関数設定を画面へ配置
+f_binbio_place_cell_eval_config() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regBC
+	lr35902_push_reg regDE
+	lr35902_push_reg regHL
+
+	# 評価関数選択のラベルを配置
+	con_print_xy_macro $CELL_EVAL_SEL_LABEL_TCOORD_X $CELL_EVAL_SEL_LABEL_TCOORD_Y $a_const_select_cell_eval
+
+	# 外枠を配置
+	con_draw_rect_macro $CELL_EVAL_SEL_FRAME_TCOORD_X $CELL_EVAL_SEL_FRAME_TCOORD_Y $CELL_EVAL_SEL_FRAME_WIDTH $CELL_EVAL_SEL_FRAME_HEIGHT
+
+	# 関数名を配置
+	## デイジーワールド
+	con_print_xy_macro $CELL_EVAL_SEL_DAISYWORLD_TCOORD_X $CELL_EVAL_SEL_DAISYWORLD_TCOORD_Y $a_const_cell_eval_daisyworld
+	## 常に255
+	con_print_xy_macro $CELL_EVAL_SEL_FIXEDVAL_TCOORD_X $CELL_EVAL_SEL_FIXEDVAL_TCOORD_Y $a_const_cell_eval_fixedval
+
+	# 現在選択されている関数名の左に「→」を配置
+	## regAへ現在の評価関数番号を取得
+	lr35902_copy_to_regA_from_addr $var_binbio_expset_num
+	## regA == デイジーワールド ?
+	lr35902_compare_regA_and $CELL_EVAL_NUM_DAISYWORLD
+	(
+		# regA == デイジーワールド の場合
+
+		# デイジーワールドの関数名の左に「→」を配置
+		con_putxy_macro $(calc16_2 "${CELL_EVAL_SEL_DAISYWORLD_TCOORD_X}-1") $CELL_EVAL_SEL_DAISYWORLD_TCOORD_Y '→'
+
+		# pop & return
+		lr35902_pop_reg regHL
+		lr35902_pop_reg regDE
+		lr35902_pop_reg regBC
+		lr35902_pop_reg regAF
+		lr35902_return
+	) >src/expset_daisyworld.f_binbio_place_cell_eval_config.daisyworld.o
+	local sz_daisyworld=$(stat -c '%s' src/expset_daisyworld.f_binbio_place_cell_eval_config.daisyworld.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_daisyworld)
+	cat src/expset_daisyworld.f_binbio_place_cell_eval_config.daisyworld.o
+	## regA == 固定値 ?
+	lr35902_compare_regA_and $CELL_EVAL_NUM_FIXEDVAL
+	(
+		# regA == 固定値 の場合
+
+		# デイジーワールドの関数名の左に「→」を配置
+		con_putxy_macro $(calc16_2 "${CELL_EVAL_SEL_FIXEDVAL_TCOORD_X}-1") $CELL_EVAL_SEL_FIXEDVAL_TCOORD_Y '→'
+
+		# pop & return
+		lr35902_pop_reg regHL
+		lr35902_pop_reg regDE
+		lr35902_pop_reg regBC
+		lr35902_pop_reg regAF
+		lr35902_return
+	) >src/expset_fixedval.f_binbio_place_cell_eval_config.fixedval.o
+	local sz_fixedval=$(stat -c '%s' src/expset_fixedval.f_binbio_place_cell_eval_config.fixedval.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_fixedval)
+	cat src/expset_fixedval.f_binbio_place_cell_eval_config.fixedval.o
+
+	# regAがその他の値の場合(現状、このパスには来ないはず)
+	# もしこのパスに来るようであれば無限ループで止める
+	infinite_halt
+
+	# pop & return
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regDE
+	lr35902_pop_reg regBC
 	lr35902_pop_reg regAF
 	lr35902_return
 }

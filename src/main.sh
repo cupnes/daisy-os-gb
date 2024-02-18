@@ -7057,11 +7057,19 @@ a_binbio_clear_cell_info=$(four_digits $fadr)
 echo -e "a_binbio_clear_cell_info=$a_binbio_clear_cell_info" >>$MAP_FILE_NAME
 ## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
 
-# バイナリ生物環境の初期化
-# in : regA - 実験セット番号
+# 評価関数設定を画面へ配置
 f_binbio_clear_cell_info >src/f_binbio_clear_cell_info.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_clear_cell_info.o))
 fadr=$(calc16 "${a_binbio_clear_cell_info}+${fsz}")
+a_binbio_place_cell_eval_config=$(four_digits $fadr)
+echo -e "a_binbio_place_cell_eval_config=$a_binbio_place_cell_eval_config" >>$MAP_FILE_NAME
+## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
+
+# バイナリ生物環境の初期化
+# in : regA - 実験セット番号
+f_binbio_place_cell_eval_config >src/f_binbio_place_cell_eval_config.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_place_cell_eval_config.o))
+fadr=$(calc16 "${a_binbio_place_cell_eval_config}+${fsz}")
 a_binbio_init=$(four_digits $fadr)
 echo -e "a_binbio_init=$a_binbio_init" >>$MAP_FILE_NAME
 ## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
@@ -7958,6 +7966,7 @@ global_functions() {
 	cat src/f_binbio_place_cell_info_labels.o
 	cat src/f_binbio_place_cell_info_val.o
 	cat src/f_binbio_clear_cell_info.o
+	cat src/f_binbio_place_cell_eval_config.o
 	cat src/f_binbio_init.o
 	cat src/f_binbio_reset.o
 	cat src/f_binbio_do_cycle.o
