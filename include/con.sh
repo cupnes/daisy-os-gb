@@ -118,7 +118,9 @@ con_draw_rect_macro() {
 	local tcoord_x=$1
 	local tcoord_y=$2
 	local width=$3
-	local height=$3
+	local height=$4
+
+	local i
 
 	# カーソル位置を指定されたタイル座標へ設定
 	local upper_left_tadr=$(con_tcoord_to_tadr $tcoord_x $tcoord_y)
