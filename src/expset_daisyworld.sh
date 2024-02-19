@@ -1136,6 +1136,24 @@ f_binbio_place_cell_eval_config() {
 	lr35902_return
 }
 
+# 評価関数設定をクリア
+f_binbio_clear_cell_eval_config() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regDE
+
+	# 評価関数選択のラベルをクリア
+	con_delch_tadr_num_macro $CELL_EVAL_SEL_LABEL_TCOORD_X $CELL_EVAL_SEL_LABEL_TCOORD_Y $((sz_const_select_cell_eval - 1))
+
+	# 枠線と中身をクリア
+	con_clear_rect_macro $CELL_EVAL_SEL_FRAME_TCOORD_X $CELL_EVAL_SEL_FRAME_TCOORD_Y $CELL_EVAL_SEL_FRAME_WIDTH $CELL_EVAL_SEL_FRAME_HEIGHT
+
+	# pop & return
+	lr35902_pop_reg regDE
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
 # バイナリ生物環境の初期化
 # in : regA - 実験セット番号
 f_binbio_init() {

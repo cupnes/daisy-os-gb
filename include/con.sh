@@ -221,6 +221,29 @@ con_draw_rect_macro() {
 	done
 }
 
+# 指定されたタイル座標の指定されたサイズの矩形を中身ごとクリアする
+# in  : 第1引数 - タイル座標X
+#       第2引数 - タイル座標Y
+#       第3引数 - 幅[タイル数]
+#       第4引数 - 高さ[タイル数]
+# work: regA, regDE
+con_clear_rect_macro() {
+	local tcoord_x=$1
+	local tcoord_y=$2
+	local width=$3
+	local height=$4
+
+	local ty=$tcoord_y
+	local width_dec=$(bc <<< "ibase=16;${width^^}")
+	local height_dec=$(bc <<< "ibase=16;${height^^}")
+	local i
+
+	for ((i = 0; i < $height_dec; i++)); do
+		con_delch_tadr_num_macro $tcoord_x $ty $width_dec
+		ty=$(calc16_2 "${ty}+1")
+	done
+}
+
 ### OSの関数として使用する関数 ###
 
 # コンソールの初期化
