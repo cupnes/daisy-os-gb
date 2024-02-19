@@ -7820,11 +7820,13 @@ f_binbio_event_btn_select_release() {
 	else
 		# デイジーワールドの場合
 
-		# 現在のステータス表示領域の状態 == ソフト説明表示状態 ?
+		# regAへ現在のステータス表示領域の状態を取得
 		lr35902_copy_to_regA_from_addr $var_binbio_status_disp_status
+
+		# regA == ソフト説明表示状態 ?
 		lr35902_compare_regA_and $STATUS_DISP_SHOW_SOFT_DESC
 		(
-			# 現在のステータス表示領域の状態 == ソフト説明表示状態 の場合
+			# regA == ソフト説明表示状態 の場合
 
 			# ソフト説明をクリア
 			lr35902_call $a_binbio_clear_soft_desc
@@ -7844,10 +7846,33 @@ f_binbio_event_btn_select_release() {
 		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_showing_soft_desc)
 		cat src/f_binbio_event_btn_select_release.showing_soft_desc.o
 
-		# 現在のステータス表示領域の状態 == 細胞ステータス情報表示状態 の場合
+		# regA == 細胞ステータス情報表示状態 ?
+		lr35902_compare_regA_and $STATUS_DISP_SHOW_CELL_INFO
+		(
+			# 現在のステータス表示領域の状態 == 細胞ステータス情報表示状態 の場合
 
-		# 細胞ステータス情報をクリア
-		lr35902_call $a_binbio_clear_cell_info
+			# 細胞ステータス情報をクリア
+			lr35902_call $a_binbio_clear_cell_info
+
+			# 評価関数設定を画面へ配置
+			lr35902_call $a_binbio_place_cell_eval_config
+
+			# 現在のステータス表示領域の状態 = 評価関数設定表示状態
+			lr35902_set_reg regA $STATUS_DISP_SHOW_CELL_EVAL_CONFIG
+			lr35902_copy_to_addr_from_regA $var_binbio_status_disp_status
+
+			# pop & return
+			lr35902_pop_reg regAF
+			lr35902_return
+		) >src/f_binbio_event_btn_select_release.showing_cell_info.o
+		local sz_showing_cell_info=$(stat -c '%s' src/f_binbio_event_btn_select_release.showing_cell_info.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_showing_cell_info)
+		cat src/f_binbio_event_btn_select_release.showing_cell_info.o
+
+		# regA == 評価関数設定表示状態 の場合
+
+		# 評価関数設定をクリア
+		## TODO
 
 		# ソフト説明を画面へ配置
 		lr35902_call $a_binbio_place_soft_desc

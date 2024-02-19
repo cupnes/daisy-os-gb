@@ -20,6 +20,7 @@ CELL_EVAL_FIXEDVAL_VAL_INIT=ff
 ## ステータス表示領域の状態
 STATUS_DISP_SHOW_SOFT_DESC=00	# ソフト説明表示状態
 STATUS_DISP_SHOW_CELL_INFO=01	# 細胞ステータス情報表示状態
+STATUS_DISP_SHOW_CELL_EVAL_CONFIG=02	# 評価関数設定表示状態
 ## 画面上のタイル座標/アドレス
 ### 地表温度
 ### TODO 「タイトル(TITLE)」というより「ラベル(LABEL)」
