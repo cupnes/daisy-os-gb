@@ -7532,10 +7532,32 @@ f_binbio_event_btn_b_release() {
 	lr35902_return
 }
 
-# バイナリ生物環境用の→ボタンリリースイベントハンドラ
+# バイナリ生物環境用の↑ボタンリリースイベントハンドラ
 f_binbio_event_btn_b_release >src/f_binbio_event_btn_b_release.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_event_btn_b_release.o))
 fadr=$(calc16 "${a_binbio_event_btn_b_release}+${fsz}")
+a_binbio_event_btn_up_release=$(four_digits $fadr)
+echo -e "a_binbio_event_btn_up_release=$a_binbio_event_btn_up_release" >>$MAP_FILE_NAME
+f_binbio_event_btn_up_release() {
+	# return
+	lr35902_return
+}
+
+# バイナリ生物環境用の↓ボタンリリースイベントハンドラ
+f_binbio_event_btn_up_release >src/f_binbio_event_btn_up_release.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_event_btn_up_release.o))
+fadr=$(calc16 "${a_binbio_event_btn_up_release}+${fsz}")
+a_binbio_event_btn_down_release=$(four_digits $fadr)
+echo -e "a_binbio_event_btn_down_release=$a_binbio_event_btn_down_release" >>$MAP_FILE_NAME
+f_binbio_event_btn_down_release() {
+	# return
+	lr35902_return
+}
+
+# バイナリ生物環境用の→ボタンリリースイベントハンドラ
+f_binbio_event_btn_down_release >src/f_binbio_event_btn_down_release.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_event_btn_down_release.o))
+fadr=$(calc16 "${a_binbio_event_btn_down_release}+${fsz}")
 a_binbio_event_btn_right_release=$(four_digits $fadr)
 echo -e "a_binbio_event_btn_right_release=$a_binbio_event_btn_right_release" >>$MAP_FILE_NAME
 f_binbio_event_btn_right_release() {
@@ -8031,6 +8053,8 @@ global_functions() {
 	cat src/f_binbio_do_cycle.o
 	cat src/f_binbio_event_btn_a_release.o
 	cat src/f_binbio_event_btn_b_release.o
+	cat src/f_binbio_event_btn_up_release.o
+	cat src/f_binbio_event_btn_down_release.o
 	cat src/f_binbio_event_btn_right_release.o
 	cat src/f_binbio_event_btn_left_release.o
 	cat src/f_binbio_event_btn_start_release.o
