@@ -7880,7 +7880,7 @@ f_binbio_event_btn_select_release() {
 		# regA == 評価関数設定表示状態 の場合
 
 		# 評価関数設定をクリア
-		## TODO
+		lr35902_call $a_binbio_clear_cell_eval_config
 
 		# ソフト説明を画面へ配置
 		lr35902_call $a_binbio_place_soft_desc
