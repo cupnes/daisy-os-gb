@@ -7539,6 +7539,55 @@ fadr=$(calc16 "${a_binbio_event_btn_b_release}+${fsz}")
 a_binbio_event_btn_up_release=$(four_digits $fadr)
 echo -e "a_binbio_event_btn_up_release=$a_binbio_event_btn_up_release" >>$MAP_FILE_NAME
 f_binbio_event_btn_up_release() {
+	# 実験セットの初期値がデイジーワールド以外か否か
+	if [ "$BINBIO_EXPSET_NUM_INIT" = "$BINBIO_EXPSET_DAISYWORLD" ]; then
+		# デイジーワールドの場合
+
+		# push
+		lr35902_push_reg regAF
+		lr35902_push_reg regBC
+		lr35902_push_reg regDE
+
+		# regAへ現在のステータス表示領域の状態を取得
+		lr35902_copy_to_regA_from_addr $var_binbio_status_disp_status
+
+		# regA == 評価関数設定表示状態 ?
+		lr35902_compare_regA_and $STATUS_DISP_SHOW_CELL_EVAL_CONFIG
+		(
+			# 現在のステータス表示領域の状態 == 評価関数設定表示状態 の場合
+
+			# regAへ現在の評価関数番号を取得
+			lr35902_copy_to_regA_from_addr $var_binbio_expset_num
+
+			# regA == 固定値を返す ?
+			lr35902_compare_regA_and $CELL_EVAL_NUM_FIXEDVAL
+			(
+				# regA == 固定値を返す の場合
+
+				# 現在(「固定値を返す」関数の位置)の'→'をクリア
+				con_putxy_macro $(calc16_2 "${CELL_EVAL_SEL_FIXEDVAL_TCOORD_X}-1") $CELL_EVAL_SEL_FIXEDVAL_TCOORD_Y ' '
+
+				# 「デイジーワールド」関数の位置へ'→'を配置
+				con_putxy_macro $(calc16_2 "${CELL_EVAL_SEL_DAISYWORLD_TCOORD_X}-1") $CELL_EVAL_SEL_DAISYWORLD_TCOORD_Y '→'
+
+				# 評価関数番号を「デイジーワールド」関数の番号へ更新
+				lr35902_set_reg regA $CELL_EVAL_NUM_DAISYWORLD
+				lr35902_copy_to_addr_from_regA $var_binbio_expset_num
+			) >src/f_binbio_event_btn_up_release.fixedval.o
+			local sz_fixedval=$(stat -c '%s' src/f_binbio_event_btn_up_release.fixedval.o)
+			lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_fixedval)
+			cat src/f_binbio_event_btn_up_release.fixedval.o
+		) >src/f_binbio_event_btn_up_release.cell_eval_config.o
+		local sz_cell_eval_config=$(stat -c '%s' src/f_binbio_event_btn_up_release.cell_eval_config.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_cell_eval_config)
+		cat src/f_binbio_event_btn_up_release.cell_eval_config.o
+
+		# pop
+		lr35902_pop_reg regDE
+		lr35902_pop_reg regBC
+		lr35902_pop_reg regAF
+	fi
+
 	# return
 	lr35902_return
 }
