@@ -7859,17 +7859,28 @@ f_binbio_event_btn_select_release() {
 		(
 			# 現在のステータス表示領域の状態 == 細胞ステータス情報表示状態 の場合
 
+			# push
+			lr35902_push_reg regBC
+			lr35902_push_reg regDE
+
 			# 細胞ステータス情報をクリア
 			lr35902_call $a_binbio_clear_cell_info
 
 			# 評価関数設定を画面へ配置
 			lr35902_call $a_binbio_place_cell_eval_config
 
+			# マウスカーソルを非表示にする
+			lr35902_clear_reg regB
+			lr35902_set_reg regDE $GBOS_OAM_BASE_CSL
+			lr35902_call $a_enq_tdq
+
 			# 現在のステータス表示領域の状態 = 評価関数設定表示状態
 			lr35902_set_reg regA $STATUS_DISP_SHOW_CELL_EVAL_CONFIG
 			lr35902_copy_to_addr_from_regA $var_binbio_status_disp_status
 
 			# pop & return
+			lr35902_pop_reg regDE
+			lr35902_pop_reg regBC
 			lr35902_pop_reg regAF
 			lr35902_return
 		) >src/f_binbio_event_btn_select_release.showing_cell_info.o
@@ -7879,15 +7890,29 @@ f_binbio_event_btn_select_release() {
 
 		# regA == 評価関数設定表示状態 の場合
 
+		# push
+		lr35902_push_reg regBC
+		lr35902_push_reg regDE
+
 		# 評価関数設定をクリア
 		lr35902_call $a_binbio_clear_cell_eval_config
 
 		# ソフト説明を画面へ配置
 		lr35902_call $a_binbio_place_soft_desc
 
+		# マウスカーソルを表示する
+		lr35902_copy_to_regA_from_addr $var_mouse_y
+		lr35902_copy_to_from regB regA
+		lr35902_set_reg regDE $GBOS_OAM_BASE_CSL
+		lr35902_call $a_enq_tdq
+
 		# 現在のステータス表示領域の状態 = ソフト説明表示状態
 		lr35902_set_reg regA $STATUS_DISP_SHOW_SOFT_DESC
 		lr35902_copy_to_addr_from_regA $var_binbio_status_disp_status
+
+		# pop
+		lr35902_pop_reg regDE
+		lr35902_pop_reg regBC
 	fi
 
 	# pop & return
