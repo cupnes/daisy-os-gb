@@ -3525,6 +3525,33 @@ f_binbio_get_tile_family_num() {
 	lr35902_return
 }
 
+# 繰り返し使用する処理をファイル書き出し
+## マウスカーソルを表示する
+## work: regA, regB, regDE
+(
+	# カーネル側でマウスカーソルの更新をするように専用の変数を設定
+	lr35902_set_reg regA 01
+	lr35902_copy_to_addr_from_regA $var_mouse_enable
+
+	# オブジェクトを表示する
+	lr35902_copy_to_regA_from_addr $var_mouse_y
+	lr35902_copy_to_from regB regA
+	lr35902_set_reg regDE $GBOS_OAM_BASE_CSL
+	lr35902_call $a_enq_tdq
+) >src/show_mouse_cursor.o
+## マウスカーソルを非表示にする
+## work: regA, regB, regDE
+(
+	# オブジェクトを非表示にする
+	lr35902_clear_reg regB
+	lr35902_set_reg regDE $GBOS_OAM_BASE_CSL
+	lr35902_call $a_enq_tdq
+
+	# カーネル側でマウスカーソルの更新をしないように専用の変数を設定
+	lr35902_clear_reg regA
+	lr35902_copy_to_addr_from_regA $var_mouse_enable
+) >src/hide_mouse_cursor.o
+
 # 現在の細胞に指定されたタイル番号を設定する
 # in : regA  - タイル番号
 f_binbio_get_tile_family_num >src/f_binbio_get_tile_family_num.o
@@ -7881,20 +7908,42 @@ fadr=$(calc16 "${a_binbio_event_btn_left_release}+${fsz}")
 a_binbio_event_btn_start_release=$(four_digits $fadr)
 echo -e "a_binbio_event_btn_start_release=$a_binbio_event_btn_start_release" >>$MAP_FILE_NAME
 f_binbio_event_btn_start_release() {
-	# push
-	lr35902_push_reg regAF
-
 	# 実験セットの初期値がデイジーワールド以外か否か
 	if [ "$BINBIO_EXPSET_NUM_INIT" != "$BINBIO_EXPSET_DAISYWORLD" ]; then
 		# デイジーワールド以外の場合
+
+		# push
+		lr35902_push_reg regAF
 
 		# リセットを実施
 		## regA(引数)を設定
 		lr35902_set_reg regA $BINBIO_EVENT_BTN_START_RELEASE_EXPSET
 		## 関数呼び出し
 		lr35902_call $a_binbio_reset
+
+		# pop & return
+		lr35902_pop_reg regAF
+		lr35902_return
 	else
 		# デイジーワールドの場合
+
+		# push
+		lr35902_push_reg regAF
+
+		# 繰り返し使用する処理をファイル書き出し
+		## ソフト説明配置と状態変数更新、pop&return
+		(
+			# ソフト説明を配置
+			lr35902_call $a_binbio_place_soft_desc
+
+			# 現在のステータス表示領域の状態 = ソフト説明表示状態
+			lr35902_set_reg regA $STATUS_DISP_SHOW_SOFT_DESC
+			lr35902_copy_to_addr_from_regA $var_binbio_status_disp_status
+
+			# pop & return
+			lr35902_pop_reg regAF
+			lr35902_return
+		) >src/f_binbio_event_btn_start_release.place_soft_desc.o
 
 		# 現在のステータス表示領域の状態 == ソフト説明表示状態 ?
 		lr35902_copy_to_regA_from_addr $var_binbio_status_disp_status
@@ -7910,20 +7959,37 @@ f_binbio_event_btn_start_release() {
 		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_showing_soft_desc)
 		cat src/f_binbio_event_btn_start_release.showing_soft_desc.o
 
-		# 細胞ステータス情報をクリア
-		lr35902_call $a_binbio_clear_cell_info
+		# 現在のステータス表示領域の状態 == 細胞ステータス情報表示状態 ?
+		lr35902_copy_to_regA_from_addr $var_binbio_status_disp_status
+		lr35902_compare_regA_and $STATUS_DISP_SHOW_CELL_INFO
+		(
+			# 現在のステータス表示領域の状態 == 細胞ステータス情報表示状態 の場合
 
-		# ソフト説明を配置
-		lr35902_call $a_binbio_place_soft_desc
+			# 細胞ステータス情報をクリア
+			lr35902_call $a_binbio_clear_cell_info
 
-		# 現在のステータス表示領域の状態 = ソフト説明表示状態
-		lr35902_set_reg regA $STATUS_DISP_SHOW_SOFT_DESC
-		lr35902_copy_to_addr_from_regA $var_binbio_status_disp_status
+			# ソフト説明配置と状態変数更新、pop&return
+			cat src/f_binbio_event_btn_start_release.place_soft_desc.o
+		) >src/f_binbio_event_btn_start_release.showing_cell_info.o
+		local sz_showing_cell_info=$(stat -c '%s' src/f_binbio_event_btn_start_release.showing_cell_info.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_showing_cell_info)
+		cat src/f_binbio_event_btn_start_release.showing_cell_info.o
+
+		# 現在のステータス表示領域の状態 == 評価関数設定表示状態 の場合
+
+		# 評価関数設定をクリア
+		lr35902_call $a_binbio_clear_cell_eval_config
+
+		# マウスカーソルを表示する
+		lr35902_push_reg regBC
+		lr35902_push_reg regDE
+		cat src/show_mouse_cursor.o
+		lr35902_pop_reg regDE
+		lr35902_pop_reg regBC
+
+		# ソフト説明配置と状態変数更新、pop&return
+		cat src/f_binbio_event_btn_start_release.place_soft_desc.o
 	fi
-
-	# pop & return
-	lr35902_pop_reg regAF
-	lr35902_return
 }
 
 # バイナリ生物環境用のセレクトボタンリリースイベントハンドラ
@@ -7990,13 +8056,7 @@ f_binbio_event_btn_select_release() {
 			lr35902_call $a_binbio_place_cell_eval_config
 
 			# マウスカーソルを非表示にする
-			## オブジェクトを非表示にする
-			lr35902_clear_reg regB
-			lr35902_set_reg regDE $GBOS_OAM_BASE_CSL
-			lr35902_call $a_enq_tdq
-			## カーネル側でマウスカーソルの更新をしないように専用の変数を設定
-			lr35902_clear_reg regA
-			lr35902_copy_to_addr_from_regA $var_mouse_enable
+			cat src/hide_mouse_cursor.o
 
 			# 現在のステータス表示領域の状態 = 評価関数設定表示状態
 			lr35902_set_reg regA $STATUS_DISP_SHOW_CELL_EVAL_CONFIG
@@ -8025,14 +8085,7 @@ f_binbio_event_btn_select_release() {
 		lr35902_call $a_binbio_place_soft_desc
 
 		# マウスカーソルを表示する
-		## カーネル側でマウスカーソルの更新をするように専用の変数を設定
-		lr35902_set_reg regA 01
-		lr35902_copy_to_addr_from_regA $var_mouse_enable
-		## オブジェクトを表示する
-		lr35902_copy_to_regA_from_addr $var_mouse_y
-		lr35902_copy_to_from regB regA
-		lr35902_set_reg regDE $GBOS_OAM_BASE_CSL
-		lr35902_call $a_enq_tdq
+		cat src/show_mouse_cursor.o
 
 		# 現在のステータス表示領域の状態 = ソフト説明表示状態
 		lr35902_set_reg regA $STATUS_DISP_SHOW_SOFT_DESC
