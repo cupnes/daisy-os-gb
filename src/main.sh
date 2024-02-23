@@ -7941,9 +7941,13 @@ f_binbio_event_btn_select_release() {
 			lr35902_call $a_binbio_place_cell_eval_config
 
 			# マウスカーソルを非表示にする
+			## オブジェクトを非表示にする
 			lr35902_clear_reg regB
 			lr35902_set_reg regDE $GBOS_OAM_BASE_CSL
 			lr35902_call $a_enq_tdq
+			## カーネル側でマウスカーソルの更新をしないように専用の変数を設定
+			lr35902_clear_reg regA
+			lr35902_copy_to_addr_from_regA $var_mouse_enable
 
 			# 現在のステータス表示領域の状態 = 評価関数設定表示状態
 			lr35902_set_reg regA $STATUS_DISP_SHOW_CELL_EVAL_CONFIG
@@ -7972,6 +7976,10 @@ f_binbio_event_btn_select_release() {
 		lr35902_call $a_binbio_place_soft_desc
 
 		# マウスカーソルを表示する
+		## カーネル側でマウスカーソルの更新をするように専用の変数を設定
+		lr35902_set_reg regA 01
+		lr35902_copy_to_addr_from_regA $var_mouse_enable
+		## オブジェクトを表示する
 		lr35902_copy_to_regA_from_addr $var_mouse_y
 		lr35902_copy_to_from regB regA
 		lr35902_set_reg regDE $GBOS_OAM_BASE_CSL
