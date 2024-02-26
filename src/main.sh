@@ -138,6 +138,8 @@ cell_status_str_collected_flags	しゆとくふらく゛:
 select_cell_eval	ひようかかんすうせんたく
 cell_eval_daisyworld	て゛いし゛-わ-ると゛
 cell_eval_fixedval	つねに255
+func_str	かんすう
+conf_str	せつてい
 EOF
 
 	# 各文字列をタイル番号のバイナリデータへ変換しファイルと標準出力へ出力
