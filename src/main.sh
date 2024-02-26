@@ -7434,6 +7434,161 @@ f_binbio_event_btn_b_release() {
 	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_quit_img)
 	cat src/f_binbio_event_btn_b_release.quit_img.o
 
+	# regAへ現在のステータス表示領域の状態を取得
+	lr35902_copy_to_regA_from_addr $var_binbio_status_disp_status
+
+	# regA == 評価関数設定表示状態 ?
+	lr35902_compare_regA_and $STATUS_DISP_SHOW_CELL_EVAL_CONFIG
+	(
+		# 現在のステータス表示領域の状態 == 評価関数設定表示状態 の場合
+
+		# マウスカーソルY座標 >= 関数名領域のY座標始端 ?
+		lr35902_copy_to_regA_from_addr $var_mouse_y
+		lr35902_compare_regA_and $CELL_EVAL_SEL_BEGIN_MOUSE_Y
+		(
+			# regA(マウスカーソルY座標) >= 関数名領域のY座標始端 の場合
+
+			# push
+			lr35902_push_reg regBC
+
+			# マウスカーソルX座標 <= 関数名領域のX座標終端 ?
+			lr35902_copy_to_regA_from_addr $var_mouse_x
+			lr35902_copy_to_from regB regA
+			lr35902_set_reg regA $CELL_EVAL_SEL_END_MOUSE_X
+			lr35902_compare_regA_and regB
+			(
+				# regA(関数名領域のX座標終端) >= regB(マウスカーソルX座標) の場合
+
+				# マウスカーソルX座標 >= 関数名領域のX座標始端 ?
+				lr35902_copy_to_from regA regB
+				lr35902_compare_regA_and $CELL_EVAL_SEL_BEGIN_MOUSE_X
+				(
+					# regA(マウスカーソルX座標) >= 関数名領域のX座標始端 の場合
+
+					# マウスカーソルY座標 <= 関数名「でいじーわーるど」のY座標終端 ?
+					lr35902_copy_to_regA_from_addr $var_mouse_y
+					lr35902_copy_to_from regB regA
+					lr35902_set_reg regA $CELL_EVAL_SEL_DAISYWORLD_END_MOUSE_Y
+					lr35902_compare_regA_and regB
+					(
+						# regA(マウスカーソルY座標) <= regB(関数名「でいじーわーるど」のY座標終端) の場合
+
+						# 関数名「でいじーわーるど」が選択された
+
+						# 現在の評価関数 == 固定値を返す ?
+						## regAへ現在の評価関数番号を取得
+						lr35902_copy_to_regA_from_addr $var_binbio_expset_num
+						## regA == 固定値を返す ?
+						lr35902_compare_regA_and $CELL_EVAL_NUM_FIXEDVAL
+						(
+							# regA == 固定値を返す の場合
+
+							# push
+							lr35902_push_reg regDE
+
+							# 現在(「固定値を返す」関数の位置)の'→'をクリア
+							con_putxy_macro $(calc16_2 "${CELL_EVAL_SEL_FIXEDVAL_TCOORD_X}-1") $CELL_EVAL_SEL_FIXEDVAL_TCOORD_Y ' '
+
+							# 「デイジーワールド」関数の位置へ'→'を配置
+							con_putxy_macro $(calc16_2 "${CELL_EVAL_SEL_DAISYWORLD_TCOORD_X}-1") $CELL_EVAL_SEL_DAISYWORLD_TCOORD_Y '→'
+
+							# 評価関数番号を「デイジーワールド」関数の番号へ更新
+							lr35902_set_reg regA $CELL_EVAL_NUM_DAISYWORLD
+							lr35902_copy_to_addr_from_regA $var_binbio_expset_num
+
+							# pop
+							lr35902_pop_reg regDE
+						) >src/f_binbio_event_btn_b_release.sel_daisyworld_now_fixedval.o
+						local sz_sel_daisyworld_now_fixedval=$(stat -c '%s' src/f_binbio_event_btn_b_release.sel_daisyworld_now_fixedval.o)
+						## regA != 固定値を返す の場合は飛ばす
+						lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_sel_daisyworld_now_fixedval)
+						cat src/f_binbio_event_btn_b_release.sel_daisyworld_now_fixedval.o
+
+						# pop & return
+						lr35902_pop_reg regBC
+						lr35902_pop_reg regAF
+						lr35902_return
+					) >src/f_binbio_event_btn_b_release.my_le_cesdey.o
+					local sz_my_le_cesdey=$(stat -c '%s' src/f_binbio_event_btn_b_release.my_le_cesdey.o)
+					## regA(関数名「でいじーわーるど」のY座標終端) < regB(マウスカーソルY座標) の場合は飛ばす
+					lr35902_rel_jump_with_cond C $(two_digits_d $sz_my_le_cesdey)
+					cat src/f_binbio_event_btn_b_release.my_le_cesdey.o
+
+					# マウスカーソルY座標 <= 関数名「つねに255」のY座標終端 ?
+					lr35902_copy_to_regA_from_addr $var_mouse_y
+					lr35902_copy_to_from regB regA
+					lr35902_set_reg regA $CELL_EVAL_SEL_FIXEDVAL_END_MOUSE_Y
+					lr35902_compare_regA_and regB
+					(
+						# regA(マウスカーソルY座標) <= regB(関数名「つねに255」のY座標終端) の場合
+
+						# 関数名「つねに255」が選択された
+
+						# 現在の評価関数 == デイジーワールド ?
+						## regAへ現在の評価関数番号を取得
+						lr35902_copy_to_regA_from_addr $var_binbio_expset_num
+						## regA == デイジーワールド ?
+						lr35902_compare_regA_and $CELL_EVAL_NUM_DAISYWORLD
+						(
+							# regA == デイジーワールド の場合
+
+							# push
+							lr35902_push_reg regDE
+
+							# 現在(「デイジーワールド」関数の位置)の'→'をクリア
+							con_putxy_macro $(calc16_2 "${CELL_EVAL_SEL_DAISYWORLD_TCOORD_X}-1") $CELL_EVAL_SEL_DAISYWORLD_TCOORD_Y ' '
+
+							# 「固定値を返す」関数の位置へ'→'を配置
+							con_putxy_macro $(calc16_2 "${CELL_EVAL_SEL_FIXEDVAL_TCOORD_X}-1") $CELL_EVAL_SEL_FIXEDVAL_TCOORD_Y '→'
+
+							# 評価関数番号を「固定値を返す」関数の番号へ更新
+							lr35902_set_reg regA $CELL_EVAL_NUM_FIXEDVAL
+							lr35902_copy_to_addr_from_regA $var_binbio_expset_num
+
+							# pop
+							lr35902_pop_reg regDE
+						) >src/f_binbio_event_btn_b_release.sel_fixedval_now_daisyworld.o
+						local sz_sel_fixedval_now_daisyworld=$(stat -c '%s' src/f_binbio_event_btn_b_release.sel_fixedval_now_daisyworld.o)
+						## regA != 固定値を返す の場合は飛ばす
+						lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_sel_fixedval_now_daisyworld)
+						cat src/f_binbio_event_btn_b_release.sel_fixedval_now_daisyworld.o
+
+						# pop & return
+						lr35902_pop_reg regBC
+						lr35902_pop_reg regAF
+						lr35902_return
+					) >src/f_binbio_event_btn_b_release.my_le_cesdey.o
+					local sz_my_le_cesdey=$(stat -c '%s' src/f_binbio_event_btn_b_release.my_le_cesdey.o)
+					## regA(関数名「でいじーわーるど」のY座標終端) < regB(マウスカーソルY座標) の場合は飛ばす
+					lr35902_rel_jump_with_cond C $(two_digits_d $sz_my_le_cesdey)
+					cat src/f_binbio_event_btn_b_release.my_le_cesdey.o
+				) >src/f_binbio_event_btn_b_release.mx_ge_cesbx.o
+				local sz_mx_ge_cesbx=$(stat -c '%s' src/f_binbio_event_btn_b_release.mx_ge_cesbx.o)
+				## regA(マウスカーソルX座標) < 関数名領域のX座標始端 の場合は飛ばす
+				lr35902_rel_jump_with_cond C $(two_digits_d $sz_mx_ge_cesbx)
+				cat src/f_binbio_event_btn_b_release.mx_ge_cesbx.o
+			) >src/f_binbio_event_btn_b_release.mx_le_cesex.o
+			local sz_mx_le_cesex=$(stat -c '%s' src/f_binbio_event_btn_b_release.mx_le_cesex.o)
+			## regA(関数名領域のX座標終端) < regB(マウスカーソルX座標) の場合は飛ばす
+			lr35902_rel_jump_with_cond C $(two_digits_d $sz_mx_le_cesex)
+			cat src/f_binbio_event_btn_b_release.mx_le_cesex.o
+
+			# pop
+			lr35902_pop_reg regBC
+		) >src/f_binbio_event_btn_b_release.my_ge_cesby.o
+		local sz_my_ge_cesby=$(stat -c '%s' src/f_binbio_event_btn_b_release.my_ge_cesby.o)
+		## regA(マウスカーソルY座標) < 関数名領域のY座標始端 の場合は飛ばす
+		lr35902_rel_jump_with_cond C $(two_digits_d $sz_my_ge_cesby)
+		cat src/f_binbio_event_btn_b_release.my_ge_cesby.o
+
+		# pop & return
+		lr35902_pop_reg regAF
+		lr35902_return
+	) >src/f_binbio_event_btn_b_release.sds_eq_cec.o
+	local sz_sds_eq_cec=$(stat -c '%s' src/f_binbio_event_btn_b_release.sds_eq_cec.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_sds_eq_cec)
+	cat src/f_binbio_event_btn_b_release.sds_eq_cec.o
+
 	# push
 	lr35902_push_reg regDE
 	lr35902_push_reg regHL
@@ -7566,55 +7721,6 @@ fadr=$(calc16 "${a_binbio_event_btn_b_release}+${fsz}")
 a_binbio_event_btn_up_release=$(four_digits $fadr)
 echo -e "a_binbio_event_btn_up_release=$a_binbio_event_btn_up_release" >>$MAP_FILE_NAME
 f_binbio_event_btn_up_release() {
-	# 実験セットの初期値がデイジーワールド以外か否か
-	if [ "$BINBIO_EXPSET_NUM_INIT" = "$BINBIO_EXPSET_DAISYWORLD" ]; then
-		# デイジーワールドの場合
-
-		# push
-		lr35902_push_reg regAF
-		lr35902_push_reg regBC
-		lr35902_push_reg regDE
-
-		# regAへ現在のステータス表示領域の状態を取得
-		lr35902_copy_to_regA_from_addr $var_binbio_status_disp_status
-
-		# regA == 評価関数設定表示状態 ?
-		lr35902_compare_regA_and $STATUS_DISP_SHOW_CELL_EVAL_CONFIG
-		(
-			# 現在のステータス表示領域の状態 == 評価関数設定表示状態 の場合
-
-			# regAへ現在の評価関数番号を取得
-			lr35902_copy_to_regA_from_addr $var_binbio_expset_num
-
-			# regA == 固定値を返す ?
-			lr35902_compare_regA_and $CELL_EVAL_NUM_FIXEDVAL
-			(
-				# regA == 固定値を返す の場合
-
-				# 現在(「固定値を返す」関数の位置)の'→'をクリア
-				con_putxy_macro $(calc16_2 "${CELL_EVAL_SEL_FIXEDVAL_TCOORD_X}-1") $CELL_EVAL_SEL_FIXEDVAL_TCOORD_Y ' '
-
-				# 「デイジーワールド」関数の位置へ'→'を配置
-				con_putxy_macro $(calc16_2 "${CELL_EVAL_SEL_DAISYWORLD_TCOORD_X}-1") $CELL_EVAL_SEL_DAISYWORLD_TCOORD_Y '→'
-
-				# 評価関数番号を「デイジーワールド」関数の番号へ更新
-				lr35902_set_reg regA $CELL_EVAL_NUM_DAISYWORLD
-				lr35902_copy_to_addr_from_regA $var_binbio_expset_num
-			) >src/f_binbio_event_btn_up_release.fixedval.o
-			local sz_fixedval=$(stat -c '%s' src/f_binbio_event_btn_up_release.fixedval.o)
-			lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_fixedval)
-			cat src/f_binbio_event_btn_up_release.fixedval.o
-		) >src/f_binbio_event_btn_up_release.cell_eval_config.o
-		local sz_cell_eval_config=$(stat -c '%s' src/f_binbio_event_btn_up_release.cell_eval_config.o)
-		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_cell_eval_config)
-		cat src/f_binbio_event_btn_up_release.cell_eval_config.o
-
-		# pop
-		lr35902_pop_reg regDE
-		lr35902_pop_reg regBC
-		lr35902_pop_reg regAF
-	fi
-
 	# return
 	lr35902_return
 }
@@ -7626,55 +7732,6 @@ fadr=$(calc16 "${a_binbio_event_btn_up_release}+${fsz}")
 a_binbio_event_btn_down_release=$(four_digits $fadr)
 echo -e "a_binbio_event_btn_down_release=$a_binbio_event_btn_down_release" >>$MAP_FILE_NAME
 f_binbio_event_btn_down_release() {
-	# 実験セットの初期値がデイジーワールド以外か否か
-	if [ "$BINBIO_EXPSET_NUM_INIT" = "$BINBIO_EXPSET_DAISYWORLD" ]; then
-		# デイジーワールドの場合
-
-		# push
-		lr35902_push_reg regAF
-		lr35902_push_reg regBC
-		lr35902_push_reg regDE
-
-		# regAへ現在のステータス表示領域の状態を取得
-		lr35902_copy_to_regA_from_addr $var_binbio_status_disp_status
-
-		# regA == 評価関数設定表示状態 ?
-		lr35902_compare_regA_and $STATUS_DISP_SHOW_CELL_EVAL_CONFIG
-		(
-			# 現在のステータス表示領域の状態 == 評価関数設定表示状態 の場合
-
-			# regAへ現在の評価関数番号を取得
-			lr35902_copy_to_regA_from_addr $var_binbio_expset_num
-
-			# regA == デイジーワールド ?
-			lr35902_compare_regA_and $CELL_EVAL_NUM_DAISYWORLD
-			(
-				# regA == デイジーワールド の場合
-
-				# 現在(「デイジーワールド」関数の位置)の'→'をクリア
-				con_putxy_macro $(calc16_2 "${CELL_EVAL_SEL_DAISYWORLD_TCOORD_X}-1") $CELL_EVAL_SEL_DAISYWORLD_TCOORD_Y ' '
-
-				# 「固定値を返す」関数の位置へ'→'を配置
-				con_putxy_macro $(calc16_2 "${CELL_EVAL_SEL_FIXEDVAL_TCOORD_X}-1") $CELL_EVAL_SEL_FIXEDVAL_TCOORD_Y '→'
-
-				# 評価関数番号を「固定値を返す」関数の番号へ更新
-				lr35902_set_reg regA $CELL_EVAL_NUM_FIXEDVAL
-				lr35902_copy_to_addr_from_regA $var_binbio_expset_num
-			) >src/f_binbio_event_btn_down_release.daisyworld.o
-			local sz_daisyworld=$(stat -c '%s' src/f_binbio_event_btn_down_release.daisyworld.o)
-			lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_daisyworld)
-			cat src/f_binbio_event_btn_down_release.daisyworld.o
-		) >src/f_binbio_event_btn_down_release.cell_eval_config.o
-		local sz_cell_eval_config=$(stat -c '%s' src/f_binbio_event_btn_down_release.cell_eval_config.o)
-		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_cell_eval_config)
-		cat src/f_binbio_event_btn_down_release.cell_eval_config.o
-
-		# pop
-		lr35902_pop_reg regDE
-		lr35902_pop_reg regBC
-		lr35902_pop_reg regAF
-	fi
-
 	# return
 	lr35902_return
 }
@@ -8055,9 +8112,6 @@ f_binbio_event_btn_select_release() {
 			# 評価関数設定を画面へ配置
 			lr35902_call $a_binbio_place_cell_eval_config
 
-			# マウスカーソルを非表示にする
-			cat src/hide_mouse_cursor.o
-
 			# 現在のステータス表示領域の状態 = 評価関数設定表示状態
 			lr35902_set_reg regA $STATUS_DISP_SHOW_CELL_EVAL_CONFIG
 			lr35902_copy_to_addr_from_regA $var_binbio_status_disp_status
@@ -8083,9 +8137,6 @@ f_binbio_event_btn_select_release() {
 
 		# ソフト説明を画面へ配置
 		lr35902_call $a_binbio_place_soft_desc
-
-		# マウスカーソルを表示する
-		cat src/show_mouse_cursor.o
 
 		# 現在のステータス表示領域の状態 = ソフト説明表示状態
 		lr35902_set_reg regA $STATUS_DISP_SHOW_SOFT_DESC
@@ -8755,22 +8806,24 @@ btn_release_handler() {
 	cat src/btn_release_handler.2.o
 
 	# ↑ボタンの確認
-	lr35902_test_bitN_of_reg $GBOS_UP_KEY_BITNUM regA
-	(
-		lr35902_call $a_binbio_event_btn_up_release
-	) >src/btn_release_handler.up.o
-	sz=$(stat -c '%s' src/btn_release_handler.up.o)
-	lr35902_rel_jump_with_cond Z $(two_digits_d $sz)
-	cat src/btn_release_handler.up.o
+	# 現状、実行する処理がないのでコメントアウトしておく
+	# lr35902_test_bitN_of_reg $GBOS_UP_KEY_BITNUM regA
+	# (
+	# 	lr35902_call $a_binbio_event_btn_up_release
+	# ) >src/btn_release_handler.up.o
+	# sz=$(stat -c '%s' src/btn_release_handler.up.o)
+	# lr35902_rel_jump_with_cond Z $(two_digits_d $sz)
+	# cat src/btn_release_handler.up.o
 
 	# ↓ボタンの確認
-	lr35902_test_bitN_of_reg $GBOS_DOWN_KEY_BITNUM regA
-	(
-		lr35902_call $a_binbio_event_btn_down_release
-	) >src/btn_release_handler.down.o
-	sz=$(stat -c '%s' src/btn_release_handler.down.o)
-	lr35902_rel_jump_with_cond Z $(two_digits_d $sz)
-	cat src/btn_release_handler.down.o
+	# 現状、実行する処理がないのでコメントアウトしておく
+	# lr35902_test_bitN_of_reg $GBOS_DOWN_KEY_BITNUM regA
+	# (
+	# 	lr35902_call $a_binbio_event_btn_down_release
+	# ) >src/btn_release_handler.down.o
+	# sz=$(stat -c '%s' src/btn_release_handler.down.o)
+	# lr35902_rel_jump_with_cond Z $(two_digits_d $sz)
+	# cat src/btn_release_handler.down.o
 
 	# →ボタンの確認
 	lr35902_test_bitN_of_reg $GBOS_RIGHT_KEY_BITNUM regA
