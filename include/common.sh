@@ -129,3 +129,71 @@ infinite_halt() {
 	lr35902_halt
 	lr35902_rel_jump $(two_comp 04)
 }
+
+# 指定されたバイナリサイズ分の相対ジャンプの処理を1行で書くためのラッパー
+# in : 第1引数
+#      - NZ|Z|NC|C: 条件付きジャンプ
+#      - 指定なし : 無条件ジャンプ
+#      第1 or 2引数
+#      - f|for|forward  : アドレスが大きくなる方向へジャンプ
+#      - b|back|backward: アドレスが小さくなる方向へジャンプ
+#      第2 or 3引数
+#      - ジャンプする命令列が書かれたバイナリファイル(パイプ渡しも可)
+#        - ここで指定したファイルに書かれている命令列が
+#          第1引数が"f"の場合、相対ジャンプ命令の直後に、
+#          第1引数が"b"の場合、相対ジャンプ命令の直前に出力される
+rel_jump_wrapper_binsz() {
+	local condition
+	case $1 in
+	NZ|Z|NC|C)
+		condition=$1
+		shift
+		;;
+	*)
+		condition=''
+		;;
+	esac
+
+	local direction=$1
+	case $direction in
+	f|'for'|forward)
+		direction=forward
+		;;
+	b|back|backward)
+		direction=backward
+		;;
+	*)
+		echo "Error: Invalid direction argument: $direction" 1>&2
+		return 1
+	esac
+
+	local bin_file
+	if [ -p /dev/stdin ]; then
+		bin_file=src/rel_jump_wrapper_binsz.tmp.o
+		cat - >$bin_file
+		trap "rm $bin_file" EXIT
+	else
+		bin_file=$2
+	fi
+
+	local sz_bin_file=$(stat -c '%s' $bin_file)
+
+	local jump_ofs
+	if [ "$direction" = 'forward' ]; then
+		jump_ofs=$(two_digits_d $sz_bin_file)
+		if [ -z "$condition" ]; then
+			lr35902_rel_jump $jump_ofs
+		else
+			lr35902_rel_jump_with_cond $condition $jump_ofs
+		fi
+		cat $bin_file
+	else
+		cat $bin_file
+		jump_ofs=$(two_comp_d $((sz_bin_file + 2)))
+		if [ -z "$condition" ]; then
+			lr35902_rel_jump $jump_ofs
+		else
+			lr35902_rel_jump_with_cond $condition $jump_ofs
+		fi
+	fi
+}
