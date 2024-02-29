@@ -1164,11 +1164,18 @@ f_binbio_clear_cell_eval_config() {
 	lr35902_push_reg regAF
 	lr35902_push_reg regDE
 
-	# 評価関数選択のラベルをクリア
+	# 評価関数選択
+	## ラベルをクリア
 	con_delch_tadr_num_macro $CELL_EVAL_SEL_LABEL_TCOORD_X $CELL_EVAL_SEL_LABEL_TCOORD_Y $((sz_const_select_cell_eval - 1))
-
-	# 枠線と中身をクリア
+	## 枠線と中身をクリア
 	con_clear_rect_macro $CELL_EVAL_SEL_FRAME_TCOORD_X $CELL_EVAL_SEL_FRAME_TCOORD_Y $CELL_EVAL_SEL_FRAME_WIDTH $CELL_EVAL_SEL_FRAME_HEIGHT
+
+	# 関数設定
+	## ラベルをクリア
+	con_delch_tadr_num_macro $CELL_EVAL_CONF_LABEL_TCOORD_X $CELL_EVAL_CONF_LABEL_FUNC_TCOORD_Y $((sz_const_func_str - 1))
+	con_delch_tadr_num_macro $CELL_EVAL_CONF_LABEL_TCOORD_X $CELL_EVAL_CONF_LABEL_CONF_TCOORD_Y $((sz_const_conf_str - 1))
+	## 枠線と中身をクリア
+	con_clear_rect_macro $CELL_EVAL_CONF_FRAME_TCOORD_X $CELL_EVAL_CONF_FRAME_TCOORD_Y $CELL_EVAL_CONF_FRAME_WIDTH $CELL_EVAL_CONF_FRAME_HEIGHT
 
 	# pop & return
 	lr35902_pop_reg regDE
