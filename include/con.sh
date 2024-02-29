@@ -112,7 +112,7 @@ con_delch_tadr_num_macro() {
 #       第2引数 - タイル座標Y
 #       第3引数 - 幅[タイル数]
 #       第4引数 - 高さ[タイル数]
-# work: regA, regB, regDE, regHL
+# work: regA, regB
 # ※ 幅と高さはそれぞれ2以上であること
 con_draw_rect_macro() {
 	local tcoord_x=$1
@@ -134,9 +134,9 @@ con_draw_rect_macro() {
 	local num_horizontal_bars=$(bc <<< "ibase=16;$width - 2")
 
 	# "─"(上側)を$num_horizontal_bars個分配置
+	lr35902_set_reg regB $GBOS_TILE_NUM_UPPER_BAR
 	for i in $(seq $num_horizontal_bars); do
 		# "─"(上側)を配置
-		lr35902_set_reg regB $GBOS_TILE_NUM_UPPER_BAR
 		lr35902_call $a_putch
 	done
 
@@ -147,76 +147,64 @@ con_draw_rect_macro() {
 	# 右側と左側の"│"を配置する数を算出
 	local num_vertical_bars=$(bc <<< "ibase=16;$height - 2")
 
-	# カーソル位置をregHLへ取得し、1文字分戻す
-	lr35902_copy_to_regA_from_addr $var_con_tadr_bh
-	lr35902_copy_to_from regL regA
-	lr35902_copy_to_regA_from_addr $var_con_tadr_th
-	lr35902_copy_to_from regH regA
-	lr35902_dec regHL
-
-	# 1行分のタイル数をregDEへ設定
-	lr35902_set_reg regDE $(four_digits $GB_SC_WIDTH_T)
-
 	# "│"(右側)を$num_vertical_bars個分配置
+	local right_bar_start_tx=$(calc16 "${tcoord_x}+${width}-1")
+	local right_bar_start_ty_ofs
+	local right_bar_start_ty
+	local right_bar_start_tadr
+	lr35902_set_reg regB $GBOS_TILE_NUM_RIGHT_BAR
 	for i in $(seq $num_vertical_bars); do
-		# regHLへregDEを加算し、カーソル位置の変数へ設定
-		lr35902_add_to_regHL regDE
-		lr35902_copy_to_from regA regL
-		lr35902_copy_to_addr_from_regA $var_con_tadr_bh
-		lr35902_copy_to_from regA regH
-		lr35902_copy_to_addr_from_regA $var_con_tadr_th
+		# カーソル位置を設定
+		right_bar_start_ty_ofs=$(to16 $i)
+		right_bar_start_ty=$(calc16 "${tcoord_y}+${right_bar_start_ty_ofs}")
+		right_bar_start_tadr=$(con_tcoord_to_tadr $right_bar_start_tx $right_bar_start_ty)
+		con_set_cursor $right_bar_start_tadr
 
 		# "│"(右側)を配置
-		lr35902_set_reg regB $GBOS_TILE_NUM_RIGHT_BAR
 		lr35902_call $a_putch
 	done
 
-	# regHLへregDEを加算し、カーソル位置の変数へ設定
-	lr35902_add_to_regHL regDE
-	lr35902_copy_to_from regA regL
-	lr35902_copy_to_addr_from_regA $var_con_tadr_bh
-	lr35902_copy_to_from regA regH
-	lr35902_copy_to_addr_from_regA $var_con_tadr_th
+	# カーソル位置を"┘"の位置へ設定
+	local lower_right_tx=$right_bar_start_tx
+	local lower_right_ty=$(calc16 "${right_bar_start_ty}+1")
+	local lower_right_tadr=$(con_tcoord_to_tadr $lower_right_tx $lower_right_ty)
+	con_set_cursor $lower_right_tadr
 
 	# "┘"を配置
 	lr35902_set_reg regB $GBOS_TILE_NUM_LOWER_RIGHT_BAR
 	lr35902_call $a_putch
 
-	# regHLへ"┌"の位置を設定
-	lr35902_set_reg regA $(echo $upper_left_tadr | cut -c3-4)
-	lr35902_copy_to_from regL regA
-	lr35902_set_reg regA $(echo $upper_left_tadr | cut -c1-2)
-	lr35902_copy_to_from regH regA
-
 	# "│"(左側)を$num_vertical_bars個分配置
+	local left_bar_start_tx=$tcoord_x
+	local left_bar_start_ty_ofs
+	local left_bar_start_ty
+	local left_bar_start_tadr
+	lr35902_set_reg regB $GBOS_TILE_NUM_LEFT_BAR
 	for i in $(seq $num_vertical_bars); do
-		# regHLへregDEを加算し、カーソル位置の変数へ設定
-		lr35902_add_to_regHL regDE
-		lr35902_copy_to_from regA regL
-		lr35902_copy_to_addr_from_regA $var_con_tadr_bh
-		lr35902_copy_to_from regA regH
-		lr35902_copy_to_addr_from_regA $var_con_tadr_th
+		# カーソル位置を設定
+		left_bar_start_ty_ofs=$(to16 $i)
+		left_bar_start_ty=$(calc16 "${tcoord_y}+${left_bar_start_ty_ofs}")
+		left_bar_start_tadr=$(con_tcoord_to_tadr $left_bar_start_tx $left_bar_start_ty)
+		con_set_cursor $left_bar_start_tadr
 
 		# "│"(左側)を配置
-		lr35902_set_reg regB $GBOS_TILE_NUM_LEFT_BAR
 		lr35902_call $a_putch
 	done
 
-	# regHLへregDEを加算し、カーソル位置の変数へ設定
-	lr35902_add_to_regHL regDE
-	lr35902_copy_to_from regA regL
-	lr35902_copy_to_addr_from_regA $var_con_tadr_bh
-	lr35902_copy_to_from regA regH
-	lr35902_copy_to_addr_from_regA $var_con_tadr_th
+	# カーソル位置を"└"の位置へ設定
+	local lower_left_tx=$left_bar_start_tx
+	local lower_left_ty=$(calc16 "${left_bar_start_ty}+1")
+	local lower_left_tadr=$(con_tcoord_to_tadr $lower_left_tx $lower_left_ty)
+	con_set_cursor $lower_left_tadr
 
 	# "└"を配置
 	lr35902_set_reg regB $GBOS_TILE_NUM_LOWER_LEFT_BAR
 	lr35902_call $a_putch
 
 	# "─"(下側)を$num_horizontal_bars個分配置
+	lr35902_set_reg regB $GBOS_TILE_NUM_LOWER_BAR
 	for i in $(seq $num_horizontal_bars); do
 		# "─"(上側)を配置
-		lr35902_set_reg regB $GBOS_TILE_NUM_LOWER_BAR
 		lr35902_call $a_putch
 	done
 }
