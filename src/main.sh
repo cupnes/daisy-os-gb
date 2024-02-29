@@ -137,7 +137,7 @@ cell_status_str_bin_data_size	は゛いなり:(さいす゛:
 cell_status_str_collected_flags	しゆとくふらく゛:
 select_cell_eval	ひようかかんすうせんたく
 cell_eval_daisyworld	て゛いし゛-わ-ると゛
-cell_eval_fixedval	つねに255
+cell_eval_fixedval	こていち
 func_str	かんすう
 conf_str	せつてい
 EOF
@@ -7516,15 +7516,15 @@ f_binbio_event_btn_b_release() {
 					lr35902_rel_jump_with_cond C $(two_digits_d $sz_my_le_cesdey)
 					cat src/f_binbio_event_btn_b_release.my_le_cesdey.o
 
-					# マウスカーソルY座標 <= 関数名「つねに255」のY座標終端 ?
+					# マウスカーソルY座標 <= 関数名「こていち」のY座標終端 ?
 					lr35902_copy_to_regA_from_addr $var_mouse_y
 					lr35902_copy_to_from regB regA
 					lr35902_set_reg regA $CELL_EVAL_SEL_FIXEDVAL_END_MOUSE_Y
 					lr35902_compare_regA_and regB
 					(
-						# regA(マウスカーソルY座標) <= regB(関数名「つねに255」のY座標終端) の場合
+						# regA(マウスカーソルY座標) <= regB(関数名「こていち」のY座標終端) の場合
 
-						# 関数名「つねに255」が選択された
+						# 関数名「こていち」が選択された
 
 						# 現在の評価関数 == デイジーワールド ?
 						## regAへ現在の評価関数番号を取得

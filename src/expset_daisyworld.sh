@@ -135,7 +135,7 @@ SURFACE_TEMP_DOWN_END_X=A7	# ▼のX座標終端
 ### 評価関数設定
 CELL_EVAL_SEL_BEGIN_MOUSE_Y=70	# 関数名領域のY座標始端
 CELL_EVAL_SEL_DAISYWORLD_END_MOUSE_Y=77	# 関数名「でいじーわーるど」のY座標終端
-CELL_EVAL_SEL_FIXEDVAL_END_MOUSE_Y=7F	# 関数名「つねに255」のY座標終端
+CELL_EVAL_SEL_FIXEDVAL_END_MOUSE_Y=7F	# 関数名「こていち」のY座標終端
 CELL_EVAL_SEL_BEGIN_MOUSE_X=10	# 関数名領域のX座標始端
 CELL_EVAL_SEL_END_MOUSE_X=6F	# 関数名領域のX座標終端
 
@@ -1103,7 +1103,7 @@ f_binbio_place_cell_eval_config() {
 	# 関数名を配置
 	## デイジーワールド
 	con_print_xy_macro $CELL_EVAL_SEL_DAISYWORLD_TCOORD_X $CELL_EVAL_SEL_DAISYWORLD_TCOORD_Y $a_const_cell_eval_daisyworld
-	## 常に255
+	## 固定値
 	con_print_xy_macro $CELL_EVAL_SEL_FIXEDVAL_TCOORD_X $CELL_EVAL_SEL_FIXEDVAL_TCOORD_Y $a_const_cell_eval_fixedval
 
 	# 現在選択されている関数名の左に「→」を配置
