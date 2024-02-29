@@ -124,6 +124,14 @@ CELL_EVAL_SEL_DAISYWORLD_TCOORD_X=02
 CELL_EVAL_SEL_DAISYWORLD_TCOORD_Y=0C
 CELL_EVAL_SEL_FIXEDVAL_TCOORD_X=02
 CELL_EVAL_SEL_FIXEDVAL_TCOORD_Y=0D
+#### 関数設定別
+##### 固定値
+CELL_EVAL_CONF_FIXEDVAL_LABEL_1_TCOORD_X=0F
+CELL_EVAL_CONF_FIXEDVAL_LABEL_1_TCOORD_Y=04
+CELL_EVAL_CONF_FIXEDVAL_LABEL_2_TCOORD_X=11
+CELL_EVAL_CONF_FIXEDVAL_LABEL_2_TCOORD_Y=05
+CELL_EVAL_CONF_FIXEDVAL_PREF_TCOORD_X=0F
+CELL_EVAL_CONF_FIXEDVAL_PREF_TCOORD_Y=06
 ## 画面上のマウスカーソル座標
 ### 地表温度の▲▼ボタンの範囲を示す
 SURFACE_TEMP_UP_DOWN_BEGIN_Y=10	# ▲▼のY座標始端
@@ -1100,13 +1108,13 @@ f_binbio_place_cell_eval_config() {
 	## 関数設定
 	con_draw_rect_macro $CELL_EVAL_CONF_FRAME_TCOORD_X $CELL_EVAL_CONF_FRAME_TCOORD_Y $CELL_EVAL_CONF_FRAME_WIDTH $CELL_EVAL_CONF_FRAME_HEIGHT
 
-	# 関数名を配置
+	# 評価関数選択の外枠内に関数名を配置
 	## デイジーワールド
 	con_print_xy_macro $CELL_EVAL_SEL_DAISYWORLD_TCOORD_X $CELL_EVAL_SEL_DAISYWORLD_TCOORD_Y $a_const_cell_eval_daisyworld
 	## 固定値
 	con_print_xy_macro $CELL_EVAL_SEL_FIXEDVAL_TCOORD_X $CELL_EVAL_SEL_FIXEDVAL_TCOORD_Y $a_const_cell_eval_fixedval
 
-	# 現在選択されている関数名の左に「→」を配置
+	# 現在選択されている関数に応じた処理
 	## regAへ現在の評価関数番号を取得
 	lr35902_copy_to_regA_from_addr $var_binbio_expset_num
 	## regA == デイジーワールド ?
@@ -1134,6 +1142,17 @@ f_binbio_place_cell_eval_config() {
 
 		# デイジーワールドの関数名の左に「→」を配置
 		con_putxy_macro $(calc16_2 "${CELL_EVAL_SEL_FIXEDVAL_TCOORD_X}-1") $CELL_EVAL_SEL_FIXEDVAL_TCOORD_Y '→'
+
+		# 「関数設定」欄に現在の固定値を配置
+		## ラベルを配置
+		con_print_xy_macro $CELL_EVAL_CONF_FIXEDVAL_LABEL_1_TCOORD_X $CELL_EVAL_CONF_FIXEDVAL_LABEL_1_TCOORD_Y $a_const_cell_eval_conf_fixedval_1
+		con_print_xy_macro $CELL_EVAL_CONF_FIXEDVAL_LABEL_2_TCOORD_X $CELL_EVAL_CONF_FIXEDVAL_LABEL_2_TCOORD_Y $a_const_cell_eval_conf_fixedval_2
+		## 16進数の接頭時を配置
+		con_print_xy_macro $CELL_EVAL_CONF_FIXEDVAL_PREF_TCOORD_X $CELL_EVAL_CONF_FIXEDVAL_PREF_TCOORD_Y $a_const_pref_hex
+		## 値を配置
+		### TODO regAへ現在の固定値を取得
+		### regAの値を16進数で配置
+		lr35902_call $a_print_regA
 
 		# pop & return
 		lr35902_pop_reg regHL
