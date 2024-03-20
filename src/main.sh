@@ -6677,8 +6677,6 @@ f_binbio_cell_division() {
 	else
 		# 自動(0xff - 適応度)
 		## 突然変異確率(regB) = 0xff - fitness
-		## ※ (2023-12-27追記) この辺りの実装を変えたので
-		## 　 この箇所も修正しないと動かないかも
 		### 現在のregHLをpush
 		lr35902_push_reg regHL
 		### regHL = SP + 5(pushしていたfitnessのアドレス)
