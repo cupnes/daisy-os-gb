@@ -941,7 +941,7 @@ f_binbio_place_cell_info_val() {
 	lr35902_add_to_regHL regBC
 	### regAへfitnessを取得
 	lr35902_copy_to_from regA ptrHL
-	### regAの値を10進数で配置
+	### regAの値を16進数で配置
 	lr35902_call $a_print_regA
 
 	# バイナリとサイズを配置
