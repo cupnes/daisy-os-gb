@@ -1150,7 +1150,8 @@ f_binbio_place_cell_eval_config() {
 		## 16進数の接頭時を配置
 		con_print_xy_macro $CELL_EVAL_CONF_FIXEDVAL_PREF_TCOORD_X $CELL_EVAL_CONF_FIXEDVAL_PREF_TCOORD_Y $a_const_pref_hex
 		## 値を配置
-		### TODO regAへ現在の固定値を取得
+		### regAへ現在の固定値を取得
+		lr35902_copy_to_regA_from_addr $var_binbio_cell_eval_fixedval_val
 		### regAの値を16進数で配置
 		lr35902_call $a_print_regA
 
