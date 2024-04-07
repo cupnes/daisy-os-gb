@@ -1087,6 +1087,33 @@ f_binbio_clear_cell_info() {
 	lr35902_return
 }
 
+# 「関数設定」欄に現在の固定値を配置
+f_binbio_place_fixedval_to_celleval_conf() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regDE
+	lr35902_push_reg regHL
+
+	# ラベルを配置
+	con_print_xy_macro $CELL_EVAL_CONF_FIXEDVAL_LABEL_1_TCOORD_X $CELL_EVAL_CONF_FIXEDVAL_LABEL_1_TCOORD_Y $a_const_cell_eval_conf_fixedval_1
+	con_print_xy_macro $CELL_EVAL_CONF_FIXEDVAL_LABEL_2_TCOORD_X $CELL_EVAL_CONF_FIXEDVAL_LABEL_2_TCOORD_Y $a_const_cell_eval_conf_fixedval_2
+
+	# 16進数の接頭時を配置
+	con_print_xy_macro $CELL_EVAL_CONF_FIXEDVAL_PREF_TCOORD_X $CELL_EVAL_CONF_FIXEDVAL_PREF_TCOORD_Y $a_const_pref_hex
+
+	# 値を配置
+	## regAへ現在の固定値を取得
+	lr35902_copy_to_regA_from_addr $var_binbio_cell_eval_fixedval_val
+	## regAの値を16進数で配置
+	lr35902_call $a_print_regA
+
+	# pop & return
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regDE
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
 # 評価関数設定を画面へ配置
 f_binbio_place_cell_eval_config() {
 	# push

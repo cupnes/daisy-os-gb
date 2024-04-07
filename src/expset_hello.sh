@@ -292,6 +292,12 @@ f_binbio_clear_cell_info() {
 	:
 }
 
+# 「関数設定」欄に現在の固定値を配置
+f_binbio_place_fixedval_to_celleval_conf() {
+	# HELLO系の実験セットでは呼ばれないため、何もしない
+	:
+}
+
 # 評価関数設定を画面へ配置
 f_binbio_place_cell_eval_config() {
 	# HELLO系の実験セットでは呼ばれないため、何もしない

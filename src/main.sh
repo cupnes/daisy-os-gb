@@ -7086,10 +7086,18 @@ a_binbio_clear_cell_info=$(four_digits $fadr)
 echo -e "a_binbio_clear_cell_info=$a_binbio_clear_cell_info" >>$MAP_FILE_NAME
 ## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
 
-# 評価関数設定を画面へ配置
+# 「関数設定」欄に現在の固定値を配置
 f_binbio_clear_cell_info >src/f_binbio_clear_cell_info.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_clear_cell_info.o))
 fadr=$(calc16 "${a_binbio_clear_cell_info}+${fsz}")
+a_binbio_place_fixedval_to_celleval_conf=$(four_digits $fadr)
+echo -e "a_binbio_place_fixedval_to_celleval_conf=$a_binbio_place_fixedval_to_celleval_conf" >>$MAP_FILE_NAME
+## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
+
+# 評価関数設定を画面へ配置
+f_binbio_place_fixedval_to_celleval_conf >src/f_binbio_place_fixedval_to_celleval_conf.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_place_fixedval_to_celleval_conf.o))
+fadr=$(calc16 "${a_binbio_place_fixedval_to_celleval_conf}+${fsz}")
 a_binbio_place_cell_eval_config=$(four_digits $fadr)
 echo -e "a_binbio_place_cell_eval_config=$a_binbio_place_cell_eval_config" >>$MAP_FILE_NAME
 ## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
@@ -8258,6 +8266,7 @@ global_functions() {
 	cat src/f_binbio_place_cell_info_labels.o
 	cat src/f_binbio_place_cell_info_val.o
 	cat src/f_binbio_clear_cell_info.o
+	cat src/f_binbio_place_fixedval_to_celleval_conf.o
 	cat src/f_binbio_place_cell_eval_config.o
 	cat src/f_binbio_clear_cell_eval_config.o
 	cat src/f_binbio_init.o
