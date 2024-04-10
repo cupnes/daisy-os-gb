@@ -140,8 +140,8 @@ cell_eval_daisyworld	て゛いし゛-わ-ると゛
 cell_eval_fixedval	こていち
 func_str	かんすう
 conf_str	せつてい
-cell_eval_conf_fixedval_1	こてい
-cell_eval_conf_fixedval_2	ち:
+cell_eval_param_fixedval_1	こてい
+cell_eval_param_fixedval_2	ち:
 EOF
 
 	# 各文字列をタイル番号のバイナリデータへ変換しファイルと標準出力へ出力
