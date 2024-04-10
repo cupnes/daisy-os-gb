@@ -1087,7 +1087,7 @@ f_binbio_clear_cell_info() {
 	lr35902_return
 }
 
-# 「関数設定」欄に現在の固定値を配置
+# 関数設定欄に現在の固定値を配置
 f_binbio_place_cell_eval_param_fixedval() {
 	# push
 	lr35902_push_reg regAF
@@ -1109,6 +1109,25 @@ f_binbio_place_cell_eval_param_fixedval() {
 
 	# pop & return
 	lr35902_pop_reg regHL
+	lr35902_pop_reg regDE
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
+# 関数設定欄内をクリア
+f_binbio_clear_cell_eval_param() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regDE
+
+	# 枠線の中身だけをクリア
+	local tcoord_x=$(calc16_2 "${CELL_EVAL_PARAM_FRAME_TCOORD_X}+1")
+	local tcoord_y=$(calc16_2 "${CELL_EVAL_PARAM_FRAME_TCOORD_Y}+1")
+	local width=$(calc16_2 "${CELL_EVAL_PARAM_FRAME_WIDTH}-2")
+	local height=$(calc16_2 "${CELL_EVAL_PARAM_FRAME_HEIGHT}-2")
+	con_clear_rect_macro $tcoord_x $tcoord_y $width $height
+
+	# pop & return
 	lr35902_pop_reg regDE
 	lr35902_pop_reg regAF
 	lr35902_return
