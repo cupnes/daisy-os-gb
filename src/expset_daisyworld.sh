@@ -1088,7 +1088,7 @@ f_binbio_clear_cell_info() {
 }
 
 # 「関数設定」欄に現在の固定値を配置
-f_binbio_place_fixedval_to_celleval_conf() {
+f_binbio_place_cell_eval_param_fixedval() {
 	# push
 	lr35902_push_reg regAF
 	lr35902_push_reg regDE
@@ -1171,7 +1171,7 @@ f_binbio_place_cell_eval_config() {
 		con_putxy_macro $(calc16_2 "${CELL_EVAL_SEL_FIXEDVAL_TCOORD_X}-1") $CELL_EVAL_SEL_FIXEDVAL_TCOORD_Y '→'
 
 		# 「関数設定」欄に現在の固定値を配置
-		lr35902_call $a_binbio_place_fixedval_to_celleval_conf
+		lr35902_call $a_binbio_place_cell_eval_param_fixedval
 
 		# pop & return
 		lr35902_pop_reg regHL
