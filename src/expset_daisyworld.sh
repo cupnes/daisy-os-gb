@@ -1171,16 +1171,7 @@ f_binbio_place_cell_eval_config() {
 		con_putxy_macro $(calc16_2 "${CELL_EVAL_SEL_FIXEDVAL_TCOORD_X}-1") $CELL_EVAL_SEL_FIXEDVAL_TCOORD_Y '→'
 
 		# 「関数設定」欄に現在の固定値を配置
-		## ラベルを配置
-		con_print_xy_macro $CELL_EVAL_CONF_FIXEDVAL_LABEL_1_TCOORD_X $CELL_EVAL_CONF_FIXEDVAL_LABEL_1_TCOORD_Y $a_const_cell_eval_conf_fixedval_1
-		con_print_xy_macro $CELL_EVAL_CONF_FIXEDVAL_LABEL_2_TCOORD_X $CELL_EVAL_CONF_FIXEDVAL_LABEL_2_TCOORD_Y $a_const_cell_eval_conf_fixedval_2
-		## 16進数の接頭時を配置
-		con_print_xy_macro $CELL_EVAL_CONF_FIXEDVAL_PREF_TCOORD_X $CELL_EVAL_CONF_FIXEDVAL_PREF_TCOORD_Y $a_const_pref_hex
-		## 値を配置
-		### regAへ現在の固定値を取得
-		lr35902_copy_to_regA_from_addr $var_binbio_cell_eval_fixedval_val
-		### regAの値を16進数で配置
-		lr35902_call $a_print_regA
+		lr35902_call $a_binbio_place_fixedval_to_celleval_conf
 
 		# pop & return
 		lr35902_pop_reg regHL
