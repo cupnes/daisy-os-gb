@@ -1,3 +1,6 @@
+# expset_daisyworld.shに追随したこのファイルの更新は停止した。
+# いつの時点から停止しているかはこの行が含まれるコミットを参照。
+
 if [ "${SRC_EXPSET_HELLO_SH+is_defined}" ]; then
 	return
 fi
