@@ -1142,17 +1142,10 @@ f_binbio_place_cell_eval_config() {
 	lr35902_push_reg regHL
 
 	# ラベルを配置
-	## 評価関数選択
 	con_print_xy_macro $CELL_EVAL_SEL_LABEL_TCOORD_X $CELL_EVAL_SEL_LABEL_TCOORD_Y $a_const_select_cell_eval
-	## 関数設定
-	con_print_xy_macro $CELL_EVAL_PARAM_LABEL_TCOORD_X $CELL_EVAL_PARAM_LABEL_FUNC_TCOORD_Y $a_const_func_str
-	con_print_xy_macro $CELL_EVAL_PARAM_LABEL_TCOORD_X $CELL_EVAL_PARAM_LABEL_CONF_TCOORD_Y $a_const_conf_str
 
 	# 外枠を配置
-	## 評価関数選択
 	con_draw_rect_macro $CELL_EVAL_SEL_FRAME_TCOORD_X $CELL_EVAL_SEL_FRAME_TCOORD_Y $CELL_EVAL_SEL_FRAME_WIDTH $CELL_EVAL_SEL_FRAME_HEIGHT
-	## 関数設定
-	con_draw_rect_macro $CELL_EVAL_PARAM_FRAME_TCOORD_X $CELL_EVAL_PARAM_FRAME_TCOORD_Y $CELL_EVAL_PARAM_FRAME_WIDTH $CELL_EVAL_PARAM_FRAME_HEIGHT
 
 	# 評価関数選択の外枠内に関数名を配置
 	## デイジーワールド
@@ -1189,9 +1182,6 @@ f_binbio_place_cell_eval_config() {
 		# デイジーワールドの関数名の左に「→」を配置
 		con_putxy_macro $(calc16_2 "${CELL_EVAL_SEL_FIXEDVAL_TCOORD_X}-1") $CELL_EVAL_SEL_FIXEDVAL_TCOORD_Y '→'
 
-		# 「関数設定」欄に現在の固定値を配置
-		lr35902_call $a_binbio_place_cell_eval_param_fixedval
-
 		# pop & return
 		lr35902_pop_reg regHL
 		lr35902_pop_reg regDE
@@ -1221,18 +1211,11 @@ f_binbio_clear_cell_eval_config() {
 	lr35902_push_reg regAF
 	lr35902_push_reg regDE
 
-	# 評価関数選択
-	## ラベルをクリア
+	# ラベルをクリア
 	con_delch_tadr_num_macro $CELL_EVAL_SEL_LABEL_TCOORD_X $CELL_EVAL_SEL_LABEL_TCOORD_Y $((sz_const_select_cell_eval - 1))
-	## 枠線と中身をクリア
-	con_clear_rect_macro $CELL_EVAL_SEL_FRAME_TCOORD_X $CELL_EVAL_SEL_FRAME_TCOORD_Y $CELL_EVAL_SEL_FRAME_WIDTH $CELL_EVAL_SEL_FRAME_HEIGHT
 
-	# 関数設定
-	## ラベルをクリア
-	con_delch_tadr_num_macro $CELL_EVAL_PARAM_LABEL_TCOORD_X $CELL_EVAL_PARAM_LABEL_FUNC_TCOORD_Y $((sz_const_func_str - 1))
-	con_delch_tadr_num_macro $CELL_EVAL_PARAM_LABEL_TCOORD_X $CELL_EVAL_PARAM_LABEL_CONF_TCOORD_Y $((sz_const_conf_str - 1))
-	## 枠線と中身をクリア
-	con_clear_rect_macro $CELL_EVAL_PARAM_FRAME_TCOORD_X $CELL_EVAL_PARAM_FRAME_TCOORD_Y $CELL_EVAL_PARAM_FRAME_WIDTH $CELL_EVAL_PARAM_FRAME_HEIGHT
+	# 枠線と中身をクリア
+	con_clear_rect_macro $CELL_EVAL_SEL_FRAME_TCOORD_X $CELL_EVAL_SEL_FRAME_TCOORD_Y $CELL_EVAL_SEL_FRAME_WIDTH $CELL_EVAL_SEL_FRAME_HEIGHT
 
 	# pop & return
 	lr35902_pop_reg regDE
