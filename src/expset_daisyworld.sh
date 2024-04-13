@@ -20,7 +20,7 @@ CELL_EVAL_FIXEDVAL_VAL_INIT=ff
 ## ステータス表示領域の状態
 STATUS_DISP_SHOW_SOFT_DESC=00	# ソフト説明表示状態
 STATUS_DISP_SHOW_CELL_INFO=01	# 細胞ステータス情報表示状態
-STATUS_DISP_SHOW_CELL_EVAL_CONFIG=02	# 評価関数設定表示状態
+STATUS_DISP_SHOW_CELL_EVAL_SEL=02	# 評価関数選択表示状態
 ## 画面上のタイル座標/アドレス
 ### 地表温度
 ### TODO 「タイトル(TITLE)」というより「ラベル(LABEL)」
@@ -101,7 +101,7 @@ BIN_DATA_PREF_VAL_TCOORD_X=04
 COLLECTED_FLAGS_LABEL_VAL_TCOORD_Y=11
 COLLECTED_FLAGS_LABEL_TCOORD_X=00
 COLLECTED_FLAGS_UNIT_VAL_TCOORD_X=09
-### 評価関数設定
+### 評価関数選択
 #### 評価関数選択ラベル
 CELL_EVAL_SEL_LABEL_TCOORD_X=00
 CELL_EVAL_SEL_LABEL_TCOORD_Y=0A
@@ -140,7 +140,7 @@ SURFACE_TEMP_UP_BEGIN_X=98	# ▲のX座標始端
 SURFACE_TEMP_UP_END_X=9F	# ▲のX座標終端
 SURFACE_TEMP_DOWN_BEGIN_X=A0	# ▼のX座標始端
 SURFACE_TEMP_DOWN_END_X=A7	# ▼のX座標終端
-### 評価関数設定
+### 評価関数選択
 CELL_EVAL_SEL_BEGIN_MOUSE_Y=70	# 関数名領域のY座標始端
 CELL_EVAL_SEL_DAISYWORLD_END_MOUSE_Y=77	# 関数名「でいじーわーるど」のY座標終端
 CELL_EVAL_SEL_FIXEDVAL_END_MOUSE_Y=7F	# 関数名「こていち」のY座標終端
@@ -1133,8 +1133,8 @@ f_binbio_clear_cell_eval_param() {
 	lr35902_return
 }
 
-# 評価関数設定を画面へ配置
-f_binbio_place_cell_eval_config() {
+# 評価関数選択を画面へ配置
+f_binbio_place_cell_eval_sel() {
 	# push
 	lr35902_push_reg regAF
 	lr35902_push_reg regBC
@@ -1170,10 +1170,10 @@ f_binbio_place_cell_eval_config() {
 		lr35902_pop_reg regBC
 		lr35902_pop_reg regAF
 		lr35902_return
-	) >src/expset_daisyworld.f_binbio_place_cell_eval_config.daisyworld.o
-	local sz_daisyworld=$(stat -c '%s' src/expset_daisyworld.f_binbio_place_cell_eval_config.daisyworld.o)
+	) >src/expset_daisyworld.f_binbio_place_cell_eval_sel.daisyworld.o
+	local sz_daisyworld=$(stat -c '%s' src/expset_daisyworld.f_binbio_place_cell_eval_sel.daisyworld.o)
 	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_daisyworld)
-	cat src/expset_daisyworld.f_binbio_place_cell_eval_config.daisyworld.o
+	cat src/expset_daisyworld.f_binbio_place_cell_eval_sel.daisyworld.o
 	## regA == 固定値 ?
 	lr35902_compare_regA_and $CELL_EVAL_NUM_FIXEDVAL
 	(
@@ -1188,10 +1188,10 @@ f_binbio_place_cell_eval_config() {
 		lr35902_pop_reg regBC
 		lr35902_pop_reg regAF
 		lr35902_return
-	) >src/expset_fixedval.f_binbio_place_cell_eval_config.fixedval.o
-	local sz_fixedval=$(stat -c '%s' src/expset_fixedval.f_binbio_place_cell_eval_config.fixedval.o)
+	) >src/expset_fixedval.f_binbio_place_cell_eval_sel.fixedval.o
+	local sz_fixedval=$(stat -c '%s' src/expset_fixedval.f_binbio_place_cell_eval_sel.fixedval.o)
 	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_fixedval)
-	cat src/expset_fixedval.f_binbio_place_cell_eval_config.fixedval.o
+	cat src/expset_fixedval.f_binbio_place_cell_eval_sel.fixedval.o
 
 	# regAがその他の値の場合(現状、このパスには来ないはず)
 	# もしこのパスに来るようであれば無限ループで止める
@@ -1205,8 +1205,8 @@ f_binbio_place_cell_eval_config() {
 	lr35902_return
 }
 
-# 評価関数設定をクリア
-f_binbio_clear_cell_eval_config() {
+# 評価関数選択をクリア
+f_binbio_clear_cell_eval_sel() {
 	# push
 	lr35902_push_reg regAF
 	lr35902_push_reg regDE

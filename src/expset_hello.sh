@@ -301,14 +301,14 @@ f_binbio_place_cell_eval_param_fixedval() {
 	:
 }
 
-# 評価関数設定を画面へ配置
-f_binbio_place_cell_eval_config() {
+# 評価関数選択を画面へ配置
+f_binbio_place_cell_eval_sel() {
 	# HELLO系の実験セットでは呼ばれないため、何もしない
 	:
 }
 
-# 評価関数設定をクリア
-f_binbio_clear_cell_eval_config() {
+# 評価関数選択をクリア
+f_binbio_clear_cell_eval_sel() {
 	# HELLO系の実験セットでは呼ばれないため、何もしない
 	:
 }

@@ -7094,27 +7094,27 @@ a_binbio_place_cell_eval_param_fixedval=$(four_digits $fadr)
 echo -e "a_binbio_place_cell_eval_param_fixedval=$a_binbio_place_cell_eval_param_fixedval" >>$MAP_FILE_NAME
 ## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
 
-# 評価関数設定を画面へ配置
+# 評価関数選択を画面へ配置
 f_binbio_place_cell_eval_param_fixedval >src/f_binbio_place_cell_eval_param_fixedval.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_place_cell_eval_param_fixedval.o))
 fadr=$(calc16 "${a_binbio_place_cell_eval_param_fixedval}+${fsz}")
-a_binbio_place_cell_eval_config=$(four_digits $fadr)
-echo -e "a_binbio_place_cell_eval_config=$a_binbio_place_cell_eval_config" >>$MAP_FILE_NAME
+a_binbio_place_cell_eval_sel=$(four_digits $fadr)
+echo -e "a_binbio_place_cell_eval_sel=$a_binbio_place_cell_eval_sel" >>$MAP_FILE_NAME
 ## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
 
-# 評価関数設定をクリア
-f_binbio_place_cell_eval_config >src/f_binbio_place_cell_eval_config.o
-fsz=$(to16 $(stat -c '%s' src/f_binbio_place_cell_eval_config.o))
-fadr=$(calc16 "${a_binbio_place_cell_eval_config}+${fsz}")
-a_binbio_clear_cell_eval_config=$(four_digits $fadr)
-echo -e "a_binbio_clear_cell_eval_config=$a_binbio_clear_cell_eval_config" >>$MAP_FILE_NAME
+# 評価関数選択をクリア
+f_binbio_place_cell_eval_sel >src/f_binbio_place_cell_eval_sel.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_place_cell_eval_sel.o))
+fadr=$(calc16 "${a_binbio_place_cell_eval_sel}+${fsz}")
+a_binbio_clear_cell_eval_sel=$(four_digits $fadr)
+echo -e "a_binbio_clear_cell_eval_sel=$a_binbio_clear_cell_eval_sel" >>$MAP_FILE_NAME
 ## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
 
 # バイナリ生物環境の初期化
 # in : regA - 実験セット番号
-f_binbio_clear_cell_eval_config >src/f_binbio_clear_cell_eval_config.o
-fsz=$(to16 $(stat -c '%s' src/f_binbio_clear_cell_eval_config.o))
-fadr=$(calc16 "${a_binbio_clear_cell_eval_config}+${fsz}")
+f_binbio_clear_cell_eval_sel >src/f_binbio_clear_cell_eval_sel.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_clear_cell_eval_sel.o))
+fadr=$(calc16 "${a_binbio_clear_cell_eval_sel}+${fsz}")
 a_binbio_init=$(four_digits $fadr)
 echo -e "a_binbio_init=$a_binbio_init" >>$MAP_FILE_NAME
 ## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
@@ -7588,10 +7588,10 @@ f_binbio_event_btn_up_release() {
 		# regAへ現在のステータス表示領域の状態を取得
 		lr35902_copy_to_regA_from_addr $var_binbio_status_disp_status
 
-		# regA == 評価関数設定表示状態 ?
-		lr35902_compare_regA_and $STATUS_DISP_SHOW_CELL_EVAL_CONFIG
+		# regA == 評価関数選択表示状態 ?
+		lr35902_compare_regA_and $STATUS_DISP_SHOW_CELL_EVAL_SEL
 		(
-			# 現在のステータス表示領域の状態 == 評価関数設定表示状態 の場合
+			# 現在のステータス表示領域の状態 == 評価関数選択表示状態 の場合
 
 			# regAへ現在の評価関数番号を取得
 			lr35902_copy_to_regA_from_addr $var_binbio_expset_num
@@ -7614,10 +7614,10 @@ f_binbio_event_btn_up_release() {
 			local sz_fixedval=$(stat -c '%s' src/f_binbio_event_btn_up_release.fixedval.o)
 			lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_fixedval)
 			cat src/f_binbio_event_btn_up_release.fixedval.o
-		) >src/f_binbio_event_btn_up_release.cell_eval_config.o
-		local sz_cell_eval_config=$(stat -c '%s' src/f_binbio_event_btn_up_release.cell_eval_config.o)
-		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_cell_eval_config)
-		cat src/f_binbio_event_btn_up_release.cell_eval_config.o
+		) >src/f_binbio_event_btn_up_release.cell_eval_sel.o
+		local sz_cell_eval_sel=$(stat -c '%s' src/f_binbio_event_btn_up_release.cell_eval_sel.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_cell_eval_sel)
+		cat src/f_binbio_event_btn_up_release.cell_eval_sel.o
 
 		# pop
 		lr35902_pop_reg regDE
@@ -7648,10 +7648,10 @@ f_binbio_event_btn_down_release() {
 		# regAへ現在のステータス表示領域の状態を取得
 		lr35902_copy_to_regA_from_addr $var_binbio_status_disp_status
 
-		# regA == 評価関数設定表示状態 ?
-		lr35902_compare_regA_and $STATUS_DISP_SHOW_CELL_EVAL_CONFIG
+		# regA == 評価関数選択表示状態 ?
+		lr35902_compare_regA_and $STATUS_DISP_SHOW_CELL_EVAL_SEL
 		(
-			# 現在のステータス表示領域の状態 == 評価関数設定表示状態 の場合
+			# 現在のステータス表示領域の状態 == 評価関数選択表示状態 の場合
 
 			# regAへ現在の評価関数番号を取得
 			lr35902_copy_to_regA_from_addr $var_binbio_expset_num
@@ -7674,10 +7674,10 @@ f_binbio_event_btn_down_release() {
 			local sz_daisyworld=$(stat -c '%s' src/f_binbio_event_btn_down_release.daisyworld.o)
 			lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_daisyworld)
 			cat src/f_binbio_event_btn_down_release.daisyworld.o
-		) >src/f_binbio_event_btn_down_release.cell_eval_config.o
-		local sz_cell_eval_config=$(stat -c '%s' src/f_binbio_event_btn_down_release.cell_eval_config.o)
-		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_cell_eval_config)
-		cat src/f_binbio_event_btn_down_release.cell_eval_config.o
+		) >src/f_binbio_event_btn_down_release.cell_eval_sel.o
+		local sz_cell_eval_sel=$(stat -c '%s' src/f_binbio_event_btn_down_release.cell_eval_sel.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_cell_eval_sel)
+		cat src/f_binbio_event_btn_down_release.cell_eval_sel.o
 
 		# pop
 		lr35902_pop_reg regDE
@@ -7985,10 +7985,10 @@ f_binbio_event_btn_start_release() {
 		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_showing_cell_info)
 		cat src/f_binbio_event_btn_start_release.showing_cell_info.o
 
-		# 現在のステータス表示領域の状態 == 評価関数設定表示状態 の場合
+		# 現在のステータス表示領域の状態 == 評価関数選択表示状態 の場合
 
-		# 評価関数設定をクリア
-		lr35902_call $a_binbio_clear_cell_eval_config
+		# 評価関数選択をクリア
+		lr35902_call $a_binbio_clear_cell_eval_sel
 
 		# マウスカーソルを表示する
 		lr35902_push_reg regBC
@@ -8062,14 +8062,14 @@ f_binbio_event_btn_select_release() {
 			# 細胞ステータス情報をクリア
 			lr35902_call $a_binbio_clear_cell_info
 
-			# 評価関数設定を画面へ配置
-			lr35902_call $a_binbio_place_cell_eval_config
+			# 評価関数選択を画面へ配置
+			lr35902_call $a_binbio_place_cell_eval_sel
 
 			# マウスカーソルを非表示にする
 			cat src/hide_mouse_cursor.o
 
-			# 現在のステータス表示領域の状態 = 評価関数設定表示状態
-			lr35902_set_reg regA $STATUS_DISP_SHOW_CELL_EVAL_CONFIG
+			# 現在のステータス表示領域の状態 = 評価関数選択表示状態
+			lr35902_set_reg regA $STATUS_DISP_SHOW_CELL_EVAL_SEL
 			lr35902_copy_to_addr_from_regA $var_binbio_status_disp_status
 
 			# pop & return
@@ -8082,14 +8082,14 @@ f_binbio_event_btn_select_release() {
 		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_showing_cell_info)
 		cat src/f_binbio_event_btn_select_release.showing_cell_info.o
 
-		# regA == 評価関数設定表示状態 の場合
+		# regA == 評価関数選択表示状態 の場合
 
 		# push
 		lr35902_push_reg regBC
 		lr35902_push_reg regDE
 
-		# 評価関数設定をクリア
-		lr35902_call $a_binbio_clear_cell_eval_config
+		# 評価関数選択をクリア
+		lr35902_call $a_binbio_clear_cell_eval_sel
 
 		# ソフト説明を画面へ配置
 		lr35902_call $a_binbio_place_soft_desc
@@ -8216,8 +8216,8 @@ global_functions() {
 	cat src/f_binbio_place_cell_info_val.o
 	cat src/f_binbio_clear_cell_info.o
 	cat src/f_binbio_place_cell_eval_param_fixedval.o
-	cat src/f_binbio_place_cell_eval_config.o
-	cat src/f_binbio_clear_cell_eval_config.o
+	cat src/f_binbio_place_cell_eval_sel.o
+	cat src/f_binbio_clear_cell_eval_sel.o
 	cat src/f_binbio_init.o
 	cat src/f_binbio_reset.o
 	cat src/f_binbio_do_cycle.o
