@@ -1,0 +1,134 @@
+#!/bin/bash
+
+# 関数のテンプレートを作成する
+# - daisy-os-gbのリポジトリをクローンしたディレクトリ直下で実行すること
+# - DaisyOSのソースコードへ指定された関数を中身が空の状態で作成する
+# - 作成する関数については、関数名(FUNC_NAME)と
+#   定義箇所の1行目に書く説明文(FUNC_DESC)を指定する
+# - 関数はBEFORE_FUNC_NAMEで指定された関数の直後に作成される
+# - FUNC_NAMEとBEFORE_FUNC_NAMEで指定する関数名には接頭辞の"f_"を除いて指定する
+# - -dのオプションが指定された場合、
+#   関数の実体はsrc/expset_daisyworld.shに作成する
+
+# set -uex
+set -ue
+
+usage() {
+	echo 'Usage:' 1>&2
+	echo -e "\t$0 [-d] BEFORE_FUNC_NAME FUNC_NAME FUNC_DESC" 1>&2
+	echo -e "\t$0 -h" 1>&2
+}
+
+FOR_DAISYWORLD='false'
+while getopts hd option; do
+	case $option in
+	h)
+		usage
+		exit 0
+		;;
+	d)
+		FOR_DAISYWORLD='true'
+		;;
+	*)
+		usage
+		exit 1
+	esac
+done
+shift $((OPTIND - 1))
+if [ $# -ne 3 ]; then
+	usage
+	exit 1
+fi
+
+BEFORE_FUNC_NAME=$1
+FUNC_NAME=$2
+FUNC_DESC=$3
+
+# 直前の関数のアドレスを設定している行番号を取得
+BEFORE_FUNC_ADDR_NR=$(sed -n "/^a_${BEFORE_FUNC_NAME}=/=" src/main.sh)
+
+# 直後の関数定義の1行目の行番号を取得
+# (この行に関数定義を追加していく)
+INSERT_NR=$(awk "NR > ${BEFORE_FUNC_ADDR_NR} && /^# / {print NR; exit}" src/main.sh)
+
+# 直後の関数の冒頭コメントと関数アドレス算出処理の見込み行数
+AFTER_FUNC_COMMENTS_ADRCALC_NRS=15
+
+# 直後の関数のアドレス算出処理を更新
+sed -i \
+    -e "${INSERT_NR},$((INSERT_NR + AFTER_FUNC_COMMENTS_ADRCALC_NRS))s#^f_${BEFORE_FUNC_NAME} >src/f_${BEFORE_FUNC_NAME}.o\$#f_${FUNC_NAME} >src/f_${FUNC_NAME}.o#" \
+    -e "${INSERT_NR},$((INSERT_NR + AFTER_FUNC_COMMENTS_ADRCALC_NRS))s#^fsz=\$(to16 \$(stat -c '%s' src/f_${BEFORE_FUNC_NAME}.o))\$#fsz=\$(to16 \$(stat -c '%s' src/f_${FUNC_NAME}.o))#" \
+    -e "${INSERT_NR},$((INSERT_NR + AFTER_FUNC_COMMENTS_ADRCALC_NRS))s#^fadr=\$(calc16 \"\${a_${BEFORE_FUNC_NAME}}+\${fsz}\")\$#fadr=\$(calc16 \"\${a_${FUNC_NAME}}+\${fsz}\")#" \
+    src/main.sh
+
+# 関数定義を追加
+## 冒頭コメントと関数アドレス算出処理を追加
+sed -i \
+    -e "${INSERT_NR}i# ${FUNC_DESC}" \
+    -e "${INSERT_NR}if_${BEFORE_FUNC_NAME} >src/f_${BEFORE_FUNC_NAME}.o" \
+    -e "${INSERT_NR}ifsz=\$(to16 \$(stat -c '%s' src/f_${BEFORE_FUNC_NAME}.o))" \
+    -e "${INSERT_NR}ifadr=\$(calc16 \"\${a_${BEFORE_FUNC_NAME}}+\${fsz}\")" \
+    -e "${INSERT_NR}ia_${FUNC_NAME}=\$(four_digits \$fadr)" \
+    -e "${INSERT_NR}iecho -e \"a_${FUNC_NAME}=\$a_${FUNC_NAME}\" >>\$MAP_FILE_NAME" \
+    src/main.sh
+## 追加した行数分だけINSERT_NR変数を進める
+INSERT_NR=$((INSERT_NR + 6))
+## 定義の実体を中身空で追加
+TAB="$(printf '\\\011')"
+insert_func_def() {
+	local target_file=$1
+
+	# 関数定義を中身空で追加
+	sed -i \
+	    -e "${INSERT_NR}if_${FUNC_NAME}() {" \
+	    -e "${INSERT_NR}i${TAB}# push" \
+	    -e "${INSERT_NR}i${TAB}## TODO" \
+	    -e "${INSERT_NR}i\\\\" \
+	    -e "${INSERT_NR}i${TAB}# TODO" \
+	    -e "${INSERT_NR}i\\\\" \
+	    -e "${INSERT_NR}i${TAB}# pop & return" \
+	    -e "${INSERT_NR}i${TAB}## TODO" \
+	    -e "${INSERT_NR}i${TAB}lr35902_return" \
+	    -e "${INSERT_NR}i}" \
+	    -e "${INSERT_NR}i\\\\" \
+	    $target_file
+}
+if [ "$FOR_DAISYWORLD" = 'false' ]; then
+	# デイジーワールド用関数ではない場合
+	# (src/main.shへ定義の実体を追加)
+
+	# 関数定義を中身空で追加
+	insert_func_def src/main.sh
+else
+	# デイジーワールド用関数の場合
+	# (src/main.shへはコメントを書き、
+	# 定義の実体はsrc/expset_daisyworld.shへ追加)
+
+	# 定義は実験セットのスクリプト内にある旨のコメントを追加
+	sed -i \
+	    -e "${INSERT_NR}i## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある" \
+	    -e "${INSERT_NR}i\\\\" \
+	    src/main.sh
+
+	# 直前の関数のsrc/expset_daisyworld.sh内の行番号を取得
+	BEFORE_FUNC_NR=$(sed -n "/^f_${BEFORE_FUNC_NAME}() {\$/=" src/expset_daisyworld.sh)
+
+	# 直後の関数定義の1行目の行番号を取得
+	# (この行に関数定義を追加していく)
+	INSERT_NR=$(awk "NR > ${BEFORE_FUNC_NR} && /^# / {print NR; exit}" src/expset_daisyworld.sh)
+
+	# 冒頭コメントを追加
+	sed -i -e "${INSERT_NR}i# ${FUNC_DESC}" src/expset_daisyworld.sh
+
+	# コメントの分だけINSERT_NR変数を進める
+	INSERT_NR=$((INSERT_NR + 1))
+
+	# 関数定義を中身空で追加
+	insert_func_def src/expset_daisyworld.sh
+fi
+
+# global_functions()へ追加
+## 直前の関数を追加している行番号を取得
+BEFORE_FUNC_NR=$(sed -n "/^${TAB}cat src\/f_${BEFORE_FUNC_NAME}.o\$/=" src/main.sh)
+## 直前の関数の直後へ追加
+sed -i -e "${BEFORE_FUNC_NR}a${TAB}cat src\/f_${FUNC_NAME}.o" src/main.sh
