@@ -1,0 +1,147 @@
+#!/bin/bash
+
+# ステータス表示モードのテンプレートを作成する
+# このシェルスクリプトの各コマンドライン引数の説明：
+# - BEFORE_STATUS_DISP_NAME (直前の評価関数名)
+#   - ここで指定したステータス表示モードの次に
+#     STATUS_DISP_NAMEのモードを表示するようにする
+#   - src/expset_daisyworld.shの「## ステータス表示領域の状態」の定数の
+#     接頭辞「STATUS_DISP_SHOW_」を除いた文字列を小文字で指定する
+#   - 例えば定数「STATUS_DISP_SHOW_CELL_EVAL_SEL」の場合、
+#     「cell_eval_sel」を指定する
+# - STATUS_DISP_NAME (評価関数名)
+#   - テンプレとして追加する評価関数名を指定する
+#   - 形式はBEFORE_STATUS_DISP_NAMEと同様
+# - STATUS_DISP_DESC (評価関数説明)
+#   - 追加する定数や関数にコメントとして書く説明に使用される文字列
+#   - 例えば「評価関数設定」と指定しておけば、
+#     「## ステータス表示領域の状態」へ追加する定数のコメントが
+#     「# 評価関数設定表示状態」となる
+# 制限事項：
+# - src/expset_daisyworld.shへ定数を追加するが、
+#   追加した行より下の定数の更新を行っていない
+#   - ステータス表示モードの並びの末尾に追加するなら問題ないが、
+#     途中に追加する場合、それ以降の定数のインクリメントは手動で行うこと
+# - src/main.shのセレクトボタンリリースイベントハンドラ
+#   (f_binbio_event_btn_select_release())へ追加する表示モードのための処理の
+#   テンプレを追加するが、その直前のモードの処理の更新は行っていない
+#   - 直前のモード側で、今回追加するモードを画面へ配置したり、
+#     状態変数を追加するモードへ更新するようにしたりする作業は手動で行うこと
+
+# set -uex
+set -ue
+
+usage() {
+	echo 'Usage:' 1>&2
+	echo -e \
+	     "\t$0 BEFORE_STATUS_DISP_NAME STATUS_DISP_NAME STATUS_DISP_DESC" \
+	     1>&2
+	echo -e "\t$0 -h" 1>&2
+}
+
+while getopts h option; do
+	case $option in
+	h)
+		usage
+		exit 0
+		;;
+	*)
+		usage
+		exit 1
+	esac
+done
+shift $((OPTIND - 1))
+if [ $# -ne 3 ]; then
+	usage
+	exit 1
+fi
+
+BEFORE_STATUS_DISP_NAME=$1
+STATUS_DISP_NAME=$2
+STATUS_DISP_DESC=$3
+
+TAB="$(printf '\\\011')"
+
+# 定数を追加
+## 直前の表示モードの定数の行番号を取得
+BEFORE_STATUS_DISP_DEF_NAME="STATUS_DISP_SHOW_${BEFORE_STATUS_DISP_NAME^^}"
+BEFORE_STATUS_DISP_DEF_NR=$(sed -n \
+				"/^${BEFORE_STATUS_DISP_DEF_NAME}=[[:digit:]][[:digit:]]/=" \
+				src/expset_daisyworld.sh)
+## 直前の表示モードの定数の値を取得
+BEFORE_STATUS_DISP_NUM=$(sed -n "${BEFORE_STATUS_DISP_DEF_NR}p" \
+			     src/expset_daisyworld.sh | \
+				 sed -r \
+				     "s/^${BEFORE_STATUS_DISP_DEF_NAME}=([[:digit:]][[:digit:]]).*\$/\1/")
+## 今回の表示モードの定数の値を算出
+STATUS_DISP_NUM=$(printf "%02d" $((BEFORE_STATUS_DISP_NUM + 1)))
+## 今回の表示モードの定数を追加
+STATUS_DISP_DEF_NAME="STATUS_DISP_SHOW_${STATUS_DISP_NAME^^}"
+sed -i \
+    "${BEFORE_STATUS_DISP_DEF_NR}a${STATUS_DISP_DEF_NAME}=${STATUS_DISP_NUM}${TAB}# ${STATUS_DISP_DESC}表示状態" \
+    src/expset_daisyworld.sh
+## TODO 今回の表示モードの定数の行より下に定数が続いていた場合に、それらの値をインクリメントする
+
+# 画面へ配置する関数のテンプレートを追加
+tools/make_func_template \
+	-d binbio_clear_${BEFORE_STATUS_DISP_NAME} \
+	binbio_place_${STATUS_DISP_NAME} "${STATUS_DISP_DESC}を画面へ配置"
+
+# クリアする関数のテンプレートを追加
+tools/make_func_template \
+	-d binbio_place_${STATUS_DISP_NAME} \
+	binbio_clear_${STATUS_DISP_NAME} "${STATUS_DISP_DESC}をクリア"
+
+# セレクトボタンリリースイベントハンドラへ処理を追加
+## セレクトボタンリリースイベントハンドラの開始/終了行番号を取得
+### 開始行番号を取得
+SELECT_RELEASE_HANDLER_BEGIN_NR=$(sed -n \
+				      '/^f_binbio_event_btn_select_release() {$/=' \
+				      src/main.sh)
+### 終了行番号を取得
+SELECT_RELEASE_HANDLER_END_NR=$(awk "NR > $SELECT_RELEASE_HANDLER_BEGIN_NR && \$0 == \"}\" {print NR; exit}" \
+				    src/main.sh)
+## 直前の表示モードの処理の開始/終了行番号を取得
+### 開始行番号を取得
+BEFORE_STATUS_DISP_BEGIN_NR=$(awk "NR > $SELECT_RELEASE_HANDLER_BEGIN_NR && NR < $SELECT_RELEASE_HANDLER_END_NR && /lr35902_compare_regA_and \\\$${BEFORE_STATUS_DISP_DEF_NAME}/ {print NR; exit}" src/main.sh)
+### 終了行番号を取得
+BEFORE_STATUS_DISP_PROC_NAME="showing_${BEFORE_STATUS_DISP_NAME}"
+BEFORE_STATUS_DISP_END_NR=$(awk "NR > $BEFORE_STATUS_DISP_BEGIN_NR && /cat src\/f_binbio_event_btn_select_release.${BEFORE_STATUS_DISP_PROC_NAME}.o/ {print NR; exit}" src/main.sh)
+## 直前の表示モードの場合に、画面をクリアしてこのモードを表示するようにする
+### TODO 現状では未実装。手動で行うこと
+## この表示モードの場合の処理のテンプレートを追加
+STATUS_DISP_PROC_NAME="showing_${STATUS_DISP_NAME}"
+APPEND_NR=$BEFORE_STATUS_DISP_END_NR
+sed -i \
+    -e "${APPEND_NR}a\\\\" \
+    -e "${APPEND_NR}a${TAB}${TAB}# regA == ${STATUS_DISP_DESC}表示状態 ?" \
+    -e "${APPEND_NR}a${TAB}${TAB}lr35902_compare_regA_and \$$STATUS_DISP_DEF_NAME" \
+    -e "${APPEND_NR}a${TAB}${TAB}(" \
+    -e "${APPEND_NR}a${TAB}${TAB}${TAB}# regA == ${STATUS_DISP_DESC}表示状態 の場合" \
+    -e "${APPEND_NR}a\\\\" \
+    -e "${APPEND_NR}a${TAB}${TAB}${TAB}# push" \
+    -e "${APPEND_NR}a${TAB}${TAB}${TAB}lr35902_push_reg regBC" \
+    -e "${APPEND_NR}a${TAB}${TAB}${TAB}lr35902_push_reg regDE" \
+    -e "${APPEND_NR}a${TAB}${TAB}${TAB}## TODO 必要に応じて修正" \
+    -e "${APPEND_NR}a\\\\" \
+    -e "${APPEND_NR}a${TAB}${TAB}${TAB}# ${STATUS_DISP_DESC}をクリア" \
+    -e "${APPEND_NR}a${TAB}${TAB}${TAB}lr35902_call \$a_binbio_clear_${STATUS_DISP_NAME}" \
+    -e "${APPEND_NR}a\\\\" \
+    -e "${APPEND_NR}a${TAB}${TAB}${TAB}# TODO <次の表示モード>を画面へ配置" \
+    -e "${APPEND_NR}a${TAB}${TAB}${TAB}lr35902_call \$a_binbio_place_<次の表示モード>" \
+    -e "${APPEND_NR}a\\\\" \
+    -e "${APPEND_NR}a${TAB}${TAB}${TAB}# TODO 現在のステータス表示領域の状態 = <次の表示モード>表示状態" \
+    -e "${APPEND_NR}a${TAB}${TAB}${TAB}lr35902_set_reg regA \$STATUS_DISP_SHOW_<次の表示モード>" \
+    -e "${APPEND_NR}a${TAB}${TAB}${TAB}lr35902_copy_to_addr_from_regA \$var_binbio_status_disp_status" \
+    -e "${APPEND_NR}a\\\\" \
+    -e "${APPEND_NR}a${TAB}${TAB}${TAB}# pop & return" \
+    -e "${APPEND_NR}a${TAB}${TAB}${TAB}lr35902_pop_reg regDE" \
+    -e "${APPEND_NR}a${TAB}${TAB}${TAB}lr35902_pop_reg regBC" \
+    -e "${APPEND_NR}a${TAB}${TAB}${TAB}lr35902_pop_reg regAF" \
+    -e "${APPEND_NR}a${TAB}${TAB}${TAB}## TODO 必要に応じて修正" \
+    -e "${APPEND_NR}a${TAB}${TAB}${TAB}lr35902_return" \
+    -e "${APPEND_NR}a${TAB}${TAB}) >src/f_binbio_event_btn_select_release.${STATUS_DISP_PROC_NAME}.o" \
+    -e "${APPEND_NR}a${TAB}${TAB}local sz_${STATUS_DISP_PROC_NAME}=\$(stat -c '%s' src/f_binbio_event_btn_select_release.${STATUS_DISP_PROC_NAME}.o)" \
+    -e "${APPEND_NR}a${TAB}${TAB}lr35902_rel_jump_with_cond NZ \$(two_digits_d \$sz_${STATUS_DISP_PROC_NAME})" \
+    -e "${APPEND_NR}a${TAB}${TAB}cat src/f_binbio_event_btn_select_release.${STATUS_DISP_PROC_NAME}.o" \
+    src/main.sh
