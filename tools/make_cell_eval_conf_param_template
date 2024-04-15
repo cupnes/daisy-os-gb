@@ -1,0 +1,229 @@
+#!/bin/bash
+
+# 評価関数設定のパラメータの処理のテンプレートを作成する
+# このシェルスクリプトの各コマンドライン引数の説明：
+# - CELL_EVAL_NAME (評価関数名)
+#   - src/expset_daisyworld.shの「## 評価関数番号」の定数の
+#     接頭辞「CELL_EVAL_NUM_」を除いた文字列を小文字で指定する
+#     - 例えば定数「CELL_EVAL_NUM_FIXEDVAL」の場合、「fixedval」を指定する
+# - TARGET_PARAM (対象パラメータ名)
+#   - 変更できるようにしたい変数名を指定する
+#   - 変数「var_binbio_cell_eval_<評価関数名>_<パラメータ名>」の
+#     「<パラメータ名>」の部分を指定する
+#     - 例えば変数「var_binbio_cell_eval_fixedval_val」の場合、「val」を指定する
+# - TARGET_PARAM_DISP (対象パラメータ表示名)
+#   - 画面上の「ひょうかかんすうせってい」欄内の表示名を指定する
+#   - 例)「こていち」
+# 評価関数設定画面の操作：
+# - ↑↓キー：変更対象パラメータの選択
+# - ←→キー：対象のパラメータの値の変更
+# 現状の制限事項：
+# - 表示形式は「符号なし16進数」のみ
+#   - ゆくゆくは「10進数」・「16進数」や「符号あり」・「符号なし」を選べるようにしたい
+# - ←→キーによる値の変更形式は「デクリメント/インクリメント」のみ
+#   - ゆくゆくは「リストの中から選択」なども行えるようにしたい
+
+# set -uex
+set -ue
+
+usage() {
+	echo 'Usage:' 1>&2
+	echo -e "\t$0 CELL_EVAL_NAME TARGET_PARAM TARGET_PARAM_DISP" 1>&2
+	echo -e "\t$0 -h" 1>&2
+}
+
+while getopts hd option; do
+	case $option in
+	h)
+		usage
+		exit 0
+		;;
+	*)
+		usage
+		exit 1
+	esac
+done
+shift $((OPTIND - 1))
+if [ $# -ne 3 ]; then
+	usage
+	exit 1
+fi
+
+CELL_EVAL_NAME=$1
+TARGET_PARAM=$2
+TARGET_PARAM_DISP=$3
+
+# 何度も使用する定数
+## 評価関数のシンボルを大文字化
+CELL_EVAL_NAME_UPPER=${CELL_EVAL_NAME^^}
+## 評価関数の定数名
+CELL_EVAL_DEF_NAME="CELL_EVAL_NUM_${CELL_EVAL_NAME_UPPER}"
+## 評価関数設定固有のスクリプト名
+STATUS_DISP_SCRIPT_PATH="src/status_disp_cell_eval_conf.sh"
+## 配置関数名(接頭辞の"f_"は除く)
+PLACE_FUNC_NAME="binbio_place_${CELL_EVAL_NAME}_param"
+## パラメータ表示文字列定数名(接頭辞の"a_const_"は除く)
+PARAM_STR_DEF_NAME="${CELL_EVAL_NAME}_param_${TARGET_PARAM}"
+## タブ文字
+TAB="$(printf '\\\011')"
+
+
+
+# [既存のスクリプトのモード共通の定義・処理を編集]
+
+# src/main.sh: 「# 定数データを出力」
+## 対象パラメータ表示名の文字列を定数データへ追加
+### 表示名末尾にコロンを追加する
+TARGET_PARAM_CONST_STR="${TARGET_PARAM_DISP}:"
+### 既に追加済みであれば飛ばす
+CONST_NAME_AND_STR="${PARAM_STR_DEF_NAME}${TAB}${TARGET_PARAM_CONST_STR}"
+if ! grep -xq "$CONST_NAME_AND_STR" src/main.sh; then
+	# 定数名と変換元の文字列をTSVへリストアップしている処理の開始行番号を取得
+	CONST_STR_BEGIN_NR=$(sed -n "/^${TAB}cat <<EOF >src\/const_data.str.tsv$/=" \
+				 src/main.sh)
+
+	# 新たな定数名と変換元の文字列を挿入する行番号を取得
+	INSERT_NR=$(awk "NR > $CONST_STR_BEGIN_NR && \$0 == \"EOF\" {print NR; exit}" \
+			src/main.sh)
+
+	# 表示用モード名の文字列を追加
+	sed -i "${INSERT_NR}i$CONST_NAME_AND_STR" src/main.sh
+fi
+
+
+
+# [評価関数設定固有の定義・処理を、src/status_disp_cell_eval_conf.shへ追加]
+
+# 定数を追加
+## 定数定義領域の開始・終了行番号を取得
+CONST_DEF_AREA_BEGIN_NR=$(sed -n '/^# 定数$/=' $STATUS_DISP_SCRIPT_PATH)
+CONST_DEF_AREA_END_NR=$(awk "
+  NR > $CONST_DEF_AREA_BEGIN_NR && \$0 == \"\" {
+    print NR
+    exit
+  }
+" $STATUS_DISP_SCRIPT_PATH)
+## パラメータ文字列配置座標
+COMMENT_LINE='## パラメータ文字列配置座標'
+if ! grep -xq "$COMMENT_LINE" $STATUS_DISP_SCRIPT_PATH; then
+	INSERT_NR=$CONST_DEF_AREA_END_NR
+	sed -i \
+	    -e "${INSERT_NR}i$COMMENT_LINE" \
+	    -e "${INSERT_NR}iCELL_EVAL_CONF_PARAM_LABEL_BASE_TCOORD_Y=0C" \
+	    -e "${INSERT_NR}iCELL_EVAL_CONF_PARAM_LABEL_TCOORD_X=02" \
+	    $STATUS_DISP_SCRIPT_PATH
+fi
+
+# 以降で何度も使用する定数
+## オブジェクトを出力する際の接頭辞
+OBJOUT_PREF="src/status_disp_cell_eval_conf"
+
+# 関数を追加
+## 評価関数設定の枠内へ配置する関数
+### 評価関数設定を画面へ配置する関数の直前の関数名を取得
+BEFORE_PLACE_CELL_EVAL_CONF_NAME=$(awk '
+  /^a_binbio_place_cell_eval_conf=.\(four_digits .fadr\)$/ {
+    print prev_line
+    exit
+  }
+  /^a_[a-z_]+=.\(four_digits .fadr\)$/ {
+    prev_line = $0
+  }
+' src/main.sh | sed -r 's/^a_([a-z_]+)=.\(four_digits .fadr\)$/\1/')
+### 評価関数の説明を評価関数番号定義箇所から取得
+CELL_EVAL_DESC=$(grep -E "^${CELL_EVAL_DEF_NAME}=[0-9][0-9]${TAB}# .+\$" \
+		      src/expset_daisyworld.sh | \
+			 sed -r "s/^${CELL_EVAL_DEF_NAME}=[0-9][0-9]${TAB}# (.+)\$/\1/")
+### 標準の関数テンプレを配置
+tools/make_func_template \
+	-f $STATUS_DISP_SCRIPT_PATH \
+	$BEFORE_PLACE_CELL_EVAL_CONF_NAME \
+	$PLACE_FUNC_NAME "${CELL_EVAL_DESC}評価関数のパラメータを画面へ配置"
+### 「# TODO」の直前にパラメータ配置処理を追加
+#### パラメータ配置関数の開始・終了行番号を取得
+PLACE_FUNC_BEGIN_NR=$(sed -n "/^f_${PLACE_FUNC_NAME}() {\$/=" \
+			  $STATUS_DISP_SCRIPT_PATH)
+PLACE_FUNC_END_NR=$(awk "NR > $PLACE_FUNC_BEGIN_NR && \$0 == \"}\" {print NR; exit}" \
+			$STATUS_DISP_SCRIPT_PATH)
+#### 「# TODO」の行番号を取得
+TODO_COMMENT_NR=$(awk "NR > $PLACE_FUNC_BEGIN_NR && /^${TAB}# TODO\$/ {print NR; exit}" \
+		      $STATUS_DISP_SCRIPT_PATH)
+#### ラベルと値を配置
+INSERT_NR=$TODO_COMMENT_NR
+sed -i \
+    -e "${INSERT_NR}i${TAB}# ラベルを配置" \
+    -e "${INSERT_NR}i${TAB}con_print_xy_macro \$CELL_EVAL_CONF_PARAM_LABEL_TCOORD_X \$CELL_EVAL_CONF_PARAM_LABEL_BASE_TCOORD_Y \$a_const_$PARAM_STR_DEF_NAME" \
+    -e "${INSERT_NR}i\\\\" \
+    -e "${INSERT_NR}i${TAB}# 16進数の接頭時を配置" \
+    -e "${INSERT_NR}i${TAB}con_print_xy_macro \$(calc16_2 \"\${CELL_EVAL_CONF_PARAM_LABEL_TCOORD_X}+\${sz_const_$PARAM_STR_DEF_NAME}-1\") \$CELL_EVAL_CONF_PARAM_LABEL_BASE_TCOORD_Y \$a_const_pref_hex" \
+    -e "${INSERT_NR}i\\\\" \
+    -e "${INSERT_NR}i${TAB}# 値を配置" \
+    -e "${INSERT_NR}i${TAB}## regAへ現在の固定値を取得" \
+    -e "${INSERT_NR}i${TAB}lr35902_copy_to_regA_from_addr \$var_binbio_cell_eval_${CELL_EVAL_NAME}_${TARGET_PARAM}" \
+    -e "${INSERT_NR}i${TAB}## regAの値を16進数で配置" \
+    -e "${INSERT_NR}i${TAB}lr35902_call \$a_print_regA" \
+    -e "${INSERT_NR}i\\\\" \
+    $STATUS_DISP_SCRIPT_PATH
+#### 「# TODO」の行番号を再度取得
+TODO_COMMENT_NR=$(awk "NR > $PLACE_FUNC_BEGIN_NR && /^${TAB}# TODO\$/ {print NR; exit}" \
+		      $STATUS_DISP_SCRIPT_PATH)
+##### 現在選択しているパラメータの左に「→」を配置
+INSERT_NR=$TODO_COMMENT_NR
+sed -i \
+    -e "${INSERT_NR}i${TAB}# 現在選択しているパラメータの左に「→」を配置" \
+    -e "${INSERT_NR}i${TAB}con_putxy_macro \$(calc16_2 \"\${CELL_EVAL_CONF_PARAM_LABEL_TCOORD_X}-1\") \$CELL_EVAL_CONF_PARAM_LABEL_BASE_TCOORD_Y '→'" \
+    -e "${INSERT_NR}i\\\\" \
+    $STATUS_DISP_SCRIPT_PATH
+### push・pop処理を追加
+#### pushの「## TODO」の行番号を取得
+PUSH_TODO_NR=$(awk "NR > $PLACE_FUNC_BEGIN_NR && /^${TAB}## TODO\$/ {print NR; exit}" \
+		   $STATUS_DISP_SCRIPT_PATH)
+#### push処理を追加
+INSERT_NR=$PUSH_TODO_NR
+sed -i \
+    -e "${INSERT_NR}i${TAB}lr35902_push_reg regAF" \
+    -e "${INSERT_NR}i${TAB}lr35902_push_reg regBC" \
+    -e "${INSERT_NR}i${TAB}lr35902_push_reg regDE" \
+    -e "${INSERT_NR}i${TAB}lr35902_push_reg regHL" \
+    $STATUS_DISP_SCRIPT_PATH
+#### pop & returnの「## TODO」の行番号を取得
+COMMENT_NR=$(awk "NR > $PLACE_FUNC_BEGIN_NR && /^${TAB}# pop & return\$/ {print NR; exit}" \
+		 $STATUS_DISP_SCRIPT_PATH)
+POP_TODO_NR=$(awk "NR > $COMMENT_NR && /^${TAB}## TODO\$/ {print NR; exit}" \
+		  $STATUS_DISP_SCRIPT_PATH)
+#### pop処理を追加
+INSERT_NR=$POP_TODO_NR
+sed -i \
+    -e "${INSERT_NR}i${TAB}lr35902_pop_reg regHL" \
+    -e "${INSERT_NR}i${TAB}lr35902_pop_reg regDE" \
+    -e "${INSERT_NR}i${TAB}lr35902_pop_reg regBC" \
+    -e "${INSERT_NR}i${TAB}lr35902_pop_reg regAF" \
+    $STATUS_DISP_SCRIPT_PATH
+
+# 既存の関数を編集
+## 評価関数設定を画面へ配置する関数へ今回の評価関数の場合の処理を追加
+### 関数の開始行番号を取得
+FUNC_BEGIN_NR=$(sed -n "/^f_binbio_place_cell_eval_conf() {\$/=" \
+		    $STATUS_DISP_SCRIPT_PATH)
+### 「# TODO」の行番号を取得
+TODO_NR=$(awk "NR > $FUNC_BEGIN_NR && /^${TAB}# TODO\$/ {print NR; exit}" \
+	      $STATUS_DISP_SCRIPT_PATH)
+### 「現在の評価関数番号が今回の評価関数の場合に
+### 今回の評価関数のパラメータ配置関数を呼び出す」処理を追加する
+INSERT_NR=$TODO_NR
+OBJ_FILE_NAME="${OBJOUT_PREF}.f_binbio_place_cell_eval_conf.${CELL_EVAL_NAME}.o"
+sed -i \
+    -e "${INSERT_NR}i${TAB}# 現在の評価関数 == ${CELL_EVAL_DESC}評価関数?" \
+    -e "${INSERT_NR}i${TAB}lr35902_copy_to_regA_from_addr \$var_binbio_expset_num" \
+    -e "${INSERT_NR}i${TAB}lr35902_compare_regA_and \$CELL_EVAL_NUM_$CELL_EVAL_NAME_UPPER" \
+    -e "${INSERT_NR}i${TAB}(" \
+    -e "${INSERT_NR}i${TAB}${TAB}# 現在の評価関数 == ${CELL_EVAL_DESC}評価関数 の場合" \
+    -e "${INSERT_NR}i\\\\" \
+    -e "${INSERT_NR}i${TAB}${TAB}# ${CELL_EVAL_DESC}評価関数のパラメータ配置関数を呼び出す" \
+    -e "${INSERT_NR}i${TAB}${TAB}lr35902_call \$a_$PLACE_FUNC_NAME" \
+    -e "${INSERT_NR}i${TAB}) >$OBJ_FILE_NAME" \
+    -e "${INSERT_NR}i${TAB}local sz_${CELL_EVAL_NAME}=\$(stat -c '%s' $OBJ_FILE_NAME)" \
+    -e "${INSERT_NR}i${TAB}lr35902_rel_jump_with_cond NZ \$(two_digits_d \$sz_${CELL_EVAL_NAME})" \
+    -e "${INSERT_NR}i${TAB}cat $OBJ_FILE_NAME" \
+    -e "${INSERT_NR}i\\\\" \
+    $STATUS_DISP_SCRIPT_PATH
