@@ -44,6 +44,15 @@ BEFORE_FUNC_NAME=$1
 FUNC_NAME=$2
 FUNC_DESC=$3
 
+TAB="$(printf '\\\011')"
+
+# 既に関数が追加済みだったら何もせず終了する
+DUMP_FUNC_FOR_GLOBAL_FUNCTIONS="${TAB}cat src\/f_${FUNC_NAME}.o"
+if grep -q "^$DUMP_FUNC_FOR_GLOBAL_FUNCTIONS" src/main.sh; then
+	echo "f_${FUNC_NAME}() is already exists." 1>&2
+	exit 0
+fi
+
 # 直前の関数のアドレスを設定している行番号を取得
 BEFORE_FUNC_ADDR_NR=$(sed -n "/^a_${BEFORE_FUNC_NAME}=/=" src/main.sh)
 
@@ -74,7 +83,6 @@ sed -i \
 ## 追加した行数分だけINSERT_NR変数を進める
 INSERT_NR=$((INSERT_NR + 6))
 ## 定義の実体を中身空で追加
-TAB="$(printf '\\\011')"
 insert_func_def() {
 	local target_file=$1
 
@@ -131,4 +139,4 @@ fi
 ## 直前の関数を追加している行番号を取得
 BEFORE_FUNC_NR=$(sed -n "/^${TAB}cat src\/f_${BEFORE_FUNC_NAME}.o\$/=" src/main.sh)
 ## 直前の関数の直後へ追加
-sed -i -e "${BEFORE_FUNC_NR}a${TAB}cat src\/f_${FUNC_NAME}.o" src/main.sh
+sed -i -e "${BEFORE_FUNC_NR}a$DUMP_FUNC_FOR_GLOBAL_FUNCTIONS" src/main.sh
