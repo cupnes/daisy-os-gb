@@ -17,6 +17,10 @@
 #   - 例えば「評価関数設定」と指定しておけば、
 #     「## ステータス表示領域の状態」へ追加する定数のコメントが
 #     「# 評価関数設定表示状態」となる
+# - MODE_NAME_FOR_DISP (表示用モード名)
+#   - 画面に表示する際に用いられるモード名
+#   - 表示可能文字で指定すること
+#     - 例)「ひようかかんすうせつてい」
 # 制限事項：
 # - src/expset_daisyworld.shへ定数を追加するが、
 #   追加した行より下の定数の更新を行っていない
@@ -34,7 +38,7 @@ set -ue
 usage() {
 	echo 'Usage:' 1>&2
 	echo -e \
-	     "\t$0 BEFORE_STATUS_DISP_NAME STATUS_DISP_NAME STATUS_DISP_DESC" \
+	     "\t$0 BEFORE_STATUS_DISP_NAME STATUS_DISP_NAME STATUS_DISP_DESC MODE_NAME_FOR_DISP" \
 	     1>&2
 	echo -e "\t$0 -h" 1>&2
 }
@@ -51,7 +55,7 @@ while getopts h option; do
 	esac
 done
 shift $((OPTIND - 1))
-if [ $# -ne 3 ]; then
+if [ $# -ne 4 ]; then
 	usage
 	exit 1
 fi
@@ -59,7 +63,9 @@ fi
 BEFORE_STATUS_DISP_NAME=$1
 STATUS_DISP_NAME=$2
 STATUS_DISP_DESC=$3
+MODE_NAME_FOR_DISP=$4
 
+STATUS_DISP_NAME_UPPER=${STATUS_DISP_NAME^^}
 TAB="$(printf '\\\011')"
 
 # 定数を追加
@@ -86,9 +92,42 @@ fi
 ## TODO 今回の表示モードの定数の行より下に定数が続いていた場合に、それらの値をインクリメントする
 
 # 画面へ配置する関数のテンプレートを追加
+## 標準の関数テンプレートを追加
 tools/make_func_template \
 	-d binbio_clear_${BEFORE_STATUS_DISP_NAME} \
 	binbio_place_${STATUS_DISP_NAME} "${STATUS_DISP_DESC}を画面へ配置"
+## ステータス表示モード配置関数のテンプレートを追加
+### 表示用モード名を配置
+#### 表示用モード名の文字列を定数データへ追加
+##### 既に追加済みであれば飛ばす
+CONST_NAME_AND_STR="${STATUS_DISP_NAME}${TAB}${MODE_NAME_FOR_DISP}"
+if ! grep -xq "$CONST_NAME_AND_STR" src/main.sh; then
+	# 定数名と変換元の文字列をTSVへリストアップしている処理の開始行番号を取得
+	CONST_STR_BEGIN_NR=$(sed -n "/^${TAB}cat <<EOF >src\/const_data.str.tsv$/=" \
+				 src/main.sh)
+
+	# 新たな定数名と変換元の文字列を挿入する行番号を取得
+	INSERT_NR=$(awk "NR > $CONST_STR_BEGIN_NR && \$0 == \"EOF\" {print NR; exit}" \
+			src/main.sh)
+
+	# 表示用モード名の文字列を追加
+	sed -i \
+	    -e "${INSERT_NR}i$CONST_NAME_AND_STR" src/main.sh
+fi
+#### 配置するタイル座標をシェル変数として追加
+##### TODO
+#### 画面へ配置する関数の開始行番号を取得
+PLACE_FUNC_BEGIN_NR=$(sed -n "/^f_binbio_place_${STATUS_DISP_NAME}() {$/=" src/expset_daisyworld.sh)
+#### 処理挿入箇所の行番号を取得
+INSERT_NR=$(awk "NR > $PLACE_FUNC_BEGIN_NR && /${TAB}# TODO/ {print NR; exit}" src/expset_daisyworld.sh)
+#### 表示用モード名を配置
+sed -i \
+    -e "${INSERT_NR}i${TAB}# ラベルを配置" \
+    -e "${INSERT_NR}i${TAB}con_print_xy_macro \$${STATUS_DISP_NAME_UPPER}_LABEL_TCOORD_X \$${STATUS_DISP_NAME_UPPER}_LABEL_TCOORD_Y \$a_const_$STATUS_DISP_NAME" \
+    -e "${INSERT_NR}i\\\\" \
+    src/expset_daisyworld.sh
+#### 変更するレジスタをpush/pop
+##### TODO
 
 # クリアする関数のテンプレートを追加
 tools/make_func_template \
