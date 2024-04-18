@@ -65,41 +65,63 @@ STATUS_DISP_NAME=$2
 STATUS_DISP_DESC=$3
 MODE_NAME_FOR_DISP=$4
 
+# 何度も使用する定数
+## ステータス表示モードのシンボルを大文字化
 STATUS_DISP_NAME_UPPER=${STATUS_DISP_NAME^^}
+## このモード固有のスクリプト名
+STATUS_DISP_SCRIPT_PATH="src/status_disp_${STATUS_DISP_NAME}.sh"
+## 直前の表示モードの定数名
+BEFORE_STATUS_DISP_DEF_NAME="STATUS_DISP_SHOW_${BEFORE_STATUS_DISP_NAME^^}"
+## タブ文字
 TAB="$(printf '\\\011')"
 
-# 定数を追加
-## 直前の表示モードの定数の行番号を取得
-BEFORE_STATUS_DISP_DEF_NAME="STATUS_DISP_SHOW_${BEFORE_STATUS_DISP_NAME^^}"
-BEFORE_STATUS_DISP_DEF_NR=$(sed -n \
-				"/^${BEFORE_STATUS_DISP_DEF_NAME}=[[:digit:]][[:digit:]]/=" \
-				src/expset_daisyworld.sh)
-## 直前の表示モードの定数の値を取得
-BEFORE_STATUS_DISP_NUM=$(sed -n "${BEFORE_STATUS_DISP_DEF_NR}p" \
-			     src/expset_daisyworld.sh | \
-				 sed -r \
-				     "s/^${BEFORE_STATUS_DISP_DEF_NAME}=([[:digit:]][[:digit:]]).*\$/\1/")
-## 今回の表示モードの定数の値を算出
-STATUS_DISP_NUM=$(printf "%02d" $((BEFORE_STATUS_DISP_NUM + 1)))
-## 今回の表示モードの定数名を定義
-STATUS_DISP_DEF_NAME="STATUS_DISP_SHOW_${STATUS_DISP_NAME^^}"
-## 既にソースコードへ追加済みなら追加処理を飛ばす
-DEF="${STATUS_DISP_DEF_NAME}=${STATUS_DISP_NUM}${TAB}# ${STATUS_DISP_DESC}表示状態"
-if  ! grep -xq "$DEF" src/expset_daisyworld.sh; then
-	# 今回の表示モードの定数を追加
-	sed -i "${BEFORE_STATUS_DISP_DEF_NR}a${DEF}" src/expset_daisyworld.sh
-fi
-## TODO 今回の表示モードの定数の行より下に定数が続いていた場合に、それらの値をインクリメントする
 
-# 画面へ配置する関数のテンプレートを追加
-## 標準の関数テンプレートを追加
+
+# [このモード固有の定義・処理を、このモード用のファイルへ追加]
+
+# 定数を追加
+## モード名を配置するタイル座標
+cat <<EOF >$STATUS_DISP_SCRIPT_PATH
+# 定数
+## モード名を配置するタイル座標
+${STATUS_DISP_NAME_UPPER}_LABEL_TCOORD_X=00
+${STATUS_DISP_NAME_UPPER}_LABEL_TCOORD_Y=0A
+EOF
+
+# 関数を追加
+## 画面へ配置する関数
+### 標準の関数テンプレを配置
 tools/make_func_template \
-	-d binbio_clear_${BEFORE_STATUS_DISP_NAME} \
+	-f $STATUS_DISP_SCRIPT_PATH \
+	binbio_clear_${BEFORE_STATUS_DISP_NAME} \
 	binbio_place_${STATUS_DISP_NAME} "${STATUS_DISP_DESC}を画面へ配置"
-## ステータス表示モード配置関数のテンプレートを追加
-### 表示用モード名を配置
-#### 表示用モード名の文字列を定数データへ追加
-##### 既に追加済みであれば飛ばす
+### ステータス表示モードの固有のテンプレ処理を追加
+#### 画面へ配置する関数の開始行番号を取得
+PLACE_FUNC_BEGIN_NR=$(sed -n "/^f_binbio_place_${STATUS_DISP_NAME}() {$/=" $STATUS_DISP_SCRIPT_PATH)
+#### 処理挿入箇所の行番号を取得
+INSERT_NR=$(awk "NR > $PLACE_FUNC_BEGIN_NR && /${TAB}# TODO/ {print NR; exit}" $STATUS_DISP_SCRIPT_PATH)
+#### 表示用モード名を配置
+sed -i \
+    -e "${INSERT_NR}i${TAB}# ラベルを配置" \
+    -e "${INSERT_NR}i${TAB}con_print_xy_macro \$${STATUS_DISP_NAME_UPPER}_LABEL_TCOORD_X \$${STATUS_DISP_NAME_UPPER}_LABEL_TCOORD_Y \$a_const_$STATUS_DISP_NAME" \
+    -e "${INSERT_NR}i\\\\" \
+    $STATUS_DISP_SCRIPT_PATH
+#### 変更するレジスタをpush/pop
+##### TODO
+
+# クリアする関数のテンプレートを追加
+tools/make_func_template \
+	-f $STATUS_DISP_SCRIPT_PATH \
+	binbio_place_${STATUS_DISP_NAME} \
+	binbio_clear_${STATUS_DISP_NAME} "${STATUS_DISP_DESC}をクリア"
+
+
+
+# [既存のスクリプトのモード共通の定義・処理を編集]
+
+# src/main.sh: 「# 定数データを出力」
+## 表示用モード名の文字列を定数データへ追加
+### 既に追加済みであれば飛ばす
 CONST_NAME_AND_STR="${STATUS_DISP_NAME}${TAB}${MODE_NAME_FOR_DISP}"
 if ! grep -xq "$CONST_NAME_AND_STR" src/main.sh; then
 	# 定数名と変換元の文字列をTSVへリストアップしている処理の開始行番号を取得
@@ -114,28 +136,10 @@ if ! grep -xq "$CONST_NAME_AND_STR" src/main.sh; then
 	sed -i \
 	    -e "${INSERT_NR}i$CONST_NAME_AND_STR" src/main.sh
 fi
-#### 配置するタイル座標をシェル変数として追加
-##### TODO
-#### 画面へ配置する関数の開始行番号を取得
-PLACE_FUNC_BEGIN_NR=$(sed -n "/^f_binbio_place_${STATUS_DISP_NAME}() {$/=" src/expset_daisyworld.sh)
-#### 処理挿入箇所の行番号を取得
-INSERT_NR=$(awk "NR > $PLACE_FUNC_BEGIN_NR && /${TAB}# TODO/ {print NR; exit}" src/expset_daisyworld.sh)
-#### 表示用モード名を配置
-sed -i \
-    -e "${INSERT_NR}i${TAB}# ラベルを配置" \
-    -e "${INSERT_NR}i${TAB}con_print_xy_macro \$${STATUS_DISP_NAME_UPPER}_LABEL_TCOORD_X \$${STATUS_DISP_NAME_UPPER}_LABEL_TCOORD_Y \$a_const_$STATUS_DISP_NAME" \
-    -e "${INSERT_NR}i\\\\" \
-    src/expset_daisyworld.sh
-#### 変更するレジスタをpush/pop
-##### TODO
 
-# クリアする関数のテンプレートを追加
-tools/make_func_template \
-	-d binbio_place_${STATUS_DISP_NAME} \
-	binbio_clear_${STATUS_DISP_NAME} "${STATUS_DISP_DESC}をクリア"
-
-# セレクトボタンリリースイベントハンドラへ処理を追加
-## 既に追加済みであれば処理を飛ばす
+# src/main.sh: 「# バイナリ生物環境用のセレクトボタンリリースイベントハンドラ」
+## 直前の表示モードの処理の更新と、今回の表示モード用の処理の追加
+### 既に追加済みであれば処理を飛ばす
 STATUS_DISP_DESC_COMMENT_LINE="${TAB}${TAB}# regA == ${STATUS_DISP_DESC}表示状態 ?"
 if ! grep -xq "$STATUS_DISP_DESC_COMMENT_LINE" src/main.sh; then
 	# セレクトボタンリリースイベントハンドラの開始/終了行番号を取得
@@ -194,3 +198,43 @@ if ! grep -xq "$STATUS_DISP_DESC_COMMENT_LINE" src/main.sh; then
 	    -e "${APPEND_NR}a${TAB}${TAB}cat src/f_binbio_event_btn_select_release.${STATUS_DISP_PROC_NAME}.o" \
 	    src/main.sh
 fi
+
+# src/expset_daisyworld.sh: 「# この実験セットで使用するスクリプトを読み込む」
+## このモード固有のスクリプトを読み込む処理を追加
+### 読み込む処理が存在しなければ追加する
+PROC_LINE=". $STATUS_DISP_SCRIPT_PATH"
+if ! grep -xq "$PROC_LINE" src/expset_daisyworld.sh; then
+	# この領域の開始行番号を取得
+	BEGIN_NR=$(sed -n "/^# この実験セットで使用するスクリプトを読み込む$/=" src/expset_daisyworld.sh)
+
+	# 処理追加箇所の行番号を取得
+	INSERT_NR=$(awk "NR > $BEGIN_NR && \$0 == \"\" {print NR; exit}" src/expset_daisyworld.sh)
+
+	# 処理を追加
+	sed -i -e "${INSERT_NR}i$PROC_LINE" src/expset_daisyworld.sh
+fi
+
+# src/expset_daisyworld.sh: 「## ステータス表示領域の状態」
+## 今回の表示モードの定数を追加
+### 直前の表示モードの定数の行番号を取得
+BEFORE_STATUS_DISP_DEF_NR=$(sed -n \
+				"/^${BEFORE_STATUS_DISP_DEF_NAME}=[[:digit:]][[:digit:]]/=" \
+				src/expset_daisyworld.sh)
+### 直前の表示モードの定数の値を取得
+BEFORE_STATUS_DISP_NUM=$(sed -n "${BEFORE_STATUS_DISP_DEF_NR}p" \
+			     src/expset_daisyworld.sh | \
+				 sed -r \
+				     "s/^${BEFORE_STATUS_DISP_DEF_NAME}=([[:digit:]][[:digit:]]).*\$/\1/")
+### 今回の表示モードの定数の値を算出
+STATUS_DISP_NUM=$(printf "%02d" $((BEFORE_STATUS_DISP_NUM + 1)))
+### 今回の表示モードの定数名を定義
+STATUS_DISP_DEF_NAME="STATUS_DISP_SHOW_${STATUS_DISP_NAME^^}"
+### 既にソースコードへ追加済みなら追加処理を飛ばす
+DEF="${STATUS_DISP_DEF_NAME}=${STATUS_DISP_NUM}${TAB}# ${STATUS_DISP_DESC}表示状態"
+if  ! grep -xq "$DEF" src/expset_daisyworld.sh; then
+	# 今回の表示モードの定数を追加
+	sed -i "${BEFORE_STATUS_DISP_DEF_NR}a${DEF}" src/expset_daisyworld.sh
+fi
+## 既存の表示モードの定数を更新
+### TODO 今回の表示モードの定数の行より下に定数が続いていた場合に、
+###      それらの値をインクリメントする

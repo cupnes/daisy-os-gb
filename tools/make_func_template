@@ -7,27 +7,27 @@
 #   定義箇所の1行目に書く説明文(FUNC_DESC)を指定する
 # - 関数はBEFORE_FUNC_NAMEで指定された関数の直後に作成される
 # - FUNC_NAMEとBEFORE_FUNC_NAMEで指定する関数名には接頭辞の"f_"を除いて指定する
-# - -dのオプションが指定された場合、
-#   関数の実体はsrc/expset_daisyworld.shに作成する
+# - -fでファイルを指定すると関数の定義をそのファイルで行う
+#   - その際、定義はファイル末尾に追加する
 
 # set -uex
 set -ue
 
 usage() {
 	echo 'Usage:' 1>&2
-	echo -e "\t$0 [-d] BEFORE_FUNC_NAME FUNC_NAME FUNC_DESC" 1>&2
+	echo -e "\t$0 [-f DEF_TO_FILE] BEFORE_FUNC_NAME FUNC_NAME FUNC_DESC" 1>&2
 	echo -e "\t$0 -h" 1>&2
 }
 
-FOR_DAISYWORLD='false'
-while getopts hd option; do
+DEF_TO_FILE=src/main.sh
+while getopts hf: option; do
 	case $option in
 	h)
 		usage
 		exit 0
 		;;
-	d)
-		FOR_DAISYWORLD='true'
+	f)
+		DEF_TO_FILE=${OPTARG}
 		;;
 	*)
 		usage
@@ -70,8 +70,8 @@ sed -i \
     -e "${INSERT_NR},$((INSERT_NR + AFTER_FUNC_COMMENTS_ADRCALC_NRS))s#^fadr=\$(calc16 \"\${a_${BEFORE_FUNC_NAME}}+\${fsz}\")\$#fadr=\$(calc16 \"\${a_${FUNC_NAME}}+\${fsz}\")#" \
     src/main.sh
 
-# 関数定義を追加
-## 冒頭コメントと関数アドレス算出処理を追加
+# 冒頭コメントと関数アドレス算出処理を追加
+## 追加処理
 sed -i \
     -e "${INSERT_NR}i# ${FUNC_DESC}" \
     -e "${INSERT_NR}if_${BEFORE_FUNC_NAME} >src/f_${BEFORE_FUNC_NAME}.o" \
@@ -80,59 +80,53 @@ sed -i \
     -e "${INSERT_NR}ia_${FUNC_NAME}=\$(four_digits \$fadr)" \
     -e "${INSERT_NR}iecho -e \"a_${FUNC_NAME}=\$a_${FUNC_NAME}\" >>\$MAP_FILE_NAME" \
     src/main.sh
-## 追加した行数分だけINSERT_NR変数を進める
-INSERT_NR=$((INSERT_NR + 6))
-## 定義の実体を中身空で追加
+## INSERT_NRから「追加した行数 - 1」だけ進めた行番号をADD_NRとする
+ADD_NR=$((INSERT_NR + 5))
+
+# 関数定義を中身空で追加
 insert_func_def() {
-	local target_file=$1
-
-	# 関数定義を中身空で追加
 	sed -i \
-	    -e "${INSERT_NR}if_${FUNC_NAME}() {" \
-	    -e "${INSERT_NR}i${TAB}# push" \
-	    -e "${INSERT_NR}i${TAB}## TODO" \
-	    -e "${INSERT_NR}i\\\\" \
-	    -e "${INSERT_NR}i${TAB}# TODO" \
-	    -e "${INSERT_NR}i\\\\" \
-	    -e "${INSERT_NR}i${TAB}# pop & return" \
-	    -e "${INSERT_NR}i${TAB}## TODO" \
-	    -e "${INSERT_NR}i${TAB}lr35902_return" \
-	    -e "${INSERT_NR}i}" \
-	    -e "${INSERT_NR}i\\\\" \
-	    $target_file
+	    -e "${ADD_NR}af_${FUNC_NAME}() {" \
+	    -e "${ADD_NR}a${TAB}# push" \
+	    -e "${ADD_NR}a${TAB}## TODO" \
+	    -e "${ADD_NR}a\\\\" \
+	    -e "${ADD_NR}a${TAB}# TODO" \
+	    -e "${ADD_NR}a\\\\" \
+	    -e "${ADD_NR}a${TAB}# pop & return" \
+	    -e "${ADD_NR}a${TAB}## TODO" \
+	    -e "${ADD_NR}a${TAB}lr35902_return" \
+	    -e "${ADD_NR}a}" \
+	    -e "${ADD_NR}a\\\\" \
+	    $DEF_TO_FILE
 }
-if [ "$FOR_DAISYWORLD" = 'false' ]; then
-	# デイジーワールド用関数ではない場合
-	# (src/main.shへ定義の実体を追加)
+if [ "$DEF_TO_FILE" = 'src/main.sh' ]; then
+	# src/main.shへ関数定義も追加する場合
 
 	# 関数定義を中身空で追加
-	insert_func_def src/main.sh
+	insert_func_def
 else
-	# デイジーワールド用関数の場合
-	# (src/main.shへはコメントを書き、
-	# 定義の実体はsrc/expset_daisyworld.shへ追加)
+	# 関数定義は別ファイルへ追加する場合
 
-	# 定義は実験セットのスクリプト内にある旨のコメントを追加
+	# src/main.shへ定義がある場所をコメントで記載
 	sed -i \
-	    -e "${INSERT_NR}i## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある" \
-	    -e "${INSERT_NR}i\\\\" \
+	    -e "${ADD_NR}a## 定義は${DEF_TO_FILE}にある" \
+	    -e "${ADD_NR}a\\\\" \
 	    src/main.sh
 
-	# 直前の関数のsrc/expset_daisyworld.sh内の行番号を取得
-	BEFORE_FUNC_NR=$(sed -n "/^f_${BEFORE_FUNC_NAME}() {\$/=" src/expset_daisyworld.sh)
-
-	# 直後の関数定義の1行目の行番号を取得
-	# (この行に関数定義を追加していく)
-	INSERT_NR=$(awk "NR > ${BEFORE_FUNC_NR} && /^# / {print NR; exit}" src/expset_daisyworld.sh)
+	# 追加先ファイルの末尾に空行を追加
+	echo >>$DEF_TO_FILE
 
 	# 冒頭コメントを追加
-	sed -i -e "${INSERT_NR}i# ${FUNC_DESC}" src/expset_daisyworld.sh
+	echo "# ${FUNC_DESC}" >>$DEF_TO_FILE
 
-	# コメントの分だけINSERT_NR変数を進める
-	INSERT_NR=$((INSERT_NR + 1))
+	# ファイル末尾の行番号(=行数)をADD_NRへ設定
+	ADD_NR=$(wc -l $DEF_TO_FILE | cut -d' ' -f1)
 
 	# 関数定義を中身空で追加
-	insert_func_def src/expset_daisyworld.sh
+	insert_func_def
+
+	# 末尾の空行を削除
+	sed -i '${/^$/d}' $DEF_TO_FILE
 fi
 
 # global_functions()へ追加
