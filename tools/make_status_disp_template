@@ -70,50 +70,12 @@ MODE_NAME_FOR_DISP=$4
 STATUS_DISP_NAME_UPPER=${STATUS_DISP_NAME^^}
 ## このモード固有のスクリプト名
 STATUS_DISP_SCRIPT_PATH="src/status_disp_${STATUS_DISP_NAME}.sh"
+## 今回の表示モードの定数名
+STATUS_DISP_DEF_NAME="STATUS_DISP_SHOW_${STATUS_DISP_NAME^^}"
 ## 直前の表示モードの定数名
 BEFORE_STATUS_DISP_DEF_NAME="STATUS_DISP_SHOW_${BEFORE_STATUS_DISP_NAME^^}"
 ## タブ文字
 TAB="$(printf '\\\011')"
-
-
-
-# [このモード固有の定義・処理を、このモード用のファイルへ追加]
-
-# 定数を追加
-## モード名を配置するタイル座標
-cat <<EOF >$STATUS_DISP_SCRIPT_PATH
-# 定数
-## モード名を配置するタイル座標
-${STATUS_DISP_NAME_UPPER}_LABEL_TCOORD_X=00
-${STATUS_DISP_NAME_UPPER}_LABEL_TCOORD_Y=0A
-EOF
-
-# 関数を追加
-## 画面へ配置する関数
-### 標準の関数テンプレを配置
-tools/make_func_template \
-	-f $STATUS_DISP_SCRIPT_PATH \
-	binbio_clear_${BEFORE_STATUS_DISP_NAME} \
-	binbio_place_${STATUS_DISP_NAME} "${STATUS_DISP_DESC}を画面へ配置"
-### ステータス表示モードの固有のテンプレ処理を追加
-#### 画面へ配置する関数の開始行番号を取得
-PLACE_FUNC_BEGIN_NR=$(sed -n "/^f_binbio_place_${STATUS_DISP_NAME}() {$/=" $STATUS_DISP_SCRIPT_PATH)
-#### 処理挿入箇所の行番号を取得
-INSERT_NR=$(awk "NR > $PLACE_FUNC_BEGIN_NR && /${TAB}# TODO/ {print NR; exit}" $STATUS_DISP_SCRIPT_PATH)
-#### 表示用モード名を配置
-sed -i \
-    -e "${INSERT_NR}i${TAB}# ラベルを配置" \
-    -e "${INSERT_NR}i${TAB}con_print_xy_macro \$${STATUS_DISP_NAME_UPPER}_LABEL_TCOORD_X \$${STATUS_DISP_NAME_UPPER}_LABEL_TCOORD_Y \$a_const_$STATUS_DISP_NAME" \
-    -e "${INSERT_NR}i\\\\" \
-    $STATUS_DISP_SCRIPT_PATH
-#### 変更するレジスタをpush/pop
-##### TODO
-
-# クリアする関数のテンプレートを追加
-tools/make_func_template \
-	-f $STATUS_DISP_SCRIPT_PATH \
-	binbio_place_${STATUS_DISP_NAME} \
-	binbio_clear_${STATUS_DISP_NAME} "${STATUS_DISP_DESC}をクリア"
 
 
 
@@ -158,10 +120,44 @@ if ! grep -xq "$STATUS_DISP_DESC_COMMENT_LINE" src/main.sh; then
 	BEFORE_STATUS_DISP_PROC_NAME="showing_${BEFORE_STATUS_DISP_NAME}"
 	BEFORE_STATUS_DISP_END_NR=$(awk "NR > $BEFORE_STATUS_DISP_BEGIN_NR && /cat src\/f_binbio_event_btn_select_release.${BEFORE_STATUS_DISP_PROC_NAME}.o/ {print NR; exit}" src/main.sh)
 
-	# 直前の表示モードの場合に、画面をクリアしてこのモードを表示するようにする
-	## TODO 現状では未実装。手動で行うこと
+	# 直前の表示モードの処理を更新
+	## 次の表示モードの配置処理を呼び出している行番号を取得
+	PLACE_NEXT_STATUS_DISP_NR=$(awk "NR > $BEFORE_STATUS_DISP_BEGIN_NR && /^${TAB}${TAB}${TAB}lr35902_call .a_binbio_place_[a-z_]+\$/ {print NR; exit}" src/main.sh)
+	## 次の表示モード名を取得
+	NEXT_STATUS_DISP_NAME=$(sed -n "${PLACE_NEXT_STATUS_DISP_NR}p" src/main.sh | sed -r "s/^${TAB}${TAB}${TAB}lr35902_call .a_binbio_place_([a-z_]+)\$/\1/")
+	## 次の表示モードとして今回の表示モードを配置するようにする
+	sed -i \
+	    -r "${PLACE_NEXT_STATUS_DISP_NR}s/a_binbio_place_${NEXT_STATUS_DISP_NAME}\$/a_binbio_place_${STATUS_DISP_NAME}/" \
+	    src/main.sh
+	## 1行前のコメント行の行番号を取得
+	COMMENT_LINE_NR=$((PLACE_NEXT_STATUS_DISP_NR - 1))
+	## コメント行を更新
+	sed -i \
+	    -r "${COMMENT_LINE_NR}s/# .+を画面へ配置/# ${STATUS_DISP_DESC}を画面へ配置/" \
+	    src/main.sh
+	## 「現在のステータス表示領域の状態」変数更新処理を更新
+	### コメント行の行番号を取得
+	COMMENT_LINE_NR=$(awk "NR > $PLACE_NEXT_STATUS_DISP_NR && /^${TAB}${TAB}${TAB}# 現在のステータス表示領域の状態 = .+表示状態\$/ {print NR; exit}" src/main.sh)
+	### コメント行を更新
+	sed -i \
+	    -r "${COMMENT_LINE_NR}s/# 現在のステータス表示領域の状態 = .+表示状態/# 現在のステータス表示領域の状態 = ${STATUS_DISP_DESC}表示状態/" \
+	    src/main.sh
+	### regAへの定数設定行の行番号を取得
+	SET_REGA_NR=$(awk "NR > $COMMENT_LINE_NR && /^${TAB}${TAB}${TAB}lr35902_set_reg regA .STATUS_DISP_SHOW_[A-Z_]+\$/ {print NR; exit}" src/main.sh)
+	### regAへ設定する定数を更新
+	sed -i \
+	    -r "${SET_REGA_NR}s/lr35902_set_reg regA .STATUS_DISP_SHOW_[A-Z_]+\$/lr35902_set_reg regA \$STATUS_DISP_SHOW_${STATUS_DISP_NAME_UPPER}/" \
+	    src/main.sh
 
 	# この表示モードの場合の処理のテンプレートを追加
+	## 次の表示モードの評価関数説明をsrc/expset_daisyworld.shから取得
+	NEXT_STATUS_DISP_NAME_UPPER=${NEXT_STATUS_DISP_NAME^^}
+	NEXT_STATUS_DISP_DEF_NR=$(sed -n "/^STATUS_DISP_SHOW_${NEXT_STATUS_DISP_NAME_UPPER}=[0-9][0-9]/=" \
+				      src/expset_daisyworld.sh)
+	NEXT_STATUS_DISP_DESC=$(sed -n "${NEXT_STATUS_DISP_DEF_NR}p" \
+				    src/expset_daisyworld.sh \
+					| sed -r "s/^[A-Z_]+=[0-9][0-9].+# (.+)表示状態\$/\1/")
+	## テンプレートを追加
 	STATUS_DISP_PROC_NAME="showing_${STATUS_DISP_NAME}"
 	APPEND_NR=$BEFORE_STATUS_DISP_END_NR
 	sed -i \
@@ -179,11 +175,11 @@ if ! grep -xq "$STATUS_DISP_DESC_COMMENT_LINE" src/main.sh; then
 	    -e "${APPEND_NR}a${TAB}${TAB}${TAB}# ${STATUS_DISP_DESC}をクリア" \
 	    -e "${APPEND_NR}a${TAB}${TAB}${TAB}lr35902_call \$a_binbio_clear_${STATUS_DISP_NAME}" \
 	    -e "${APPEND_NR}a\\\\" \
-	    -e "${APPEND_NR}a${TAB}${TAB}${TAB}# TODO <次の表示モード>を画面へ配置" \
-	    -e "${APPEND_NR}a${TAB}${TAB}${TAB}lr35902_call \$a_binbio_place_<次の表示モード>" \
+	    -e "${APPEND_NR}a${TAB}${TAB}${TAB}# ${NEXT_STATUS_DISP_DESC}を画面へ配置" \
+	    -e "${APPEND_NR}a${TAB}${TAB}${TAB}lr35902_call \$a_binbio_place_${NEXT_STATUS_DISP_NAME}" \
 	    -e "${APPEND_NR}a\\\\" \
-	    -e "${APPEND_NR}a${TAB}${TAB}${TAB}# TODO 現在のステータス表示領域の状態 = <次の表示モード>表示状態" \
-	    -e "${APPEND_NR}a${TAB}${TAB}${TAB}lr35902_set_reg regA \$STATUS_DISP_SHOW_<次の表示モード>" \
+	    -e "${APPEND_NR}a${TAB}${TAB}${TAB}# 現在のステータス表示領域の状態 = ${NEXT_STATUS_DISP_DESC}表示状態" \
+	    -e "${APPEND_NR}a${TAB}${TAB}${TAB}lr35902_set_reg regA \$STATUS_DISP_SHOW_${NEXT_STATUS_DISP_NAME_UPPER}" \
 	    -e "${APPEND_NR}a${TAB}${TAB}${TAB}lr35902_copy_to_addr_from_regA \$var_binbio_status_disp_status" \
 	    -e "${APPEND_NR}a\\\\" \
 	    -e "${APPEND_NR}a${TAB}${TAB}${TAB}# pop & return" \
@@ -227,8 +223,6 @@ BEFORE_STATUS_DISP_NUM=$(sed -n "${BEFORE_STATUS_DISP_DEF_NR}p" \
 				     "s/^${BEFORE_STATUS_DISP_DEF_NAME}=([[:digit:]][[:digit:]]).*\$/\1/")
 ### 今回の表示モードの定数の値を算出
 STATUS_DISP_NUM=$(printf "%02d" $((BEFORE_STATUS_DISP_NUM + 1)))
-### 今回の表示モードの定数名を定義
-STATUS_DISP_DEF_NAME="STATUS_DISP_SHOW_${STATUS_DISP_NAME^^}"
 ### 既にソースコードへ追加済みなら追加処理を飛ばす
 DEF="${STATUS_DISP_DEF_NAME}=${STATUS_DISP_NUM}${TAB}# ${STATUS_DISP_DESC}表示状態"
 if  ! grep -xq "$DEF" src/expset_daisyworld.sh; then
@@ -238,3 +232,66 @@ fi
 ## 既存の表示モードの定数を更新
 ### TODO 今回の表示モードの定数の行より下に定数が続いていた場合に、
 ###      それらの値をインクリメントする
+
+
+
+# [このモード固有の定義・処理を、このモード用のファイルへ追加]
+
+# 既にこのモード用のファイルが存在したらこの時点で終了
+if [ -f $STATUS_DISP_SCRIPT_PATH ]; then
+	echo "$STATUS_DISP_SCRIPT_PATH is already exists." 1>&2
+	exit 0
+fi
+
+# 定数を追加
+## モード名を配置するタイル座標
+cat <<EOF >$STATUS_DISP_SCRIPT_PATH
+# 定数
+## モード名を配置するタイル座標
+${STATUS_DISP_NAME_UPPER}_LABEL_TCOORD_X=00
+${STATUS_DISP_NAME_UPPER}_LABEL_TCOORD_Y=0A
+EOF
+
+# 関数を追加
+## 画面へ配置する関数
+### 標準の関数テンプレを配置
+tools/make_func_template \
+	-f $STATUS_DISP_SCRIPT_PATH \
+	binbio_clear_${BEFORE_STATUS_DISP_NAME} \
+	binbio_place_${STATUS_DISP_NAME} "${STATUS_DISP_DESC}を画面へ配置"
+### ステータス表示モードの固有のテンプレ処理を追加
+#### 画面へ配置する関数の開始行番号を取得
+PLACE_FUNC_BEGIN_NR=$(sed -n "/^f_binbio_place_${STATUS_DISP_NAME}() {$/=" $STATUS_DISP_SCRIPT_PATH)
+#### 処理挿入箇所の行番号を取得
+INSERT_NR=$(awk "NR > $PLACE_FUNC_BEGIN_NR && /${TAB}# TODO/ {print NR; exit}" $STATUS_DISP_SCRIPT_PATH)
+#### 表示用モード名を配置
+sed -i \
+    -e "${INSERT_NR}i${TAB}# ラベルを配置" \
+    -e "${INSERT_NR}i${TAB}con_print_xy_macro \$${STATUS_DISP_NAME_UPPER}_LABEL_TCOORD_X \$${STATUS_DISP_NAME_UPPER}_LABEL_TCOORD_Y \$a_const_$STATUS_DISP_NAME" \
+    -e "${INSERT_NR}i\\\\" \
+    $STATUS_DISP_SCRIPT_PATH
+#### 変更が発生するレジスタをpush/pop
+##### 「# push」コメントの行番号を取得
+PUSH_COMMENT_NR=$(awk "NR > $PLACE_FUNC_BEGIN_NR && /${TAB}# push/ {print NR; exit}" \
+		      $STATUS_DISP_SCRIPT_PATH)
+##### レジスタpush処理を追加
+APPEND_NR=$PUSH_COMMENT_NR
+sed -i \
+    -e "${APPEND_NR}a${TAB}lr35902_push_reg regDE" \
+    -e "${APPEND_NR}a${TAB}lr35902_push_reg regHL" \
+    $STATUS_DISP_SCRIPT_PATH
+##### 「# pop & return」コメントの行番号を取得
+POP_COMMENT_NR=$(awk "NR > $APPEND_NR && /${TAB}# pop & return/ {print NR; exit}" \
+		     $STATUS_DISP_SCRIPT_PATH)
+##### レジスタpop処理を追加
+APPEND_NR=$POP_COMMENT_NR
+sed -i \
+    -e "${APPEND_NR}a${TAB}lr35902_pop_reg regHL" \
+    -e "${APPEND_NR}a${TAB}lr35902_pop_reg regDE" \
+    $STATUS_DISP_SCRIPT_PATH
+
+# クリアする関数のテンプレートを追加
+tools/make_func_template \
+	-f $STATUS_DISP_SCRIPT_PATH \
+	binbio_place_${STATUS_DISP_NAME} \
+	binbio_clear_${STATUS_DISP_NAME} "${STATUS_DISP_DESC}をクリア"

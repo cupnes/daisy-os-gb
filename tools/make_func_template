@@ -46,42 +46,52 @@ FUNC_DESC=$3
 
 TAB="$(printf '\\\011')"
 
-# 既に関数が追加済みだったら何もせず終了する
+# 既に関数が追加済みだったら基本的に何もせず終了する
+SKIP='false'
 DUMP_FUNC_FOR_GLOBAL_FUNCTIONS="${TAB}cat src\/f_${FUNC_NAME}.o"
 if grep -q "^$DUMP_FUNC_FOR_GLOBAL_FUNCTIONS" src/main.sh; then
 	echo "f_${FUNC_NAME}() is already exists." 1>&2
-	exit 0
+
+	if [ "$DEF_TO_FILE" != 'src/main.sh' ] && ! grep -q "^f_${FUNC_NAME}() {" $DEF_TO_FILE; then
+		# src/main.sh以外へ出力する場合でかつそこに関数定義が無い場合、
+		# 関数定義のみ行う(それ以外はスキップする)
+		SKIP='true'
+	else
+		exit 0
+	fi
 fi
 
-# 直前の関数のアドレスを設定している行番号を取得
-BEFORE_FUNC_ADDR_NR=$(sed -n "/^a_${BEFORE_FUNC_NAME}=/=" src/main.sh)
+if [ "$SKIP" = 'false' ]; then
+	# 直前の関数のアドレスを設定している行番号を取得
+	BEFORE_FUNC_ADDR_NR=$(sed -n "/^a_${BEFORE_FUNC_NAME}=/=" src/main.sh)
 
-# 直後の関数定義の1行目の行番号を取得
-# (この行に関数定義を追加していく)
-INSERT_NR=$(awk "NR > ${BEFORE_FUNC_ADDR_NR} && /^# / {print NR; exit}" src/main.sh)
+	# 直後の関数定義の1行目の行番号を取得
+	# (この行に関数定義を追加していく)
+	INSERT_NR=$(awk "NR > ${BEFORE_FUNC_ADDR_NR} && /^# / {print NR; exit}" src/main.sh)
 
-# 直後の関数の冒頭コメントと関数アドレス算出処理の見込み行数
-AFTER_FUNC_COMMENTS_ADRCALC_NRS=15
+	# 直後の関数の冒頭コメントと関数アドレス算出処理の見込み行数
+	AFTER_FUNC_COMMENTS_ADRCALC_NRS=15
 
-# 直後の関数のアドレス算出処理を更新
-sed -i \
-    -e "${INSERT_NR},$((INSERT_NR + AFTER_FUNC_COMMENTS_ADRCALC_NRS))s#^f_${BEFORE_FUNC_NAME} >src/f_${BEFORE_FUNC_NAME}.o\$#f_${FUNC_NAME} >src/f_${FUNC_NAME}.o#" \
-    -e "${INSERT_NR},$((INSERT_NR + AFTER_FUNC_COMMENTS_ADRCALC_NRS))s#^fsz=\$(to16 \$(stat -c '%s' src/f_${BEFORE_FUNC_NAME}.o))\$#fsz=\$(to16 \$(stat -c '%s' src/f_${FUNC_NAME}.o))#" \
-    -e "${INSERT_NR},$((INSERT_NR + AFTER_FUNC_COMMENTS_ADRCALC_NRS))s#^fadr=\$(calc16 \"\${a_${BEFORE_FUNC_NAME}}+\${fsz}\")\$#fadr=\$(calc16 \"\${a_${FUNC_NAME}}+\${fsz}\")#" \
-    src/main.sh
+	# 直後の関数のアドレス算出処理を更新
+	sed -i \
+	    -e "${INSERT_NR},$((INSERT_NR + AFTER_FUNC_COMMENTS_ADRCALC_NRS))s#^f_${BEFORE_FUNC_NAME} >src/f_${BEFORE_FUNC_NAME}.o\$#f_${FUNC_NAME} >src/f_${FUNC_NAME}.o#" \
+	    -e "${INSERT_NR},$((INSERT_NR + AFTER_FUNC_COMMENTS_ADRCALC_NRS))s#^fsz=\$(to16 \$(stat -c '%s' src/f_${BEFORE_FUNC_NAME}.o))\$#fsz=\$(to16 \$(stat -c '%s' src/f_${FUNC_NAME}.o))#" \
+	    -e "${INSERT_NR},$((INSERT_NR + AFTER_FUNC_COMMENTS_ADRCALC_NRS))s#^fadr=\$(calc16 \"\${a_${BEFORE_FUNC_NAME}}+\${fsz}\")\$#fadr=\$(calc16 \"\${a_${FUNC_NAME}}+\${fsz}\")#" \
+	    src/main.sh
 
-# 冒頭コメントと関数アドレス算出処理を追加
-## 追加処理
-sed -i \
-    -e "${INSERT_NR}i# ${FUNC_DESC}" \
-    -e "${INSERT_NR}if_${BEFORE_FUNC_NAME} >src/f_${BEFORE_FUNC_NAME}.o" \
-    -e "${INSERT_NR}ifsz=\$(to16 \$(stat -c '%s' src/f_${BEFORE_FUNC_NAME}.o))" \
-    -e "${INSERT_NR}ifadr=\$(calc16 \"\${a_${BEFORE_FUNC_NAME}}+\${fsz}\")" \
-    -e "${INSERT_NR}ia_${FUNC_NAME}=\$(four_digits \$fadr)" \
-    -e "${INSERT_NR}iecho -e \"a_${FUNC_NAME}=\$a_${FUNC_NAME}\" >>\$MAP_FILE_NAME" \
-    src/main.sh
-## INSERT_NRから「追加した行数 - 1」だけ進めた行番号をADD_NRとする
-ADD_NR=$((INSERT_NR + 5))
+	# 冒頭コメントと関数アドレス算出処理を追加
+	## 追加処理
+	sed -i \
+	    -e "${INSERT_NR}i# ${FUNC_DESC}" \
+	    -e "${INSERT_NR}if_${BEFORE_FUNC_NAME} >src/f_${BEFORE_FUNC_NAME}.o" \
+	    -e "${INSERT_NR}ifsz=\$(to16 \$(stat -c '%s' src/f_${BEFORE_FUNC_NAME}.o))" \
+	    -e "${INSERT_NR}ifadr=\$(calc16 \"\${a_${BEFORE_FUNC_NAME}}+\${fsz}\")" \
+	    -e "${INSERT_NR}ia_${FUNC_NAME}=\$(four_digits \$fadr)" \
+	    -e "${INSERT_NR}iecho -e \"a_${FUNC_NAME}=\$a_${FUNC_NAME}\" >>\$MAP_FILE_NAME" \
+	    src/main.sh
+	## INSERT_NRから「追加した行数 - 1」だけ進めた行番号をADD_NRとする
+	ADD_NR=$((INSERT_NR + 5))
+fi
 
 # 関数定義を中身空で追加
 insert_func_def() {
@@ -107,11 +117,13 @@ if [ "$DEF_TO_FILE" = 'src/main.sh' ]; then
 else
 	# 関数定義は別ファイルへ追加する場合
 
-	# src/main.shへ定義がある場所をコメントで記載
-	sed -i \
-	    -e "${ADD_NR}a## 定義は${DEF_TO_FILE}にある" \
-	    -e "${ADD_NR}a\\\\" \
-	    src/main.sh
+	if [ "$SKIP" = 'false' ]; then
+		# src/main.shへ定義がある場所をコメントで記載
+		sed -i \
+		    -e "${ADD_NR}a## 定義は${DEF_TO_FILE}にある" \
+		    -e "${ADD_NR}a\\\\" \
+		    src/main.sh
+	fi
 
 	# 追加先ファイルの末尾に空行を追加
 	echo >>$DEF_TO_FILE
@@ -129,8 +141,10 @@ else
 	sed -i '${/^$/d}' $DEF_TO_FILE
 fi
 
-# global_functions()へ追加
-## 直前の関数を追加している行番号を取得
-BEFORE_FUNC_NR=$(sed -n "/^${TAB}cat src\/f_${BEFORE_FUNC_NAME}.o\$/=" src/main.sh)
-## 直前の関数の直後へ追加
-sed -i -e "${BEFORE_FUNC_NR}a$DUMP_FUNC_FOR_GLOBAL_FUNCTIONS" src/main.sh
+if [ "$SKIP" = 'false' ]; then
+	# global_functions()へ追加
+	## 直前の関数を追加している行番号を取得
+	BEFORE_FUNC_NR=$(sed -n "/^${TAB}cat src\/f_${BEFORE_FUNC_NAME}.o\$/=" src/main.sh)
+	## 直前の関数の直後へ追加
+	sed -i -e "${BEFORE_FUNC_NR}a$DUMP_FUNC_FOR_GLOBAL_FUNCTIONS" src/main.sh
+fi
