@@ -23,7 +23,6 @@ CELL_EVAL_FIXEDVAL_VAL_INIT=ff
 STATUS_DISP_SHOW_SOFT_DESC=00	# ソフト説明表示状態
 STATUS_DISP_SHOW_CELL_INFO=01	# 細胞ステータス情報表示状態
 STATUS_DISP_SHOW_CELL_EVAL_SEL=02	# 評価関数選択表示状態
-STATUS_DISP_SHOW_CELL_EVAL_CONF=03	# 評価関数設定表示状態
 ## 画面上のタイル座標/アドレス
 ### 地表温度
 ### TODO 「タイトル(TITLE)」というより「ラベル(LABEL)」
@@ -1223,30 +1222,6 @@ f_binbio_clear_cell_eval_sel() {
 	# pop & return
 	lr35902_pop_reg regDE
 	lr35902_pop_reg regAF
-	lr35902_return
-}
-
-# 評価関数設定を画面へ配置
-f_binbio_place_cell_eval_conf() {
-	# push
-	## TODO
-
-	# TODO
-
-	# pop & return
-	## TODO
-	lr35902_return
-}
-
-# 評価関数設定をクリア
-f_binbio_clear_cell_eval_conf() {
-	# push
-	## TODO
-
-	# TODO
-
-	# pop & return
-	## TODO
 	lr35902_return
 }
 
