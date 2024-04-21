@@ -250,6 +250,11 @@ cat <<EOF >$STATUS_DISP_SCRIPT_PATH
 ## モード名を配置するタイル座標
 ${STATUS_DISP_NAME_UPPER}_LABEL_TCOORD_X=00
 ${STATUS_DISP_NAME_UPPER}_LABEL_TCOORD_Y=0A
+## 枠線を配置するタイル座標
+${STATUS_DISP_NAME_UPPER}_FRAME_TCOORD_X=00
+${STATUS_DISP_NAME_UPPER}_FRAME_TCOORD_Y=0B
+${STATUS_DISP_NAME_UPPER}_FRAME_WIDTH=0E
+${STATUS_DISP_NAME_UPPER}_FRAME_HEIGHT=07
 EOF
 
 # 関数を追加
@@ -264,10 +269,13 @@ tools/make_func_template \
 PLACE_FUNC_BEGIN_NR=$(sed -n "/^f_binbio_place_${STATUS_DISP_NAME}() {$/=" $STATUS_DISP_SCRIPT_PATH)
 #### 処理挿入箇所の行番号を取得
 INSERT_NR=$(awk "NR > $PLACE_FUNC_BEGIN_NR && /${TAB}# TODO/ {print NR; exit}" $STATUS_DISP_SCRIPT_PATH)
-#### 表示用モード名を配置
+#### 表示用モード名と枠線を配置
 sed -i \
     -e "${INSERT_NR}i${TAB}# ラベルを配置" \
     -e "${INSERT_NR}i${TAB}con_print_xy_macro \$${STATUS_DISP_NAME_UPPER}_LABEL_TCOORD_X \$${STATUS_DISP_NAME_UPPER}_LABEL_TCOORD_Y \$a_const_$STATUS_DISP_NAME" \
+    -e "${INSERT_NR}i\\\\" \
+    -e "${INSERT_NR}i${TAB}# 枠線を配置" \
+    -e "${INSERT_NR}i${TAB}con_draw_rect_macro \$${STATUS_DISP_NAME_UPPER}_FRAME_TCOORD_X \$${STATUS_DISP_NAME_UPPER}_FRAME_TCOORD_Y \$${STATUS_DISP_NAME_UPPER}_FRAME_WIDTH \$${STATUS_DISP_NAME_UPPER}_FRAME_HEIGHT" \
     -e "${INSERT_NR}i\\\\" \
     $STATUS_DISP_SCRIPT_PATH
 #### 変更が発生するレジスタをpush/pop
@@ -277,6 +285,8 @@ PUSH_COMMENT_NR=$(awk "NR > $PLACE_FUNC_BEGIN_NR && /${TAB}# push/ {print NR; ex
 ##### レジスタpush処理を追加
 APPEND_NR=$PUSH_COMMENT_NR
 sed -i \
+    -e "${APPEND_NR}a${TAB}lr35902_push_reg regAF" \
+    -e "${APPEND_NR}a${TAB}lr35902_push_reg regBC" \
     -e "${APPEND_NR}a${TAB}lr35902_push_reg regDE" \
     -e "${APPEND_NR}a${TAB}lr35902_push_reg regHL" \
     $STATUS_DISP_SCRIPT_PATH
@@ -288,6 +298,8 @@ APPEND_NR=$POP_COMMENT_NR
 sed -i \
     -e "${APPEND_NR}a${TAB}lr35902_pop_reg regHL" \
     -e "${APPEND_NR}a${TAB}lr35902_pop_reg regDE" \
+    -e "${APPEND_NR}a${TAB}lr35902_pop_reg regBC" \
+    -e "${APPEND_NR}a${TAB}lr35902_pop_reg regAF" \
     $STATUS_DISP_SCRIPT_PATH
 ## クリアする関数
 ### 標準の関数テンプレを配置
@@ -300,10 +312,13 @@ tools/make_func_template \
 CLEAR_FUNC_BEGIN_NR=$(sed -n "/^f_binbio_clear_${STATUS_DISP_NAME}() {$/=" $STATUS_DISP_SCRIPT_PATH)
 #### 処理挿入箇所の行番号を取得
 INSERT_NR=$(awk "NR > $CLEAR_FUNC_BEGIN_NR && /${TAB}# TODO/ {print NR; exit}" $STATUS_DISP_SCRIPT_PATH)
-#### 表示用モード名をクリア
+#### 表示用モード名と枠線と中身をクリア
 sed -i \
     -e "${INSERT_NR}i${TAB}# ラベルをクリア" \
     -e "${INSERT_NR}i${TAB}con_delch_tadr_num_macro \$${STATUS_DISP_NAME_UPPER}_LABEL_TCOORD_X \$${STATUS_DISP_NAME_UPPER}_LABEL_TCOORD_Y \$((sz_const_$STATUS_DISP_NAME - 1))" \
+    -e "${INSERT_NR}i\\\\" \
+    -e "${INSERT_NR}i${TAB}# 枠線と中身をクリア" \
+    -e "${INSERT_NR}i${TAB}con_clear_rect_macro \$${STATUS_DISP_NAME_UPPER}_FRAME_TCOORD_X \$${STATUS_DISP_NAME_UPPER}_FRAME_TCOORD_Y \$${STATUS_DISP_NAME_UPPER}_FRAME_WIDTH \$${STATUS_DISP_NAME_UPPER}_FRAME_HEIGHT" \
     -e "${INSERT_NR}i\\\\" \
     $STATUS_DISP_SCRIPT_PATH
 #### 変更が発生するレジスタをpush/pop
