@@ -142,6 +142,7 @@ func_str	かんすう
 conf_str	せつてい
 cell_eval_param_fixedval_1	こてい
 cell_eval_param_fixedval_2	ち:
+cell_eval_conf	ひようかかんすうせつてい
 EOF
 
 	# 各文字列をタイル番号のバイナリデータへ変換しファイルと標準出力へ出力
@@ -7110,11 +7111,27 @@ a_binbio_clear_cell_eval_sel=$(four_digits $fadr)
 echo -e "a_binbio_clear_cell_eval_sel=$a_binbio_clear_cell_eval_sel" >>$MAP_FILE_NAME
 ## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
 
-# バイナリ生物環境の初期化
-# in : regA - 実験セット番号
+# 評価関数設定を画面へ配置
 f_binbio_clear_cell_eval_sel >src/f_binbio_clear_cell_eval_sel.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_clear_cell_eval_sel.o))
 fadr=$(calc16 "${a_binbio_clear_cell_eval_sel}+${fsz}")
+a_binbio_place_cell_eval_conf=$(four_digits $fadr)
+echo -e "a_binbio_place_cell_eval_conf=$a_binbio_place_cell_eval_conf" >>$MAP_FILE_NAME
+## 定義はsrc/status_disp_cell_eval_conf.shにある
+
+# 評価関数設定をクリア
+f_binbio_place_cell_eval_conf >src/f_binbio_place_cell_eval_conf.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_place_cell_eval_conf.o))
+fadr=$(calc16 "${a_binbio_place_cell_eval_conf}+${fsz}")
+a_binbio_clear_cell_eval_conf=$(four_digits $fadr)
+echo -e "a_binbio_clear_cell_eval_conf=$a_binbio_clear_cell_eval_conf" >>$MAP_FILE_NAME
+## 定義はsrc/status_disp_cell_eval_conf.shにある
+
+# バイナリ生物環境の初期化
+# in : regA - 実験セット番号
+f_binbio_clear_cell_eval_conf >src/f_binbio_clear_cell_eval_conf.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_clear_cell_eval_conf.o))
+fadr=$(calc16 "${a_binbio_clear_cell_eval_conf}+${fsz}")
 a_binbio_init=$(four_digits $fadr)
 echo -e "a_binbio_init=$a_binbio_init" >>$MAP_FILE_NAME
 ## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
@@ -8094,14 +8111,14 @@ f_binbio_event_btn_select_release() {
 			# 評価関数選択をクリア
 			lr35902_call $a_binbio_clear_cell_eval_sel
 
-			# ソフト説明を画面へ配置
-			lr35902_call $a_binbio_place_soft_desc
+			# 評価関数設定を画面へ配置
+			lr35902_call $a_binbio_place_cell_eval_conf
 
 			# マウスカーソルを表示する
 			cat src/show_mouse_cursor.o
 
-			# 現在のステータス表示領域の状態 = ソフト説明表示状態
-			lr35902_set_reg regA $STATUS_DISP_SHOW_SOFT_DESC
+			# 現在のステータス表示領域の状態 = 評価関数設定表示状態
+			lr35902_set_reg regA $STATUS_DISP_SHOW_CELL_EVAL_CONF
 			lr35902_copy_to_addr_from_regA $var_binbio_status_disp_status
 
 			# pop & return
@@ -8113,6 +8130,37 @@ f_binbio_event_btn_select_release() {
 		local sz_showing_cell_eval_sel=$(stat -c '%s' src/f_binbio_event_btn_select_release.showing_cell_eval_sel.o)
 		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_showing_cell_eval_sel)
 		cat src/f_binbio_event_btn_select_release.showing_cell_eval_sel.o
+
+		# regA == 評価関数設定表示状態 ?
+		lr35902_compare_regA_and $STATUS_DISP_SHOW_CELL_EVAL_CONF
+		(
+			# regA == 評価関数設定表示状態 の場合
+
+			# push
+			lr35902_push_reg regBC
+			lr35902_push_reg regDE
+			## TODO 必要に応じて修正
+
+			# 評価関数設定をクリア
+			lr35902_call $a_binbio_clear_cell_eval_conf
+
+			# ソフト説明を画面へ配置
+			lr35902_call $a_binbio_place_soft_desc
+
+			# 現在のステータス表示領域の状態 = ソフト説明表示状態
+			lr35902_set_reg regA $STATUS_DISP_SHOW_SOFT_DESC
+			lr35902_copy_to_addr_from_regA $var_binbio_status_disp_status
+
+			# pop & return
+			lr35902_pop_reg regDE
+			lr35902_pop_reg regBC
+			lr35902_pop_reg regAF
+			## TODO 必要に応じて修正
+			lr35902_return
+		) >src/f_binbio_event_btn_select_release.showing_cell_eval_conf.o
+		local sz_showing_cell_eval_conf=$(stat -c '%s' src/f_binbio_event_btn_select_release.showing_cell_eval_conf.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_showing_cell_eval_conf)
+		cat src/f_binbio_event_btn_select_release.showing_cell_eval_conf.o
 
 		# もしこのパスに来るようであれば無限ループで止める
 		infinite_halt
@@ -8230,6 +8278,8 @@ global_functions() {
 	cat src/f_binbio_place_cell_eval_param_fixedval.o
 	cat src/f_binbio_place_cell_eval_sel.o
 	cat src/f_binbio_clear_cell_eval_sel.o
+	cat src/f_binbio_place_cell_eval_conf.o
+	cat src/f_binbio_clear_cell_eval_conf.o
 	cat src/f_binbio_init.o
 	cat src/f_binbio_reset.o
 	cat src/f_binbio_do_cycle.o
