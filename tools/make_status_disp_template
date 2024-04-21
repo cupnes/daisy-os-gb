@@ -289,9 +289,39 @@ sed -i \
     -e "${APPEND_NR}a${TAB}lr35902_pop_reg regHL" \
     -e "${APPEND_NR}a${TAB}lr35902_pop_reg regDE" \
     $STATUS_DISP_SCRIPT_PATH
-
-# クリアする関数のテンプレートを追加
+## クリアする関数
+### 標準の関数テンプレを配置
 tools/make_func_template \
 	-f $STATUS_DISP_SCRIPT_PATH \
 	binbio_place_${STATUS_DISP_NAME} \
 	binbio_clear_${STATUS_DISP_NAME} "${STATUS_DISP_DESC}をクリア"
+### ステータス表示モードの固有のテンプレ処理を追加
+#### クリアする関数の開始行番号を取得
+CLEAR_FUNC_BEGIN_NR=$(sed -n "/^f_binbio_clear_${STATUS_DISP_NAME}() {$/=" $STATUS_DISP_SCRIPT_PATH)
+#### 処理挿入箇所の行番号を取得
+INSERT_NR=$(awk "NR > $CLEAR_FUNC_BEGIN_NR && /${TAB}# TODO/ {print NR; exit}" $STATUS_DISP_SCRIPT_PATH)
+#### 表示用モード名をクリア
+sed -i \
+    -e "${INSERT_NR}i${TAB}# ラベルをクリア" \
+    -e "${INSERT_NR}i${TAB}con_delch_tadr_num_macro \$${STATUS_DISP_NAME_UPPER}_LABEL_TCOORD_X \$${STATUS_DISP_NAME_UPPER}_LABEL_TCOORD_Y \$((sz_const_$STATUS_DISP_NAME - 1))" \
+    -e "${INSERT_NR}i\\\\" \
+    $STATUS_DISP_SCRIPT_PATH
+#### 変更が発生するレジスタをpush/pop
+##### 「# push」コメントの行番号を取得
+PUSH_COMMENT_NR=$(awk "NR > $CLEAR_FUNC_BEGIN_NR && /${TAB}# push/ {print NR; exit}" \
+		      $STATUS_DISP_SCRIPT_PATH)
+##### レジスタpush処理を追加
+APPEND_NR=$PUSH_COMMENT_NR
+sed -i \
+    -e "${APPEND_NR}a${TAB}lr35902_push_reg regAF" \
+    -e "${APPEND_NR}a${TAB}lr35902_push_reg regDE" \
+    $STATUS_DISP_SCRIPT_PATH
+##### 「# pop & return」コメントの行番号を取得
+POP_COMMENT_NR=$(awk "NR > $APPEND_NR && /${TAB}# pop & return/ {print NR; exit}" \
+		     $STATUS_DISP_SCRIPT_PATH)
+##### レジスタpop処理を追加
+APPEND_NR=$POP_COMMENT_NR
+sed -i \
+    -e "${APPEND_NR}a${TAB}lr35902_pop_reg regDE" \
+    -e "${APPEND_NR}a${TAB}lr35902_pop_reg regAF" \
+    $STATUS_DISP_SCRIPT_PATH
