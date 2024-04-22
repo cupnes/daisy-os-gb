@@ -7,7 +7,6 @@ SRC_EXPSET_DAISYWORLD_SH=true
 # なので、main.shで既に読み込んでいるスクリプトは読み込む処理を書いていない
 
 # この実験セットで使用するスクリプトを読み込む
-. src/status_disp_cell_eval_conf.sh
 
 # 定数
 ## デイジーの生育適温(20℃)
@@ -24,7 +23,6 @@ CELL_EVAL_FIXEDVAL_VAL_INIT=ff
 STATUS_DISP_SHOW_SOFT_DESC=00	# ソフト説明表示状態
 STATUS_DISP_SHOW_CELL_INFO=01	# 細胞ステータス情報表示状態
 STATUS_DISP_SHOW_CELL_EVAL_SEL=02	# 評価関数選択表示状態
-STATUS_DISP_SHOW_CELL_EVAL_CONF=03	# 評価関数設定表示状態
 ## 画面上のタイル座標/アドレス
 ### 地表温度
 ### TODO 「タイトル(TITLE)」というより「ラベル(LABEL)」
