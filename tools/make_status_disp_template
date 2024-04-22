@@ -102,8 +102,9 @@ fi
 # src/main.sh: 「# バイナリ生物環境用のセレクトボタンリリースイベントハンドラ」
 ## 直前の表示モードの処理の更新と、今回の表示モード用の処理の追加
 ### 既に追加済みであれば処理を飛ばす
-STATUS_DISP_DESC_COMMENT_LINE="${TAB}${TAB}# regA == ${STATUS_DISP_DESC}表示状態 ?"
-if ! grep -xq "$STATUS_DISP_DESC_COMMENT_LINE" src/main.sh; then
+STATUS_DISP_PROC_NAME="showing_${STATUS_DISP_NAME}"
+SKIP_KEY_LINE="${TAB}${TAB}cat src/f_binbio_event_btn_select_release.${STATUS_DISP_PROC_NAME}.o"
+if ! grep -xq "$SKIP_KEY_LINE" src/main.sh; then
 	# セレクトボタンリリースイベントハンドラの開始/終了行番号を取得
 	## 開始行番号を取得
 	SELECT_RELEASE_HANDLER_BEGIN_NR=$(sed -n \
@@ -158,11 +159,10 @@ if ! grep -xq "$STATUS_DISP_DESC_COMMENT_LINE" src/main.sh; then
 				    src/expset_daisyworld.sh \
 					| sed -r "s/^[A-Z_]+=[0-9][0-9].+# (.+)表示状態\$/\1/")
 	## テンプレートを追加
-	STATUS_DISP_PROC_NAME="showing_${STATUS_DISP_NAME}"
 	APPEND_NR=$BEFORE_STATUS_DISP_END_NR
 	sed -i \
 	    -e "${APPEND_NR}a\\\\" \
-	    -e "${APPEND_NR}a$STATUS_DISP_DESC_COMMENT_LINE" \
+	    -e "${APPEND_NR}a${TAB}${TAB}# regA == ${STATUS_DISP_DESC}表示状態 ?" \
 	    -e "${APPEND_NR}a${TAB}${TAB}lr35902_compare_regA_and \$$STATUS_DISP_DEF_NAME" \
 	    -e "${APPEND_NR}a${TAB}${TAB}(" \
 	    -e "${APPEND_NR}a${TAB}${TAB}${TAB}# regA == ${STATUS_DISP_DESC}表示状態 の場合" \
@@ -191,7 +191,7 @@ if ! grep -xq "$STATUS_DISP_DESC_COMMENT_LINE" src/main.sh; then
 	    -e "${APPEND_NR}a${TAB}${TAB}) >src/f_binbio_event_btn_select_release.${STATUS_DISP_PROC_NAME}.o" \
 	    -e "${APPEND_NR}a${TAB}${TAB}local sz_${STATUS_DISP_PROC_NAME}=\$(stat -c '%s' src/f_binbio_event_btn_select_release.${STATUS_DISP_PROC_NAME}.o)" \
 	    -e "${APPEND_NR}a${TAB}${TAB}lr35902_rel_jump_with_cond NZ \$(two_digits_d \$sz_${STATUS_DISP_PROC_NAME})" \
-	    -e "${APPEND_NR}a${TAB}${TAB}cat src/f_binbio_event_btn_select_release.${STATUS_DISP_PROC_NAME}.o" \
+	    -e "${APPEND_NR}a$SKIP_KEY_LINE" \
 	    src/main.sh
 fi
 
