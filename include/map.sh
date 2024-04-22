@@ -155,4 +155,4 @@ a_binbio_event_btn_down_release=2E09
 a_binbio_event_btn_right_release=2E35
 a_binbio_event_btn_left_release=2E69
 a_binbio_event_btn_start_release=2E9F
-a_binbio_event_btn_select_release=2EDD
+a_binbio_event_btn_select_release=2ED4
