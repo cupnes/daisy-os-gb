@@ -74,6 +74,10 @@ STATUS_DISP_SCRIPT_PATH="src/status_disp_${STATUS_DISP_NAME}.sh"
 STATUS_DISP_DEF_NAME="STATUS_DISP_SHOW_${STATUS_DISP_NAME^^}"
 ## 直前の表示モードの定数名
 BEFORE_STATUS_DISP_DEF_NAME="STATUS_DISP_SHOW_${BEFORE_STATUS_DISP_NAME^^}"
+## 今回の表示モードの処理名
+STATUS_DISP_PROC_NAME="showing_${STATUS_DISP_NAME}"
+## 直前の表示モードの処理名
+BEFORE_STATUS_DISP_PROC_NAME="showing_${BEFORE_STATUS_DISP_NAME}"
 ## タブ文字
 TAB="$(printf '\\\011')"
 
@@ -99,10 +103,49 @@ if ! grep -xq "$CONST_NAME_AND_STR" src/main.sh; then
 	    -e "${INSERT_NR}i$CONST_NAME_AND_STR" src/main.sh
 fi
 
+# src/main.sh: 「# バイナリ生物環境用のスタートボタンリリースイベントハンドラ」
+## 今回の表示モード用の処理の追加
+### 既に追加済みであれば処理を飛ばす
+SKIP_KEY_LINE="${TAB}${TAB}cat src/f_binbio_event_btn_start_release.${STATUS_DISP_PROC_NAME}.o"
+if ! grep -xq "$SKIP_KEY_LINE" src/main.sh; then
+	# スタートボタンリリースイベントハンドラの開始/終了行番号を取得
+	## 開始行番号を取得
+	HANDLER_BEGIN_NR=$(sed -n '/^f_binbio_event_btn_start_release() {$/=' \
+			       src/main.sh)
+	## 終了行番号を取得
+	HANDLER_END_NR=$(awk "NR > $HANDLER_BEGIN_NR && \$0 == \"}\" {print NR; exit}" \
+			     src/main.sh)
+
+	# 直前の表示モードの処理の開始/終了行番号を取得
+	## 開始行番号を取得
+	BEFORE_STATUS_DISP_BEGIN_NR=$(awk "NR > $HANDLER_BEGIN_NR && NR < $HANDLER_END_NR && /lr35902_compare_regA_and \\\$${BEFORE_STATUS_DISP_DEF_NAME}/ {print NR; exit}" src/main.sh)
+	## 終了行番号を取得
+	BEFORE_STATUS_DISP_END_NR=$(awk "NR > $BEFORE_STATUS_DISP_BEGIN_NR && /cat src\/f_binbio_event_btn_start_release.${BEFORE_STATUS_DISP_PROC_NAME}.o/ {print NR; exit}" src/main.sh)
+
+	# 今回の表示モードの場合の処理のテンプレートを追加
+	## テンプレートを追加
+	APPEND_NR=$BEFORE_STATUS_DISP_END_NR
+	sed -i \
+	    -e "${APPEND_NR}a\\\\" \
+	    -e "${APPEND_NR}a${TAB}${TAB}# regA == ${STATUS_DISP_DESC}表示状態 ?" \
+	    -e "${APPEND_NR}a${TAB}${TAB}lr35902_compare_regA_and \$$STATUS_DISP_DEF_NAME" \
+	    -e "${APPEND_NR}a${TAB}${TAB}(" \
+	    -e "${APPEND_NR}a${TAB}${TAB}${TAB}# regA == ${STATUS_DISP_DESC}表示状態 の場合" \
+	    -e "${APPEND_NR}a\\\\" \
+	    -e "${APPEND_NR}a${TAB}${TAB}${TAB}# ${STATUS_DISP_DESC}をクリア" \
+	    -e "${APPEND_NR}a${TAB}${TAB}${TAB}lr35902_call \$a_binbio_clear_${STATUS_DISP_NAME}" \
+	    -e "${APPEND_NR}a\\\\" \
+	    -e "${APPEND_NR}a${TAB}${TAB}${TAB}# TODO" \
+	    -e "${APPEND_NR}a${TAB}${TAB}) >src/f_binbio_event_btn_start_release.${STATUS_DISP_PROC_NAME}.o" \
+	    -e "${APPEND_NR}a${TAB}${TAB}local sz_${STATUS_DISP_PROC_NAME}=\$(stat -c '%s' src/f_binbio_event_btn_start_release.${STATUS_DISP_PROC_NAME}.o)" \
+	    -e "${APPEND_NR}a${TAB}${TAB}lr35902_rel_jump_with_cond NZ \$(two_digits_d \$sz_${STATUS_DISP_PROC_NAME})" \
+	    -e "${APPEND_NR}a$SKIP_KEY_LINE" \
+	    src/main.sh
+fi
+
 # src/main.sh: 「# バイナリ生物環境用のセレクトボタンリリースイベントハンドラ」
 ## 直前の表示モードの処理の更新と、今回の表示モード用の処理の追加
 ### 既に追加済みであれば処理を飛ばす
-STATUS_DISP_PROC_NAME="showing_${STATUS_DISP_NAME}"
 SKIP_KEY_LINE="${TAB}${TAB}cat src/f_binbio_event_btn_select_release.${STATUS_DISP_PROC_NAME}.o"
 if ! grep -xq "$SKIP_KEY_LINE" src/main.sh; then
 	# セレクトボタンリリースイベントハンドラの開始/終了行番号を取得
@@ -118,7 +161,6 @@ if ! grep -xq "$SKIP_KEY_LINE" src/main.sh; then
 	## 開始行番号を取得
 	BEFORE_STATUS_DISP_BEGIN_NR=$(awk "NR > $SELECT_RELEASE_HANDLER_BEGIN_NR && NR < $SELECT_RELEASE_HANDLER_END_NR && /lr35902_compare_regA_and \\\$${BEFORE_STATUS_DISP_DEF_NAME}/ {print NR; exit}" src/main.sh)
 	## 終了行番号を取得
-	BEFORE_STATUS_DISP_PROC_NAME="showing_${BEFORE_STATUS_DISP_NAME}"
 	BEFORE_STATUS_DISP_END_NR=$(awk "NR > $BEFORE_STATUS_DISP_BEGIN_NR && /cat src\/f_binbio_event_btn_select_release.${BEFORE_STATUS_DISP_PROC_NAME}.o/ {print NR; exit}" src/main.sh)
 
 	# 直前の表示モードの処理を更新
@@ -150,7 +192,7 @@ if ! grep -xq "$SKIP_KEY_LINE" src/main.sh; then
 	    -r "${SET_REGA_NR}s/lr35902_set_reg regA .STATUS_DISP_SHOW_[A-Z_]+\$/lr35902_set_reg regA \$STATUS_DISP_SHOW_${STATUS_DISP_NAME_UPPER}/" \
 	    src/main.sh
 
-	# この表示モードの場合の処理のテンプレートを追加
+	# 今回の表示モードの場合の処理のテンプレートを追加
 	## 次の表示モードの評価関数説明をsrc/expset_daisyworld.shから取得
 	NEXT_STATUS_DISP_NAME_UPPER=${NEXT_STATUS_DISP_NAME^^}
 	NEXT_STATUS_DISP_DEF_NR=$(sed -n "/^STATUS_DISP_SHOW_${NEXT_STATUS_DISP_NAME_UPPER}=[0-9][0-9]/=" \
