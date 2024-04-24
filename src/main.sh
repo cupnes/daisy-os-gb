@@ -140,8 +140,6 @@ cell_eval_daisyworld	て゛いし゛-わ-ると゛
 cell_eval_fixedval	こていち
 func_str	かんすう
 conf_str	せつてい
-cell_eval_param_fixedval_1	こてい
-cell_eval_param_fixedval_2	ち:
 cell_eval_conf	ひようかかんすうせつてい
 EOF
 
@@ -7087,18 +7085,10 @@ a_binbio_clear_cell_info=$(four_digits $fadr)
 echo -e "a_binbio_clear_cell_info=$a_binbio_clear_cell_info" >>$MAP_FILE_NAME
 ## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
 
-# 「関数設定」欄に現在の固定値を配置
+# 評価関数選択を画面へ配置
 f_binbio_clear_cell_info >src/f_binbio_clear_cell_info.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_clear_cell_info.o))
 fadr=$(calc16 "${a_binbio_clear_cell_info}+${fsz}")
-a_binbio_place_cell_eval_param_fixedval=$(four_digits $fadr)
-echo -e "a_binbio_place_cell_eval_param_fixedval=$a_binbio_place_cell_eval_param_fixedval" >>$MAP_FILE_NAME
-## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
-
-# 評価関数選択を画面へ配置
-f_binbio_place_cell_eval_param_fixedval >src/f_binbio_place_cell_eval_param_fixedval.o
-fsz=$(to16 $(stat -c '%s' src/f_binbio_place_cell_eval_param_fixedval.o))
-fadr=$(calc16 "${a_binbio_place_cell_eval_param_fixedval}+${fsz}")
 a_binbio_place_cell_eval_sel=$(four_digits $fadr)
 echo -e "a_binbio_place_cell_eval_sel=$a_binbio_place_cell_eval_sel" >>$MAP_FILE_NAME
 ## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
@@ -8287,7 +8277,6 @@ global_functions() {
 	cat src/f_binbio_place_cell_info_labels.o
 	cat src/f_binbio_place_cell_info_val.o
 	cat src/f_binbio_clear_cell_info.o
-	cat src/f_binbio_place_cell_eval_param_fixedval.o
 	cat src/f_binbio_place_cell_eval_sel.o
 	cat src/f_binbio_clear_cell_eval_sel.o
 	cat src/f_binbio_place_cell_eval_conf.o

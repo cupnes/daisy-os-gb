@@ -109,33 +109,17 @@ COLLECTED_FLAGS_UNIT_VAL_TCOORD_X=09
 #### 評価関数選択ラベル
 CELL_EVAL_SEL_LABEL_TCOORD_X=00
 CELL_EVAL_SEL_LABEL_TCOORD_Y=0A
-#### 関数設定ラベル
-CELL_EVAL_PARAM_LABEL_TCOORD_X=0E
-CELL_EVAL_PARAM_LABEL_FUNC_TCOORD_Y=01
-CELL_EVAL_PARAM_LABEL_CONF_TCOORD_Y=02
 #### 評価関数選択外枠
 CELL_EVAL_SEL_FRAME_TCOORD_X=00
 CELL_EVAL_SEL_FRAME_TCOORD_Y=0B
 CELL_EVAL_SEL_FRAME_WIDTH=0E
 CELL_EVAL_SEL_FRAME_HEIGHT=07
-#### 関数設定外枠
-CELL_EVAL_PARAM_FRAME_TCOORD_X=0E
-CELL_EVAL_PARAM_FRAME_TCOORD_Y=03
-CELL_EVAL_PARAM_FRAME_WIDTH=06
-CELL_EVAL_PARAM_FRAME_HEIGHT=0F
 #### 関数名
 CELL_EVAL_SEL_DAISYWORLD_TCOORD_X=02
 CELL_EVAL_SEL_DAISYWORLD_TCOORD_Y=0C
 CELL_EVAL_SEL_FIXEDVAL_TCOORD_X=02
 CELL_EVAL_SEL_FIXEDVAL_TCOORD_Y=0D
 #### 関数設定別
-##### 固定値
-CELL_EVAL_PARAM_FIXEDVAL_LABEL_1_TCOORD_X=0F
-CELL_EVAL_PARAM_FIXEDVAL_LABEL_1_TCOORD_Y=04
-CELL_EVAL_PARAM_FIXEDVAL_LABEL_2_TCOORD_X=11
-CELL_EVAL_PARAM_FIXEDVAL_LABEL_2_TCOORD_Y=05
-CELL_EVAL_PARAM_FIXEDVAL_PREF_TCOORD_X=0F
-CELL_EVAL_PARAM_FIXEDVAL_PREF_TCOORD_Y=06
 ## 画面上のマウスカーソル座標
 ### 地表温度の▲▼ボタンの範囲を示す
 SURFACE_TEMP_UP_DOWN_BEGIN_Y=10	# ▲▼のY座標始端
@@ -1084,52 +1068,6 @@ f_binbio_clear_cell_info() {
 	# 取得フラグをクリア
 	## ラベルと16進数の接頭辞と値をクリア
 	con_delch_tadr_num_macro $COLLECTED_FLAGS_LABEL_TCOORD_X $COLLECTED_FLAGS_LABEL_VAL_TCOORD_Y $(((sz_const_cell_status_str_collected_flags - 1) + (sz_const_pref_hex - 1) + F_PRINT_REGA_LEN))
-
-	# pop & return
-	lr35902_pop_reg regDE
-	lr35902_pop_reg regAF
-	lr35902_return
-}
-
-# 関数設定欄に現在の固定値を配置
-f_binbio_place_cell_eval_param_fixedval() {
-	# push
-	lr35902_push_reg regAF
-	lr35902_push_reg regDE
-	lr35902_push_reg regHL
-
-	# ラベルを配置
-	con_print_xy_macro $CELL_EVAL_PARAM_FIXEDVAL_LABEL_1_TCOORD_X $CELL_EVAL_PARAM_FIXEDVAL_LABEL_1_TCOORD_Y $a_const_cell_eval_param_fixedval_1
-	con_print_xy_macro $CELL_EVAL_PARAM_FIXEDVAL_LABEL_2_TCOORD_X $CELL_EVAL_PARAM_FIXEDVAL_LABEL_2_TCOORD_Y $a_const_cell_eval_param_fixedval_2
-
-	# 16進数の接頭時を配置
-	con_print_xy_macro $CELL_EVAL_PARAM_FIXEDVAL_PREF_TCOORD_X $CELL_EVAL_PARAM_FIXEDVAL_PREF_TCOORD_Y $a_const_pref_hex
-
-	# 値を配置
-	## regAへ現在の固定値を取得
-	lr35902_copy_to_regA_from_addr $var_binbio_cell_eval_fixedval_val
-	## regAの値を16進数で配置
-	lr35902_call $a_print_regA
-
-	# pop & return
-	lr35902_pop_reg regHL
-	lr35902_pop_reg regDE
-	lr35902_pop_reg regAF
-	lr35902_return
-}
-
-# 関数設定欄内をクリア
-f_binbio_clear_cell_eval_param() {
-	# push
-	lr35902_push_reg regAF
-	lr35902_push_reg regDE
-
-	# 枠線の中身だけをクリア
-	local tcoord_x=$(calc16_2 "${CELL_EVAL_PARAM_FRAME_TCOORD_X}+1")
-	local tcoord_y=$(calc16_2 "${CELL_EVAL_PARAM_FRAME_TCOORD_Y}+1")
-	local width=$(calc16_2 "${CELL_EVAL_PARAM_FRAME_WIDTH}-2")
-	local height=$(calc16_2 "${CELL_EVAL_PARAM_FRAME_HEIGHT}-2")
-	con_clear_rect_macro $tcoord_x $tcoord_y $width $height
 
 	# pop & return
 	lr35902_pop_reg regDE
