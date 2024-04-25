@@ -6,9 +6,6 @@ SRC_EXPSET_DAISYWORLD_SH=true
 # main.shの中で一通りのシェルスクリプトの読み込みが終わった後でこのファイルが読み込まれる想定
 # なので、main.shで既に読み込んでいるスクリプトは読み込む処理を書いていない
 
-# この実験セットで使用するスクリプトを読み込む
-. src/status_disp_cell_eval_conf.sh
-
 # 定数
 ## デイジーの生育適温(20℃)
 DAISY_GROWING_TEMP=14
@@ -145,6 +142,9 @@ var_binbio_status_disp_status=c033
 var_binbio_surface_temp_prev_counter=c034
 ## 地表温度(-128〜127)のアドレス
 var_binbio_surface_temp=c035
+
+# この実験セットで使用するスクリプトを読み込む
+. src/status_disp_cell_eval_conf.sh
 
 # 繰り返し使用する処理をファイル書き出し
 ## 現在の細胞が白デイジーか否か
