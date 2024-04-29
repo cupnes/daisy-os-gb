@@ -2,6 +2,8 @@
 
 # ステータス表示モードのテンプレートを作成する
 # このシェルスクリプトの各コマンドライン引数の説明：
+# - -n (マウスカーソル非表示)
+#   - マウスカーソル非表示処理も追加した形でテンプレを生成する
 # - BEFORE_STATUS_DISP_NAME (直前の評価関数名)
 #   - ここで指定したステータス表示モードの次に
 #     STATUS_DISP_NAMEのモードを表示するようにする
@@ -38,13 +40,17 @@ set -ue
 usage() {
 	echo 'Usage:' 1>&2
 	echo -e \
-	     "\t$0 BEFORE_STATUS_DISP_NAME STATUS_DISP_NAME STATUS_DISP_DESC MODE_NAME_FOR_DISP" \
+	     "\t$0 [-n] BEFORE_STATUS_DISP_NAME STATUS_DISP_NAME STATUS_DISP_DESC MODE_NAME_FOR_DISP" \
 	     1>&2
 	echo -e "\t$0 -h" 1>&2
 }
 
-while getopts h option; do
+HIDE_MOUSE_CURSOR='false'
+while getopts nh option; do
 	case $option in
+	n)
+		HIDE_MOUSE_CURSOR='true'
+		;;
 	h)
 		usage
 		exit 0
@@ -104,18 +110,16 @@ if ! grep -xq "$CONST_NAME_AND_STR" src/main.sh; then
 fi
 
 # src/main.sh: 「# バイナリ生物環境用のスタートボタンリリースイベントハンドラ」
+## 何度も使用する定数を予め定義
+### スタートボタンリリースイベントハンドラの開始/終了行番号を取得
+HANDLER_BEGIN_NR=$(sed -n '/^f_binbio_event_btn_start_release() {$/=' \
+		       src/main.sh)
+HANDLER_END_NR=$(awk "NR > $HANDLER_BEGIN_NR && \$0 == \"}\" {print NR; exit}" \
+		     src/main.sh)
 ## 今回の表示モード用の処理の追加
 ### 既に追加済みであれば処理を飛ばす
 SKIP_KEY_LINE="${TAB}${TAB}cat src/f_binbio_event_btn_start_release.${STATUS_DISP_PROC_NAME}.o"
 if ! grep -xq "$SKIP_KEY_LINE" src/main.sh; then
-	# スタートボタンリリースイベントハンドラの開始/終了行番号を取得
-	## 開始行番号を取得
-	HANDLER_BEGIN_NR=$(sed -n '/^f_binbio_event_btn_start_release() {$/=' \
-			       src/main.sh)
-	## 終了行番号を取得
-	HANDLER_END_NR=$(awk "NR > $HANDLER_BEGIN_NR && \$0 == \"}\" {print NR; exit}" \
-			     src/main.sh)
-
 	# 直前の表示モードの処理の開始/終了行番号を取得
 	## 開始行番号を取得
 	BEFORE_STATUS_DISP_BEGIN_NR=$(awk "NR > $HANDLER_BEGIN_NR && NR < $HANDLER_END_NR && /lr35902_compare_regA_and \\\$${BEFORE_STATUS_DISP_DEF_NAME}/ {print NR; exit}" src/main.sh)
@@ -142,27 +146,73 @@ if ! grep -xq "$SKIP_KEY_LINE" src/main.sh; then
 	    -e "${APPEND_NR}a$SKIP_KEY_LINE" \
 	    src/main.sh
 fi
+## (-n指定時)マウスカーソル表示処理を追加
+if [ "$HIDE_MOUSE_CURSOR" = 'true' ]; then
+	# 今回の表示モードの処理へマウスカーソル表示処理を追加
+	# TODO べき等にする(既にマウスカーソル表示処理が存在する場合は
+	#      追加を行わないようにする)
+	## 今回の表示モードの処理の開始/終了行番号を取得
+	STATUS_DISP_BEGIN_NR=$(awk "
+	  NR > $HANDLER_BEGIN_NR && NR < $HANDLER_END_NR \
+	  && /lr35902_compare_regA_and \\\$${STATUS_DISP_DEF_NAME}/ {
+	    print NR
+	    exit
+	  }" src/main.sh)
+	STATUS_DISP_END_NR=$(awk "
+	  NR > $STATUS_DISP_BEGIN_NR \
+	  && /cat src\/f_binbio_event_btn_start_release.${STATUS_DISP_PROC_NAME}.o/ {
+	    print NR
+	    exit
+	  }" src/main.sh)
+	## クリア関数呼び出しを行っている行番号を取得
+	CLEAR_NR=$(awk "
+	  NR > $STATUS_DISP_BEGIN_NR \
+	  && /^${TAB}${TAB}${TAB}lr35902_call .a_binbio_clear_[a-z_]+\$/ {
+	    print NR
+	    exit
+	  }
+	" src/main.sh)
+	## マウスカーソル表示処理を追加
+	APPEND_NR=$CLEAR_NR
+	sed -i \
+	    -e "${APPEND_NR}a\\\\" \
+	    -e "${APPEND_NR}a${TAB}${TAB}${TAB}# マウスカーソルを表示する" \
+	    -e "${APPEND_NR}a${TAB}${TAB}${TAB}lr35902_push_reg regBC" \
+	    -e "${APPEND_NR}a${TAB}${TAB}${TAB}lr35902_push_reg regDE" \
+	    -e "${APPEND_NR}a${TAB}${TAB}${TAB}cat src/show_mouse_cursor.o" \
+	    -e "${APPEND_NR}a${TAB}${TAB}${TAB}lr35902_pop_reg regDE" \
+	    -e "${APPEND_NR}a${TAB}${TAB}${TAB}lr35902_pop_reg regBC" \
+	    src/main.sh
+fi
 
 # src/main.sh: 「# バイナリ生物環境用のセレクトボタンリリースイベントハンドラ」
+## 何度も使用する定数を予め定義
+### セレクトボタンリリースイベントハンドラの開始/終了行番号
+SELECT_RELEASE_HANDLER_BEGIN_NR=$(sed -n \
+				      '/^f_binbio_event_btn_select_release() {$/=' \
+				      src/main.sh)
+SELECT_RELEASE_HANDLER_END_NR=$(awk "
+  NR > $SELECT_RELEASE_HANDLER_BEGIN_NR && \$0 == \"}\" {
+    print NR
+    exit
+  }" src/main.sh)
+### 直前の表示モードの処理の開始/終了行番号
+BEFORE_STATUS_DISP_BEGIN_NR=$(awk "
+  NR > $SELECT_RELEASE_HANDLER_BEGIN_NR && NR < $SELECT_RELEASE_HANDLER_END_NR \
+  && /lr35902_compare_regA_and \\\$${BEFORE_STATUS_DISP_DEF_NAME}/ {
+    print NR
+    exit
+  }" src/main.sh)
+BEFORE_STATUS_DISP_END_NR=$(awk "
+  NR > $BEFORE_STATUS_DISP_BEGIN_NR \
+  && /cat src\/f_binbio_event_btn_select_release.${BEFORE_STATUS_DISP_PROC_NAME}.o/ {
+    print NR
+    exit
+  }" src/main.sh)
 ## 直前の表示モードの処理の更新と、今回の表示モード用の処理の追加
 ### 既に追加済みであれば処理を飛ばす
 SKIP_KEY_LINE="${TAB}${TAB}cat src/f_binbio_event_btn_select_release.${STATUS_DISP_PROC_NAME}.o"
 if ! grep -xq "$SKIP_KEY_LINE" src/main.sh; then
-	# セレクトボタンリリースイベントハンドラの開始/終了行番号を取得
-	## 開始行番号を取得
-	SELECT_RELEASE_HANDLER_BEGIN_NR=$(sed -n \
-					      '/^f_binbio_event_btn_select_release() {$/=' \
-					      src/main.sh)
-	## 終了行番号を取得
-	SELECT_RELEASE_HANDLER_END_NR=$(awk "NR > $SELECT_RELEASE_HANDLER_BEGIN_NR && \$0 == \"}\" {print NR; exit}" \
-					    src/main.sh)
-
-	# 直前の表示モードの処理の開始/終了行番号を取得
-	## 開始行番号を取得
-	BEFORE_STATUS_DISP_BEGIN_NR=$(awk "NR > $SELECT_RELEASE_HANDLER_BEGIN_NR && NR < $SELECT_RELEASE_HANDLER_END_NR && /lr35902_compare_regA_and \\\$${BEFORE_STATUS_DISP_DEF_NAME}/ {print NR; exit}" src/main.sh)
-	## 終了行番号を取得
-	BEFORE_STATUS_DISP_END_NR=$(awk "NR > $BEFORE_STATUS_DISP_BEGIN_NR && /cat src\/f_binbio_event_btn_select_release.${BEFORE_STATUS_DISP_PROC_NAME}.o/ {print NR; exit}" src/main.sh)
-
 	# 直前の表示モードの処理を更新
 	## 次の表示モードの配置処理を呼び出している行番号を取得
 	PLACE_NEXT_STATUS_DISP_NR=$(awk "NR > $BEFORE_STATUS_DISP_BEGIN_NR && /^${TAB}${TAB}${TAB}lr35902_call .a_binbio_place_[a-z_]+\$/ {print NR; exit}" src/main.sh)
@@ -234,6 +284,88 @@ if ! grep -xq "$SKIP_KEY_LINE" src/main.sh; then
 	    -e "${APPEND_NR}a${TAB}${TAB}local sz_${STATUS_DISP_PROC_NAME}=\$(stat -c '%s' src/f_binbio_event_btn_select_release.${STATUS_DISP_PROC_NAME}.o)" \
 	    -e "${APPEND_NR}a${TAB}${TAB}lr35902_rel_jump_with_cond NZ \$(two_digits_d \$sz_${STATUS_DISP_PROC_NAME})" \
 	    -e "${APPEND_NR}a$SKIP_KEY_LINE" \
+	    src/main.sh
+fi
+## (-n指定時)マウスカーソル非表示処理を追加
+if [ "$HIDE_MOUSE_CURSOR" = 'true' ]; then
+	# 直前の表示モードの処理を確認し更新
+	## マウスカーソル表示処理が存在するか？
+	SHOW_MOUSE_CURSOR_NR=$(awk "
+	  NR > $BEFORE_STATUS_DISP_BEGIN_NR && NR < $BEFORE_STATUS_DISP_END_NR \
+	  && /^${TAB}${TAB}${TAB}cat src\/show_mouse_cursor.o/ {
+	    print NR
+	    exit
+	  }
+	  NR >= $BEFORE_STATUS_DISP_END_NR {
+	    print \"not_found\"
+	    exit
+	  }
+	" src/main.sh)
+	if [ "$SHOW_MOUSE_CURSOR_NR" = 'not_found' ]; then
+		# マウスカーソル表示処理が存在しない場合
+
+		# TODO べき等にする(既にマウスカーソル非表示処理が存在する場合は
+		#      追加を行わないようにする)
+
+		# マウスカーソル非表示処理を追加する
+		## 配置関数呼び出しを行っている行番号を取得
+		PLACE_NR=$(awk "
+		  NR > $BEFORE_STATUS_DISP_BEGIN_NR \
+		  && /^${TAB}${TAB}${TAB}lr35902_call .a_binbio_place_$STATUS_DISP_NAME/ {
+		    print NR
+		    exit
+		  }
+		" src/main.sh)
+		## マウスカーソル非表示処理を追加
+		APPEND_NR=$PLACE_NR
+		sed -i \
+		    -e "${APPEND_NR}a\\\\" \
+		    -e "${APPEND_NR}a${TAB}${TAB}${TAB}# マウスカーソルを非表示にする" \
+		    -e "${APPEND_NR}a${TAB}${TAB}${TAB}cat src/hide_mouse_cursor.o" \
+		    src/main.sh
+	else
+		# マウスカーソル表示処理が存在する場合
+
+		# マウスカーソル表示処理を削除する
+		# (引き続きマウスカーソルを非表示のままにする)
+		## ひとつ上の行(コメント行)から削除対象にする
+		DEL_BEGIN_NR=$((SHOW_MOUSE_CURSOR_NR - 1))
+		## ひとつ下の行(空行)まで削除対象にする
+		DEL_END_NR=$((SHOW_MOUSE_CURSOR_NR + 1))
+		## 削除
+		sed -i "${DEL_BEGIN_NR},${DEL_END_NR}d" src/main.sh
+	fi
+
+	# 今回の表示モードの処理へマウスカーソル表示処理を追加
+	# TODO べき等にする(既にマウスカーソル表示処理が存在する場合は
+	#      追加を行わないようにする)
+	## 今回の表示モードの処理の開始/終了行番号を取得
+	STATUS_DISP_BEGIN_NR=$(awk "
+	  NR > $SELECT_RELEASE_HANDLER_BEGIN_NR && NR < $SELECT_RELEASE_HANDLER_END_NR \
+	  && /lr35902_compare_regA_and \\\$${STATUS_DISP_DEF_NAME}/ {
+	    print NR
+	    exit
+	  }" src/main.sh)
+	STATUS_DISP_END_NR=$(awk "
+	  NR > $STATUS_DISP_BEGIN_NR \
+	  && /cat src\/f_binbio_event_btn_select_release.${STATUS_DISP_PROC_NAME}.o/ {
+	    print NR
+	    exit
+	  }" src/main.sh)
+	## 配置関数呼び出しを行っている行番号を取得
+	PLACE_NR=$(awk "
+	  NR > $STATUS_DISP_BEGIN_NR \
+	  && /^${TAB}${TAB}${TAB}lr35902_call .a_binbio_place_[a-z_]+\$/ {
+	    print NR
+	    exit
+	  }
+	" src/main.sh)
+	## マウスカーソル表示処理を追加
+	APPEND_NR=$PLACE_NR
+	sed -i \
+	    -e "${APPEND_NR}a\\\\" \
+	    -e "${APPEND_NR}a${TAB}${TAB}${TAB}# マウスカーソルを表示する" \
+	    -e "${APPEND_NR}a${TAB}${TAB}${TAB}cat src/show_mouse_cursor.o" \
 	    src/main.sh
 fi
 
