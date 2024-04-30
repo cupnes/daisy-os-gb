@@ -8002,6 +8002,13 @@ f_binbio_event_btn_start_release() {
 			# 評価関数設定をクリア
 			lr35902_call $a_binbio_clear_cell_eval_conf
 
+			# マウスカーソルを表示する
+			lr35902_push_reg regBC
+			lr35902_push_reg regDE
+			cat src/show_mouse_cursor.o
+			lr35902_pop_reg regDE
+			lr35902_pop_reg regBC
+
 			# TODO
 		) >src/f_binbio_event_btn_start_release.showing_cell_eval_conf.o
 		local sz_showing_cell_eval_conf=$(stat -c '%s' src/f_binbio_event_btn_start_release.showing_cell_eval_conf.o)
@@ -8116,9 +8123,6 @@ f_binbio_event_btn_select_release() {
 			# 評価関数設定を画面へ配置
 			lr35902_call $a_binbio_place_cell_eval_conf
 
-			# マウスカーソルを表示する
-			cat src/show_mouse_cursor.o
-
 			# 現在のステータス表示領域の状態 = 評価関数設定表示状態
 			lr35902_set_reg regA $STATUS_DISP_SHOW_CELL_EVAL_CONF
 			lr35902_copy_to_addr_from_regA $var_binbio_status_disp_status
@@ -8148,6 +8152,9 @@ f_binbio_event_btn_select_release() {
 
 			# ソフト説明を画面へ配置
 			lr35902_call $a_binbio_place_soft_desc
+
+			# マウスカーソルを表示する
+			cat src/show_mouse_cursor.o
 
 			# 現在のステータス表示領域の状態 = ソフト説明表示状態
 			lr35902_set_reg regA $STATUS_DISP_SHOW_SOFT_DESC
