@@ -88,15 +88,14 @@ var_timer_handler=c026
 # 0xc026 - 0xc030 : 未使用
 
 # バイナリ生物用変数
-## 共通で使用する変数領域1(0xc031)
 var_binbio_status_disp_counter=c031	# ステータス表示領域で使用するカウンタ
-## 実験セット別の変数領域(0xc032 - 0xc035)
+## 実験セット側で独自定義している領域(0xc032 - 0xc035)(ここから)
 ### 実験セット: HELLO
 ### ※ src/main.shに専用関数が残っているため、専用変数もここに残している
 var_binbio_get_code_comp_hello_counter=c033	# get_code_comp_hello()で使用するカウンタ
 var_binbio_get_code_comp_hello_addr_bh=c034	# get_code_comp_hello()で使用するアドレス(下位8ビット)
 var_binbio_get_code_comp_hello_addr_th=c035	# get_code_comp_hello()で使用するアドレス(上位8ビット)
-## 共通で使用する変数領域2(0xc036 - 0xc03b)
+## 実験セット側で独自定義している領域(0xc032 - 0xc035)(ここまで)
 var_binbio_expset_num=c036	# 現在の実験セット番号
 var_binbio_get_code_comp_all_counter_addr_bh=c037	# get_code_comp_all()で使用するカウンタ/アドレス(下位8ビット)
 var_binbio_get_code_comp_all_counter_addr_th=c038	# get_code_comp_all()で使用するカウンタ/アドレス(上位8ビット)
