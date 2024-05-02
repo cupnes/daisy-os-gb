@@ -7608,6 +7608,10 @@ f_binbio_event_btn_up_release() {
 			(
 				# regA == 固定値を返す の場合
 
+				# 評価関数設定で現在選択中のパラメータ番号変数をゼロクリア
+				lr35902_clear_reg regA
+				lr35902_copy_to_addr_from_regA $var_binbio_cell_eval_conf_paramno
+
 				# 現在(「固定値を返す」関数の位置)の'→'をクリア
 				con_putxy_macro $(calc16_2 "${CELL_EVAL_SEL_FIXEDVAL_TCOORD_X}-1") $CELL_EVAL_SEL_FIXEDVAL_TCOORD_Y ' '
 
@@ -7667,6 +7671,10 @@ f_binbio_event_btn_down_release() {
 			lr35902_compare_regA_and $CELL_EVAL_NUM_DAISYWORLD
 			(
 				# regA == デイジーワールド の場合
+
+				# 評価関数設定で現在選択中のパラメータ番号変数をゼロクリア
+				lr35902_clear_reg regA
+				lr35902_copy_to_addr_from_regA $var_binbio_cell_eval_conf_paramno
 
 				# 現在(「デイジーワールド」関数の位置)の'→'をクリア
 				con_putxy_macro $(calc16_2 "${CELL_EVAL_SEL_DAISYWORLD_TCOORD_X}-1") $CELL_EVAL_SEL_DAISYWORLD_TCOORD_Y ' '
