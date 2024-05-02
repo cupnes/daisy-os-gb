@@ -1247,6 +1247,8 @@ f_binbio_init() {
 	lr35902_copy_to_addr_from_regA $var_binbio_surface_temp_prev_counter
 	## binbio_status_disp_counter = 0
 	lr35902_copy_to_addr_from_regA $var_binbio_status_disp_counter
+	## binbio_cell_eval_conf_paramno = 0
+	lr35902_copy_to_addr_from_regA $var_binbio_cell_eval_conf_paramno
 	## binbio_status_disp_status = $STATUS_DISP_SHOW_SOFT_DESC
 	lr35902_set_reg regA $STATUS_DISP_SHOW_SOFT_DESC
 	lr35902_copy_to_addr_from_regA $var_binbio_status_disp_status

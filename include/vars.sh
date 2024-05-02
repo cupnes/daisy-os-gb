@@ -85,9 +85,10 @@ var_timer_handler=c026
 # 　0xc026 - 0xc089 は変数等に使わないこと
 # ↑タイマーハンドラ使っていないので100バイトも確保するのはやめる
 
-# 0xc026 - 0xc030 : 未使用
+# 0xc026 - 0xc02f : 未使用
 
 # バイナリ生物用変数
+var_binbio_cell_eval_conf_paramno=c030	# 評価関数設定で現在選択中のパラメータ番号
 var_binbio_status_disp_counter=c031	# ステータス表示領域で使用するカウンタ
 ## 実験セット側で独自定義している領域(0xc032 - 0xc035)(ここから)
 ### 実験セット: HELLO
