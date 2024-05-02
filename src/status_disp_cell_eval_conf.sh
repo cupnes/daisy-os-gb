@@ -55,3 +55,15 @@ f_binbio_clear_cell_eval_conf() {
 	## TODO
 	lr35902_return
 }
+
+# 現在の評価関数番号とパラメータ番号に対応する変数のアドレスを取得
+f_binbio_get_var_from_current_cell_eval_and_param() {
+	# push
+	## TODO
+
+	# TODO
+
+	# pop & return
+	## TODO
+	lr35902_return
+}
