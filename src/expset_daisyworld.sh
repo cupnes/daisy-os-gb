@@ -507,10 +507,10 @@ f_binbio_cell_eval() {
 
 		# return
 		lr35902_return
-	) >src/expset_fixedval.f_binbio_cell_eval.fixedval.o
-	local sz_fixedval=$(stat -c '%s' src/expset_fixedval.f_binbio_cell_eval.fixedval.o)
+	) >src/expset_daisyworld.f_binbio_cell_eval.fixedval.o
+	local sz_fixedval=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.fixedval.o)
 	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_fixedval)
-	cat src/expset_fixedval.f_binbio_cell_eval.fixedval.o
+	cat src/expset_daisyworld.f_binbio_cell_eval.fixedval.o
 
 	# TODO いずれでもない場合、現在の細胞の適応度をそのまま返す
 
@@ -1130,10 +1130,10 @@ f_binbio_place_cell_eval_sel() {
 		lr35902_pop_reg regBC
 		lr35902_pop_reg regAF
 		lr35902_return
-	) >src/expset_fixedval.f_binbio_place_cell_eval_sel.fixedval.o
-	local sz_fixedval=$(stat -c '%s' src/expset_fixedval.f_binbio_place_cell_eval_sel.fixedval.o)
+	) >src/expset_daisyworld.f_binbio_place_cell_eval_sel.fixedval.o
+	local sz_fixedval=$(stat -c '%s' src/expset_daisyworld.f_binbio_place_cell_eval_sel.fixedval.o)
 	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_fixedval)
-	cat src/expset_fixedval.f_binbio_place_cell_eval_sel.fixedval.o
+	cat src/expset_daisyworld.f_binbio_place_cell_eval_sel.fixedval.o
 
 	# regAがその他の値の場合(現状、このパスには来ないはず)
 	# もしこのパスに来るようであれば無限ループで止める
