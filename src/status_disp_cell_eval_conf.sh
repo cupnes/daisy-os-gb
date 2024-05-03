@@ -109,15 +109,3 @@ f_binbio_get_var_from_current_cell_eval_and_param() {
 	lr35902_pop_reg regAF
 	lr35902_return
 }
-
-# 現在の評価関数番号のパラメータ番号を配置するタイル座標を取得
-f_binbio_get_tcoord_from_current_cell_eval_and_param() {
-	# push
-	## TODO
-
-	# TODO
-
-	# pop & return
-	## TODO
-	lr35902_return
-}
