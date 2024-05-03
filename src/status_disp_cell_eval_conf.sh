@@ -57,13 +57,55 @@ f_binbio_clear_cell_eval_conf() {
 }
 
 # 現在の評価関数番号とパラメータ番号に対応する変数のアドレスを取得
+# out: regHL - 対象の変数のアドレス
 f_binbio_get_var_from_current_cell_eval_and_param() {
 	# push
-	## TODO
+	lr35902_push_reg regAF
 
-	# TODO
+	# regAへ現在の評価関数番号を取得
+	lr35902_copy_to_regA_from_addr $var_binbio_expset_num
+
+	local obj
+
+	# regA == デイジーワールド ?
+	lr35902_compare_regA_and $CELL_EVAL_NUM_DAISYWORLD
+	obj=src/status_disp_cell_eval_conf.f_binbio_get_var_from_current_cell_eval_and_param.daisyworld.o
+	(
+		# regA == デイジーワールド の場合
+
+		# 戻り値へNULLを設定
+		lr35902_set_reg regHL $GBOS_NULL
+
+		# pop & return
+		lr35902_pop_reg regAF
+		lr35902_return
+	) >$obj
+	local sz_daisyworld=$(stat -c '%s' $obj)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_daisyworld)
+	cat $obj
+
+	# regA == 固定値 ?
+	lr35902_compare_regA_and $CELL_EVAL_NUM_FIXEDVAL
+	obj=src/status_disp_cell_eval_conf.f_binbio_get_var_from_current_cell_eval_and_param.fixedval.o
+	(
+		# regA == 固定値 の場合
+
+		# 戻り値へNULLを設定
+		lr35902_set_reg regHL $GBOS_NULL
+
+		# pop & return
+		lr35902_pop_reg regAF
+		lr35902_return
+	) >$obj
+	local sz_fixedval=$(stat -c '%s' $obj)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_fixedval)
+	cat $obj
+
+	# regAがその他の値の場合(現状、このパスには来ないはず)
+	# もしこのパスに来るようであれば無限ループで止める
+	infinite_halt
 
 	# pop & return
-	## TODO
+	lr35902_pop_reg regAF
 	lr35902_return
 }
