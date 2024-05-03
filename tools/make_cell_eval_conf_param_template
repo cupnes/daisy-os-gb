@@ -1,5 +1,7 @@
 #!/bin/bash
 
+. include/common.sh
+
 # 評価関数設定のパラメータの処理のテンプレートを作成する
 # このシェルスクリプトの各コマンドライン引数の説明：
 # - CELL_EVAL_NAME (評価関数名)
@@ -56,6 +58,8 @@ TARGET_PARAM_DISP=$3
 # 何度も使用する定数
 ## 評価関数のシンボルを大文字化
 CELL_EVAL_NAME_UPPER=${CELL_EVAL_NAME^^}
+## 対象パラメータ名のシンボルを大文字化
+TARGET_PARAM_UPPER=${TARGET_PARAM^^}
 ## 評価関数の定数名
 CELL_EVAL_DEF_NAME="CELL_EVAL_NUM_${CELL_EVAL_NAME_UPPER}"
 ## 評価関数設定固有のスクリプト名
@@ -105,13 +109,46 @@ CONST_DEF_AREA_END_NR=$(awk "
 " $STATUS_DISP_SCRIPT_PATH)
 ## パラメータ文字列配置座標
 COMMENT_LINE='## パラメータ文字列配置座標'
+INSERT_NR=$CONST_DEF_AREA_END_NR
 if ! grep -xq "$COMMENT_LINE" $STATUS_DISP_SCRIPT_PATH; then
-	INSERT_NR=$CONST_DEF_AREA_END_NR
 	sed -i \
 	    -e "${INSERT_NR}i$COMMENT_LINE" \
 	    -e "${INSERT_NR}iCELL_EVAL_CONF_PARAM_LABEL_BASE_TCOORD_Y=0C" \
 	    -e "${INSERT_NR}iCELL_EVAL_CONF_PARAM_LABEL_TCOORD_X=02" \
 	    $STATUS_DISP_SCRIPT_PATH
+	INSERT_NR=$((INSERT_NR + 3))
+fi
+## パラメータ番号
+COMMENT_LINE='## パラメータ番号'
+if grep -xq "$COMMENT_LINE" $STATUS_DISP_SCRIPT_PATH; then
+	# コメント行がある場合
+	INSERT_NR=$(awk "
+	  NR > $CONST_DEF_AREA_BEGIN_NR && NR < $CONST_DEF_AREA_END_NR \
+	  && \$0 == \"${COMMENT_LINE}\" {
+	    print NR
+	    exit
+	}" $STATUS_DISP_SCRIPT_PATH)
+else
+	# コメント行がない場合
+	sed -i "${INSERT_NR}i$COMMENT_LINE" $STATUS_DISP_SCRIPT_PATH
+fi
+INSERT_NR=$((INSERT_NR + 1))
+PARAMNO_DEF_PREF="CELL_EVAL_CONF_PARAMNO_${CELL_EVAL_NAME_UPPER}"
+PARAMNO_DEF_NAME="${PARAMNO_DEF_PREF}_$TARGET_PARAM_UPPER"
+if ! grep -q "^$PARAMNO_DEF_NAME=" $STATUS_DISP_SCRIPT_PATH; then
+	# パラメータ番号の行がない場合
+	LAST_PARAMNO=$(grep "^$PARAMNO_DEF_PREF" $STATUS_DISP_SCRIPT_PATH | \
+			       tail -n 1 | cut -d'=' -f2)
+	if [ -n "$LAST_PARAMNO" ]; then
+		# 今回の評価関数に関するパラメータ番号定数がある場合
+		PARAMNO=$(calc16_2 "${LAST_PARAMNO}+1")
+		LAST_PARAM_NR=$(sed -n "/^${PARAMNO_DEF_PREF}[A-Z_]\+=${LAST_PARAMNO}\$/=" $STATUS_DISP_SCRIPT_PATH)
+		INSERT_NR=$((LAST_PARAM_NR + 1))
+	else
+		# 今回の評価関数に関するパラメータ番号定数がない場合
+		PARAMNO=00
+	fi
+	sed -i "${INSERT_NR}i$PARAMNO_DEF_NAME=$PARAMNO" $STATUS_DISP_SCRIPT_PATH
 fi
 
 # 以降で何度も使用する定数
