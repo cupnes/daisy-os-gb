@@ -7109,10 +7109,18 @@ a_binbio_get_var_from_current_cell_eval_and_param=$(four_digits $fadr)
 echo -e "a_binbio_get_var_from_current_cell_eval_and_param=$a_binbio_get_var_from_current_cell_eval_and_param" >>$MAP_FILE_NAME
 ## 定義はsrc/status_disp_cell_eval_conf.shにある
 
-# 評価関数設定を画面へ配置
+# 現在の評価関数番号のパラメータ番号を配置するタイル座標を取得
 f_binbio_get_var_from_current_cell_eval_and_param >src/f_binbio_get_var_from_current_cell_eval_and_param.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_get_var_from_current_cell_eval_and_param.o))
 fadr=$(calc16 "${a_binbio_get_var_from_current_cell_eval_and_param}+${fsz}")
+a_binbio_get_tcoord_from_current_cell_eval_and_param=$(four_digits $fadr)
+echo -e "a_binbio_get_tcoord_from_current_cell_eval_and_param=$a_binbio_get_tcoord_from_current_cell_eval_and_param" >>$MAP_FILE_NAME
+## 定義はsrc/status_disp_cell_eval_conf.shにある
+
+# 評価関数設定を画面へ配置
+f_binbio_get_tcoord_from_current_cell_eval_and_param >src/f_binbio_get_tcoord_from_current_cell_eval_and_param.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_get_tcoord_from_current_cell_eval_and_param.o))
+fadr=$(calc16 "${a_binbio_get_tcoord_from_current_cell_eval_and_param}+${fsz}")
 a_binbio_place_cell_eval_conf=$(four_digits $fadr)
 echo -e "a_binbio_place_cell_eval_conf=$a_binbio_place_cell_eval_conf" >>$MAP_FILE_NAME
 ## 定義はsrc/status_disp_cell_eval_conf.shにある
@@ -8303,6 +8311,7 @@ global_functions() {
 	cat src/f_binbio_place_cell_eval_sel.o
 	cat src/f_binbio_clear_cell_eval_sel.o
 	cat src/f_binbio_get_var_from_current_cell_eval_and_param.o
+	cat src/f_binbio_get_tcoord_from_current_cell_eval_and_param.o
 	cat src/f_binbio_place_cell_eval_conf.o
 	cat src/f_binbio_clear_cell_eval_conf.o
 	cat src/f_binbio_init.o
