@@ -147,6 +147,31 @@ var_binbio_surface_temp=c035
 . src/status_disp_cell_eval_conf.sh
 
 # 繰り返し使用する処理をファイル書き出し
+## regAへ現在の細胞のtile_numを取得
+## out : regA - 現在の細胞のtile_num
+## work: regBC, regHL
+{
+	# push
+	lr35902_push_reg regBC
+	lr35902_push_reg regHL
+
+	# 現在の細胞のアドレスをregHLへ取得
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
+	lr35902_copy_to_from regL regA
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
+	lr35902_copy_to_from regH regA
+
+	# アドレスregHLをtile_numまで進める
+	lr35902_set_reg regBC 0006
+	lr35902_add_to_regHL regBC
+
+	# regAへ自身のtile_numを取得
+	lr35902_copy_to_from regA ptrHL
+
+	# pop
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regBC
+} >src/expset_daisyworld.get_current_cell_tile_num.o
 ## 現在の細胞が白デイジーか否か
 ## out : regA - 現在の細胞が白デイジーなら1、それ以外は0
 ## work: regBC, regHL
@@ -477,40 +502,28 @@ f_binbio_cell_eval_fixedval() {
 # 現在の細胞を評価する
 # out: regA - 評価結果の適応度(0x00〜0xff)
 # ※ フラグレジスタは破壊される
-# ※ デイジーワールド実験ではvar_binbio_expset_numを現在の評価関数番号に使う
 f_binbio_cell_eval() {
-	# regAへexpset_numを取得
-	lr35902_copy_to_regA_from_addr $var_binbio_expset_num
+	# regAへ現在の細胞のtile_numを取得
+	cat src/expset_daisyworld.get_current_cell_tile_num.o
 
-	# regA == DAISYWORLD ?
-	lr35902_compare_regA_and $CELL_EVAL_NUM_DAISYWORLD
+	# 繰り返し使用する処理をファイル書き出し
+	## デイジーワールドの評価関数を呼び出してreturn
 	(
-		# regA == DAISYWORLD の場合
-
-		# 実装関数呼び出し
+		# regA == 白デイジー の場合
 		lr35902_call $a_binbio_cell_eval_daisyworld
-
-		# return
 		lr35902_return
 	) >src/expset_daisyworld.f_binbio_cell_eval.daisyworld.o
 	local sz_daisyworld=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.daisyworld.o)
+
+	# regA == 白デイジー ?
+	lr35902_compare_regA_and $GBOS_TILE_NUM_DAISY_WHITE
 	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_daisyworld)
 	cat src/expset_daisyworld.f_binbio_cell_eval.daisyworld.o
 
-	# regA == FIXEDVAL ?
-	lr35902_compare_regA_and $CELL_EVAL_NUM_FIXEDVAL
-	(
-		# regA == FIXEDVAL の場合
-
-		# 実装関数呼び出し
-		lr35902_call $a_binbio_cell_eval_fixedval
-
-		# return
-		lr35902_return
-	) >src/expset_daisyworld.f_binbio_cell_eval.fixedval.o
-	local sz_fixedval=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.fixedval.o)
-	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_fixedval)
-	cat src/expset_daisyworld.f_binbio_cell_eval.fixedval.o
+	# regA == 黒デイジー ?
+	lr35902_compare_regA_and $GBOS_TILE_NUM_DAISY_BLACK
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_daisyworld)
+	cat src/expset_daisyworld.f_binbio_cell_eval.daisyworld.o
 
 	# TODO いずれでもない場合、現在の細胞の適応度をそのまま返す
 

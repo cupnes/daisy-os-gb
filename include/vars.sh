@@ -97,7 +97,7 @@ var_binbio_get_code_comp_hello_counter=c033	# get_code_comp_hello()で使用す�
 var_binbio_get_code_comp_hello_addr_bh=c034	# get_code_comp_hello()で使用するアドレス(下位8ビット)
 var_binbio_get_code_comp_hello_addr_th=c035	# get_code_comp_hello()で使用するアドレス(上位8ビット)
 ## 実験セット側で独自定義している領域(0xc032 - 0xc035)(ここまで)
-var_binbio_expset_num=c036	# 現在の実験セット番号
+var_binbio_expset_num=c036	# 現在の実験セット番号(※ デイジーワールド実験ではvar_binbio_expset_numを現在の評価関数番号に使う)
 var_binbio_get_code_comp_all_counter_addr_bh=c037	# get_code_comp_all()で使用するカウンタ/アドレス(下位8ビット)
 var_binbio_get_code_comp_all_counter_addr_th=c038	# get_code_comp_all()で使用するカウンタ/アドレス(上位8ビット)
 var_binbio_cur_cell_addr_bh=c039	# 現在対象としている細胞アドレス(下位8ビット)
