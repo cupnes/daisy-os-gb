@@ -5400,241 +5400,40 @@ echo -e "a_binbio_cell_growth_daisy=$a_binbio_cell_growth_daisy" >>$MAP_FILE_NAM
 ## 定義はsrc/expset_daisyworld.shにある
 
 # 細胞の「成長」の振る舞い
-# 現在の細胞の機械語バイナリの中に取得したコード化合物と同じものが存在したら、
-# 対応するcollected_flagsのビットをセットする
 f_binbio_cell_growth_daisy >src/f_binbio_cell_growth_daisy.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_growth_daisy.o))
 fadr=$(calc16 "${a_binbio_cell_growth_daisy}+${fsz}")
 a_binbio_cell_growth=$(four_digits $fadr)
 echo -e "a_binbio_cell_growth=$a_binbio_cell_growth" >>$MAP_FILE_NAME
 f_binbio_cell_growth() {
-	# push
-	lr35902_push_reg regAF
-	lr35902_push_reg regBC
-	lr35902_push_reg regHL
+	# regAへ現在の細胞のtile_numを取得
+	cat src/expset_daisyworld.get_current_cell_tile_num.o
 
-	# regHLへ現在の細胞のアドレスを設定する
-	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
-	lr35902_copy_to_from regL regA
-	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
-	lr35902_copy_to_from regH regA
-
-	# regHLのアドレスをfitnessの位置まで進める
-	lr35902_set_reg regBC 0005
-	lr35902_add_to_regHL regBC
-
-	# regBへ現在の細胞の適応度を取得
-	lr35902_copy_to_from regB ptrHL
-
-	# regAへ乱数を取得
-	lr35902_call $a_get_rnd
-
-	# regA(乱数) < regB(現在の細胞の適応度) ?
-	lr35902_compare_regA_and regB
+	# 繰り返し使用する処理をファイル書き出し
+	## デイジーワールドの成長関数を呼び出してreturn
 	(
-		# regA(乱数) >= regB(現在の細胞の適応度) の場合
-
-		# pop & return
-		lr35902_pop_reg regHL
-		lr35902_pop_reg regBC
-		lr35902_pop_reg regAF
+		lr35902_call $a_binbio_cell_growth_daisy
 		lr35902_return
-	) >src/f_binbio_cell_growth.9.o
-	local sz_9=$(stat -c '%s' src/f_binbio_cell_growth.9.o)
-	lr35902_rel_jump_with_cond C $(two_digits_d $sz_9)
-	cat src/f_binbio_cell_growth.9.o
+	) >src/f_binbio_cell_growth.daisy.o
+	local sz_daisy=$(stat -c '%s' src/f_binbio_cell_growth.daisy.o)
 
-	# push
-	lr35902_push_reg regDE
+	# regA == 白デイジー ?
+	lr35902_compare_regA_and $GBOS_TILE_NUM_DAISY_WHITE
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_daisy)
+	cat src/f_binbio_cell_growth.daisy.o
 
-	# コード化合物を取得
-	lr35902_call $a_binbio_get_code_comp
+	# regA == 黒デイジー ?
+	lr35902_compare_regA_and $GBOS_TILE_NUM_DAISY_BLACK
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_daisy)
+	cat src/f_binbio_cell_growth.daisy.o
 
-	# 取得したコード化合物をregDへコピー
-	lr35902_copy_to_from regD regA
+	# TODO
 
-	# regHLのアドレスをbin_sizeの位置まで進める
-	lr35902_inc regHL
-	lr35902_inc regHL
+	# regAがその他の値の場合(現状、このパスには来ないはず)
+	# もしこのパスに来るようであれば無限ループで止める
+	infinite_halt
 
-	# bin_sizeをregBへコピー
-	lr35902_copy_to_from regB ptrHL
-
-	# regBCをスタックへpush
-	lr35902_push_reg regBC
-
-	# regHLのアドレスをcollected_flagsの位置まで進める
-	lr35902_set_reg regBC 0006
-	lr35902_add_to_regHL regBC
-
-	# 取得フラグをregEへコピー
-	lr35902_copy_to_from regE ptrHL
-
-	# regHLのアドレスをbin_dataの位置まで戻す
-	lr35902_set_reg regBC $(two_comp_4 5)
-	lr35902_add_to_regHL regBC
-
-	# regBCをスタックからpop
-	lr35902_pop_reg regBC
-
-	# regCをゼロクリア(処理したバイト数のカウンタにする)
-	lr35902_set_reg regC 00
-
-	# bin_dataを1バイトずつチェック
-	## regE(取得フラグ)を1ビットずつ右ローテートさせながらチェックする
-	(
-		# ptrHL == regD ?
-		lr35902_copy_to_from regA regD
-		lr35902_compare_regA_and ptrHL
-		(
-			# ptrHL == regD の場合
-
-			# ループ脱出フラグ(regA)をゼロクリア
-			lr35902_xor_to_regA regA
-
-			# regEのビット0 == 0 ?
-			lr35902_test_bitN_of_reg 0 regE
-			(
-				# regEのビット0 == 0 の場合
-
-				# regEのビット0をセットする
-				lr35902_set_bitN_of_reg 0 regE
-
-				# ループ脱出フラグを設定
-				lr35902_inc regA
-			) >src/f_binbio_cell_growth.3.o
-			local sz_3=$(stat -c '%s' src/f_binbio_cell_growth.3.o)
-			lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_3)
-			cat src/f_binbio_cell_growth.3.o
-		) >src/f_binbio_cell_growth.1.o
-		(
-			# ptrHL != regD の場合
-
-			# ループ脱出フラグ(regA)をゼロクリア
-			lr35902_xor_to_regA regA
-
-			# ptrHL == regD の場合の処理を飛ばす
-			local sz_1=$(stat -c '%s' src/f_binbio_cell_growth.1.o)
-			lr35902_rel_jump $(two_digits_d $sz_1)
-		) >src/f_binbio_cell_growth.2.o
-		local sz_2=$(stat -c '%s' src/f_binbio_cell_growth.2.o)
-		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_2)
-		cat src/f_binbio_cell_growth.2.o	# ptrHL != regD
-		cat src/f_binbio_cell_growth.1.o	# ptrHL == regD
-
-		# regEを1ビット右ローテート
-		## regBCをスタックへpush
-		lr35902_push_reg regBC
-		## regAをregBへ退避
-		lr35902_copy_to_from regB regA
-		## regEをregAへコピー
-		lr35902_copy_to_from regA regE
-		## regAを1ビット右ローテート
-		lr35902_rot_regA_right
-		## regAをregEへコピー
-		lr35902_copy_to_from regE regA
-		## regAをregBから復帰
-		lr35902_copy_to_from regA regB
-		## regBCをスタックからpop
-		lr35902_pop_reg regBC
-
-		# アドレスregHLをインクリメント
-		lr35902_inc regHL
-
-		# 処理したバイト数カウンタ(regC)をインクリメント
-		lr35902_inc regC
-
-		# regBのbin_sizeをデクリメント
-		lr35902_dec regB
-
-		# regB == 0 ?
-		## regDEをスタックへpush
-		lr35902_push_reg regDE
-		## regAをregDへ退避
-		lr35902_copy_to_from regD regA
-		## regBをregAへコピー
-		lr35902_copy_to_from regA regB
-		## regA == 0 ?
-		lr35902_compare_regA_and 00
-		(
-			# regA == 0 の場合
-
-			# ループ脱出フラグを設定
-			lr35902_inc regD
-		) >src/f_binbio_cell_growth.4.o
-		local sz_4=$(stat -c '%s' src/f_binbio_cell_growth.4.o)
-		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_4)
-		cat src/f_binbio_cell_growth.4.o
-		## regAをregDから復帰
-		lr35902_copy_to_from regA regD
-		## regDEをスタックからpop
-		lr35902_pop_reg regDE
-
-		# regA != 0 なら、1バイトずつチェックするループを脱出する
-		lr35902_compare_regA_and 00
-		(
-			# ループを脱出
-			lr35902_rel_jump $(two_digits_d 2)
-		) >src/f_binbio_cell_growth.7.o
-		local sz_7=$(stat -c '%s' src/f_binbio_cell_growth.7.o)
-		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_7)
-		cat src/f_binbio_cell_growth.7.o
-	) >src/f_binbio_cell_growth.5.o
-	cat src/f_binbio_cell_growth.5.o
-	local sz_5=$(stat -c '%s' src/f_binbio_cell_growth.5.o)
-	lr35902_rel_jump $(two_comp_d $((sz_5 + 2)))	# 2
-
-	# regA = 8 - 処理したバイト数(regC)
-	lr35902_set_reg regA 08
-	lr35902_sub_to_regA regC
-
-	# regA != 0 ?
-	lr35902_compare_regA_and 00
-	(
-		# regA != 0 の場合
-
-		# regAをregBへコピー
-		lr35902_copy_to_from regB regA
-
-		# regEをregAへコピー
-		lr35902_copy_to_from regA regE
-
-		# regBの値だけregAを右ローテート
-		(
-			# regAを1ビット右ローテート
-			lr35902_rot_regA_right
-
-			# regBをデクリメント
-			lr35902_dec regB
-		) >src/f_binbio_cell_growth.8.o
-		cat src/f_binbio_cell_growth.8.o
-		local sz_8=$(stat -c '%s' src/f_binbio_cell_growth.8.o)
-		lr35902_rel_jump_with_cond NZ $(two_comp_d $((sz_8 + 2)))
-
-		# regAをregEへコピー
-		lr35902_copy_to_from regE regA
-	) >src/f_binbio_cell_growth.6.o
-	local sz_6=$(stat -c '%s' src/f_binbio_cell_growth.6.o)
-	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_6)
-	cat src/f_binbio_cell_growth.6.o
-
-	# regEを細胞のcollected_flagsへ書き戻す
-	## regHLへ現在の細胞のアドレスを設定する
-	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
-	lr35902_copy_to_from regL regA
-	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
-	lr35902_copy_to_from regH regA
-	## regHLのアドレスをcollected_flagsの位置まで進める
-	lr35902_set_reg regBC 000d
-	lr35902_add_to_regHL regBC
-	## ptrHLへregEの値を設定
-	lr35902_copy_to_from ptrHL regE
-
-	# pop & return
-	lr35902_pop_reg regDE
-	lr35902_pop_reg regHL
-	lr35902_pop_reg regBC
-	lr35902_pop_reg regAF
+	# return
 	lr35902_return
 }
 
