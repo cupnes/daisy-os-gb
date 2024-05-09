@@ -5391,12 +5391,20 @@ a_binbio_get_code_comp=$(four_digits $fadr)
 echo -e "a_binbio_get_code_comp=$a_binbio_get_code_comp" >>$MAP_FILE_NAME
 ## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
 
-# 細胞の「成長」の振る舞い
-# 現在の細胞の機械語バイナリの中に取得したコード化合物と同じものが存在したら、
-# 対応するcollected_flagsのビットをセットする
+# 白/黒デイジー用の成長関数
 f_binbio_get_code_comp >src/f_binbio_get_code_comp.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_get_code_comp.o))
 fadr=$(calc16 "${a_binbio_get_code_comp}+${fsz}")
+a_binbio_cell_growth_daisy=$(four_digits $fadr)
+echo -e "a_binbio_cell_growth_daisy=$a_binbio_cell_growth_daisy" >>$MAP_FILE_NAME
+## 定義はsrc/expset_daisyworld.shにある
+
+# 細胞の「成長」の振る舞い
+# 現在の細胞の機械語バイナリの中に取得したコード化合物と同じものが存在したら、
+# 対応するcollected_flagsのビットをセットする
+f_binbio_cell_growth_daisy >src/f_binbio_cell_growth_daisy.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_growth_daisy.o))
+fadr=$(calc16 "${a_binbio_cell_growth_daisy}+${fsz}")
 a_binbio_cell_growth=$(four_digits $fadr)
 echo -e "a_binbio_cell_growth=$a_binbio_cell_growth" >>$MAP_FILE_NAME
 f_binbio_cell_growth() {
@@ -8232,6 +8240,7 @@ global_functions() {
 	cat src/f_binbio_get_code_comp_all.o
 	cat src/f_binbio_get_code_comp_hello.o
 	cat src/f_binbio_get_code_comp.o
+	cat src/f_binbio_cell_growth_daisy.o
 	cat src/f_binbio_cell_growth.o
 	cat src/f_binbio_cell_is_dividable.o
 	cat src/f_binbio_clear_cell_data_area.o

@@ -1384,3 +1384,15 @@ f_binbio_init() {
 	lr35902_pop_reg regAF
 	lr35902_return
 }
+
+# 白/黒デイジー用の成長関数
+f_binbio_cell_growth_daisy() {
+	# push
+	## TODO
+
+	# TODO
+
+	# pop & return
+	## TODO
+	lr35902_return
+}
