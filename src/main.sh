@@ -8121,14 +8121,11 @@ f_binbio_event_btn_select_release() {
 			# 細胞ステータス情報をクリア
 			lr35902_call $a_binbio_clear_cell_info
 
-			# 評価関数選択を画面へ配置
-			lr35902_call $a_binbio_place_cell_eval_sel
+			# ソフト説明を画面へ配置
+			lr35902_call $a_binbio_place_soft_desc
 
-			# マウスカーソルを非表示にする
-			cat src/hide_mouse_cursor.o
-
-			# 現在のステータス表示領域の状態 = 評価関数選択表示状態
-			lr35902_set_reg regA $STATUS_DISP_SHOW_CELL_EVAL_SEL
+			# 現在のステータス表示領域の状態 = ソフト説明表示状態
+			lr35902_set_reg regA $STATUS_DISP_SHOW_SOFT_DESC
 			lr35902_copy_to_addr_from_regA $var_binbio_status_disp_status
 
 			# pop & return
@@ -8140,69 +8137,6 @@ f_binbio_event_btn_select_release() {
 		local sz_showing_cell_info=$(stat -c '%s' src/f_binbio_event_btn_select_release.showing_cell_info.o)
 		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_showing_cell_info)
 		cat src/f_binbio_event_btn_select_release.showing_cell_info.o
-
-		# regA == 評価関数選択表示状態 ?
-		lr35902_compare_regA_and $STATUS_DISP_SHOW_CELL_EVAL_SEL
-		(
-			# regA == 評価関数選択表示状態 の場合
-
-			# push
-			lr35902_push_reg regBC
-			lr35902_push_reg regDE
-
-			# 評価関数選択をクリア
-			lr35902_call $a_binbio_clear_cell_eval_sel
-
-			# 評価関数設定を画面へ配置
-			lr35902_call $a_binbio_place_cell_eval_conf
-
-			# 現在のステータス表示領域の状態 = 評価関数設定表示状態
-			lr35902_set_reg regA $STATUS_DISP_SHOW_CELL_EVAL_CONF
-			lr35902_copy_to_addr_from_regA $var_binbio_status_disp_status
-
-			# pop & return
-			lr35902_pop_reg regDE
-			lr35902_pop_reg regBC
-			lr35902_pop_reg regAF
-			lr35902_return
-		) >src/f_binbio_event_btn_select_release.showing_cell_eval_sel.o
-		local sz_showing_cell_eval_sel=$(stat -c '%s' src/f_binbio_event_btn_select_release.showing_cell_eval_sel.o)
-		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_showing_cell_eval_sel)
-		cat src/f_binbio_event_btn_select_release.showing_cell_eval_sel.o
-
-		# regA == 評価関数設定表示状態 ?
-		lr35902_compare_regA_and $STATUS_DISP_SHOW_CELL_EVAL_CONF
-		(
-			# regA == 評価関数設定表示状態 の場合
-
-			# push
-			lr35902_push_reg regBC
-			lr35902_push_reg regDE
-			## TODO 必要に応じて修正
-
-			# 評価関数設定をクリア
-			lr35902_call $a_binbio_clear_cell_eval_conf
-
-			# ソフト説明を画面へ配置
-			lr35902_call $a_binbio_place_soft_desc
-
-			# マウスカーソルを表示する
-			cat src/show_mouse_cursor.o
-
-			# 現在のステータス表示領域の状態 = ソフト説明表示状態
-			lr35902_set_reg regA $STATUS_DISP_SHOW_SOFT_DESC
-			lr35902_copy_to_addr_from_regA $var_binbio_status_disp_status
-
-			# pop & return
-			lr35902_pop_reg regDE
-			lr35902_pop_reg regBC
-			lr35902_pop_reg regAF
-			## TODO 必要に応じて修正
-			lr35902_return
-		) >src/f_binbio_event_btn_select_release.showing_cell_eval_conf.o
-		local sz_showing_cell_eval_conf=$(stat -c '%s' src/f_binbio_event_btn_select_release.showing_cell_eval_conf.o)
-		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_showing_cell_eval_conf)
-		cat src/f_binbio_event_btn_select_release.showing_cell_eval_conf.o
 
 		# もしこのパスに来るようであれば無限ループで止める
 		infinite_halt
