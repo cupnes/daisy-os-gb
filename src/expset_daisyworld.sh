@@ -654,64 +654,35 @@ f_binbio_get_code_comp() {
 }
 
 # 突然変異
-# in : regHL - 対象の細胞のアドレス
-## 白デイジーは黒デイジーへ、黒デイジーは白デイジーへ変異させる
 f_binbio_cell_mutation() {
-	# push
-	lr35902_push_reg regBC
-	lr35902_push_reg regHL
+	# regAへ現在の細胞のtile_numを取得
+	cat src/expset_daisyworld.get_current_cell_tile_num.o
 
-	# regHLをtile_numまで進める
-	lr35902_set_reg regBC 0006
-	lr35902_add_to_regHL regBC
+	# 繰り返し使用する処理をファイル書き出し
+	## デイジーワールドの突然変異関数を呼び出してreturn
+	(
+		lr35902_call $a_binbio_cell_mutation_daisy
+		lr35902_return
+	) >src/f_binbio_cell_mutation.daisy.o
+	local sz_daisy=$(stat -c '%s' src/f_binbio_cell_mutation.daisy.o)
 
-	# regAへ対象の細胞のtile_numを取得
-	lr35902_copy_to_from regA ptrHL
-
-	# regA == 白デイジーのタイル?
+	# regA == 白デイジー ?
 	lr35902_compare_regA_and $GBOS_TILE_NUM_DAISY_WHITE
-	(
-		# regA == 白デイジーのタイルの場合
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_daisy)
+	cat src/f_binbio_cell_mutation.daisy.o
 
-		# 対象の細胞のtile_numを黒デイジーのタイルへ変更
-		lr35902_set_reg regA $GBOS_TILE_NUM_DAISY_BLACK
-		lr35902_copy_to_from ptrHL regA
+	# regA == 黒デイジー ?
+	lr35902_compare_regA_and $GBOS_TILE_NUM_DAISY_BLACK
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_daisy)
+	cat src/f_binbio_cell_mutation.daisy.o
 
-		# regHLをbin_dataの4バイト目(bin_data + 3)まで進める
-		lr35902_set_reg regBC 0005
-		lr35902_add_to_regHL regBC
+	# TODO
 
-		# bin_dataの4バイト目をinc命令(0x34)へ変更
-		lr35902_set_reg regA 34
-		lr35902_copy_to_from ptrHL regA
-	) >src/expset_daisyworld.binbio_cell_mutation.is_white.o
-	(
-		# regA != 白デイジーのタイルの場合
+	# regAがその他の値の場合(現状、このパスには来ないはず)
+	# もしこのパスに来るようであれば無限ループで止める
+	infinite_halt
 
-		# 対象の細胞のtile_numを白デイジーのタイルへ変更
-		lr35902_set_reg regA $GBOS_TILE_NUM_DAISY_WHITE
-		lr35902_copy_to_from ptrHL regA
-
-		# regHLをbin_dataの4バイト目(bin_data + 3)まで進める
-		lr35902_set_reg regBC 0005
-		lr35902_add_to_regHL regBC
-
-		# bin_dataの4バイト目をdec命令(0x35)へ変更
-		lr35902_set_reg regA 35
-		lr35902_copy_to_from ptrHL regA
-
-		# regA == 白デイジーのタイルの場合の処理を飛ばす
-		local sz_is_white=$(stat -c '%s' src/expset_daisyworld.binbio_cell_mutation.is_white.o)
-		lr35902_rel_jump $(two_digits_d $sz_is_white)
-	) >src/expset_daisyworld.binbio_cell_mutation.is_not_white.o
-	local sz_is_not_white=$(stat -c '%s' src/expset_daisyworld.binbio_cell_mutation.is_not_white.o)
-	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_is_not_white)
-	cat src/expset_daisyworld.binbio_cell_mutation.is_not_white.o	# regA != 白デイジーのタイルの場合
-	cat src/expset_daisyworld.binbio_cell_mutation.is_white.o	# regA == 白デイジーのタイルの場合
-
-	# pop & return
-	lr35902_pop_reg regHL
-	lr35902_pop_reg regBC
+	# return
 	lr35902_return
 }
 
@@ -1619,13 +1590,63 @@ f_binbio_cell_growth_daisy() {
 }
 
 # 白/黒デイジー用の突然変異関数
+# in : regHL - 対象の細胞のアドレス
+## 白デイジーは黒デイジーへ、黒デイジーは白デイジーへ変異させる
 f_binbio_cell_mutation_daisy() {
 	# push
-	## TODO
+	lr35902_push_reg regBC
+	lr35902_push_reg regHL
 
-	# TODO
+	# regHLをtile_numまで進める
+	lr35902_set_reg regBC 0006
+	lr35902_add_to_regHL regBC
+
+	# regAへ対象の細胞のtile_numを取得
+	lr35902_copy_to_from regA ptrHL
+
+	# regA == 白デイジーのタイル?
+	lr35902_compare_regA_and $GBOS_TILE_NUM_DAISY_WHITE
+	(
+		# regA == 白デイジーのタイルの場合
+
+		# 対象の細胞のtile_numを黒デイジーのタイルへ変更
+		lr35902_set_reg regA $GBOS_TILE_NUM_DAISY_BLACK
+		lr35902_copy_to_from ptrHL regA
+
+		# regHLをbin_dataの4バイト目(bin_data + 3)まで進める
+		lr35902_set_reg regBC 0005
+		lr35902_add_to_regHL regBC
+
+		# bin_dataの4バイト目をinc命令(0x34)へ変更
+		lr35902_set_reg regA 34
+		lr35902_copy_to_from ptrHL regA
+	) >src/expset_daisyworld.binbio_cell_mutation.is_white.o
+	(
+		# regA != 白デイジーのタイルの場合
+
+		# 対象の細胞のtile_numを白デイジーのタイルへ変更
+		lr35902_set_reg regA $GBOS_TILE_NUM_DAISY_WHITE
+		lr35902_copy_to_from ptrHL regA
+
+		# regHLをbin_dataの4バイト目(bin_data + 3)まで進める
+		lr35902_set_reg regBC 0005
+		lr35902_add_to_regHL regBC
+
+		# bin_dataの4バイト目をdec命令(0x35)へ変更
+		lr35902_set_reg regA 35
+		lr35902_copy_to_from ptrHL regA
+
+		# regA == 白デイジーのタイルの場合の処理を飛ばす
+		local sz_is_white=$(stat -c '%s' src/expset_daisyworld.binbio_cell_mutation.is_white.o)
+		lr35902_rel_jump $(two_digits_d $sz_is_white)
+	) >src/expset_daisyworld.binbio_cell_mutation.is_not_white.o
+	local sz_is_not_white=$(stat -c '%s' src/expset_daisyworld.binbio_cell_mutation.is_not_white.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_is_not_white)
+	cat src/expset_daisyworld.binbio_cell_mutation.is_not_white.o	# regA != 白デイジーのタイルの場合
+	cat src/expset_daisyworld.binbio_cell_mutation.is_white.o	# regA == 白デイジーのタイルの場合
 
 	# pop & return
-	## TODO
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regBC
 	lr35902_return
 }
