@@ -1617,3 +1617,15 @@ f_binbio_cell_growth_daisy() {
 	lr35902_pop_reg regAF
 	lr35902_return
 }
+
+# 白/黒デイジー用の突然変異関数
+f_binbio_cell_mutation_daisy() {
+	# push
+	## TODO
+
+	# TODO
+
+	# pop & return
+	## TODO
+	lr35902_return
+}

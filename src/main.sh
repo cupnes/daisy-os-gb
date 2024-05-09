@@ -6355,11 +6355,19 @@ f_binbio_cell_mutation_alphabet() {
 	lr35902_return
 }
 
-# 突然変異
-# in : regHL - 対象の細胞のアドレス
+# 白/黒デイジー用の突然変異関数
 f_binbio_cell_mutation_alphabet >src/f_binbio_cell_mutation_alphabet.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_mutation_alphabet.o))
 fadr=$(calc16 "${a_binbio_cell_mutation_alphabet}+${fsz}")
+a_binbio_cell_mutation_daisy=$(four_digits $fadr)
+echo -e "a_binbio_cell_mutation_daisy=$a_binbio_cell_mutation_daisy" >>$MAP_FILE_NAME
+## 定義はsrc/expset_daisyworld.shにある
+
+# 突然変異
+# in : regHL - 対象の細胞のアドレス
+f_binbio_cell_mutation_daisy >src/f_binbio_cell_mutation_daisy.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_mutation_daisy.o))
+fadr=$(calc16 "${a_binbio_cell_mutation_daisy}+${fsz}")
 a_binbio_cell_mutation=$(four_digits $fadr)
 echo -e "a_binbio_cell_mutation=$a_binbio_cell_mutation" >>$MAP_FILE_NAME
 ## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
@@ -8049,6 +8057,7 @@ global_functions() {
 	cat src/f_binbio_cell_find_free_neighbor.o
 	cat src/f_binbio_cell_mutation_all.o
 	cat src/f_binbio_cell_mutation_alphabet.o
+	cat src/f_binbio_cell_mutation_daisy.o
 	cat src/f_binbio_cell_mutation.o
 	cat src/f_binbio_cell_division.o
 	cat src/f_binbio_cell_division_fix.o
