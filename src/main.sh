@@ -8082,6 +8082,7 @@ f_binbio_event_btn_select_release() {
 		lr35902_call $a_binbio_reset
 	else
 		# デイジーワールドの場合
+		# ※ 評価関数選択と評価関数設定の表示モードの処理は e0455ee のコミットで一時的に削除した
 
 		# regAへ現在のステータス表示領域の状態を取得
 		lr35902_copy_to_regA_from_addr $var_binbio_status_disp_status
