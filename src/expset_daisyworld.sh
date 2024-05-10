@@ -524,7 +524,9 @@ f_binbio_cell_eval() {
 	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_daisyworld)
 	cat src/expset_daisyworld.f_binbio_cell_eval.daisyworld.o
 
-	# TODO いずれでもない場合、現在の細胞の適応度をそのまま返す
+	# regAがその他の値の場合(現状、このパスには来ないはず)
+	# もしこのパスに来るようであれば無限ループで止める
+	infinite_halt
 
 	# return
 	lr35902_return
