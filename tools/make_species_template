@@ -1,0 +1,100 @@
+#!/bin/bash
+
+# 新たな生物種のテンプレを追加する
+# コマンドライン引数について：
+# - SPECIES_NAME (生物種名)
+#   - include/tiles.shにGBOS_TILE_NUM_${SPECIES_NAME^^}の定数が存在していること
+#   - 例) predator
+# - SPECIES_DESC (生物種説明)
+#   - 例) 捕食者
+
+# set -uex
+set -ue
+
+. tools/common.sh
+
+usage() {
+	echo 'Usage:' 1>&2
+	echo -e "\t$0 SPECIES_NAME SPECIES_DESC" 1>&2
+	echo -e "\t$0 -h" 1>&2
+}
+
+while getopts h option; do
+	case $option in
+	h)
+		usage
+		exit 0
+		;;
+	*)
+		usage
+		exit 1
+	esac
+done
+shift $((OPTIND - 1))
+if [ $# -ne 2 ]; then
+	usage
+	exit 1
+fi
+
+SPECIES_NAME=$1
+SPECIES_DESC=$2
+
+# 何度も使用する定数
+## 生物種名のシンボルを大文字化
+SPECIES_NAME_UPPER=${SPECIES_NAME^^}
+## 生物種固有のスクリプト名
+SPECIES_SCRIPT_PATH="src/species_${SPECIES_NAME}.sh"
+## タブ文字
+TAB="$(printf '\\\011')"
+
+# 既存のスクリプトへ今回の生物種の処理を追加
+insert_new_species_proc() {
+	local behave=$1
+	local script=$2
+
+	# 処理追加行番号を取得
+	INSERT_NR=$(sed -n "/INSERT_f_binbio_cell_$behave/=" $script)
+
+	### 処理を追加
+	TILE_DEF="GBOS_TILE_NUM_$SPECIES_NAME_UPPER"
+	FUNC_ADDR="a_binbio_cell_${behave}_$SPECIES_NAME"
+	OBJ="src/f_binbio_cell_${behave}.${SPECIES_NAME}.o"
+	SZ_CMD="two_digits_d \$sz_$SPECIES_NAME"
+	sed -i \
+	    -e "${INSERT_NR}i${TAB}# regA == ${SPECIES_DESC} ?" \
+	    -e "${INSERT_NR}i${TAB}lr35902_compare_regA_and \$$TILE_DEF" \
+	    -e "${INSERT_NR}i${TAB}(" \
+	    -e "${INSERT_NR}i${TAB}${TAB}lr35902_call \$$FUNC_ADDR" \
+	    -e "${INSERT_NR}i${TAB}${TAB}lr35902_return" \
+	    -e "${INSERT_NR}i${TAB}) >$OBJ" \
+	    -e "${INSERT_NR}i${TAB}local sz_$SPECIES_NAME=\$(stat -c '%s' $OBJ)" \
+	    -e "${INSERT_NR}i${TAB}lr35902_rel_jump_with_cond NZ \$($SZ_CMD)" \
+	    -e "${INSERT_NR}i${TAB}cat $OBJ" \
+	    -e "${INSERT_NR}i\\\\" \
+	    $script
+}
+
+# 生物種別のスクリプトへ関数テンプレを追加
+insert_new_func_template() {
+	local behave=$1
+	local desc=$2
+
+	# 直前の関数名を取得
+	local before_func_name=$(print_before_func_name "binbio_cell_$behave")
+
+	# 関数名を設定
+	local func_name="binbio_cell_${behave}_$SPECIES_NAME"
+
+	# 標準の関数テンプレを配置
+	tools/make_func_template -f $SPECIES_SCRIPT_PATH $before_func_name \
+				 $func_name "${SPECIES_DESC}用${desc}関数"
+}
+
+echo "# 生物種「$SPECIES_DESC」用のスクリプト" >$SPECIES_SCRIPT_PATH
+for LINE in 'eval,評価,src/expset_daisyworld.sh' 'growth,成長,src/main.sh' 'mutation,突然変異,src/expset_daisyworld.sh'; do
+	BEHAVE=$(echo $LINE | cut -d',' -f1)
+	DESC=$(echo $LINE | cut -d',' -f2)
+	SCRIPT=$(echo $LINE | cut -d',' -f3)
+	insert_new_species_proc $BEHAVE $SCRIPT
+	insert_new_func_template $BEHAVE $DESC
+done

@@ -5427,7 +5427,7 @@ f_binbio_cell_growth() {
 	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_daisy)
 	cat src/f_binbio_cell_growth.daisy.o
 
-	# TODO
+	# INSERT_f_binbio_cell_growth
 
 	# regAがその他の値の場合(現状、このパスには来ないはず)
 	# もしこのパスに来るようであれば無限ループで止める
