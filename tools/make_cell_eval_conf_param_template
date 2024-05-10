@@ -34,7 +34,7 @@ usage() {
 	echo -e "\t$0 -h" 1>&2
 }
 
-while getopts hd option; do
+while getopts h option; do
 	case $option in
 	h)
 		usage
