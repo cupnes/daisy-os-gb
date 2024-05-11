@@ -121,7 +121,7 @@ title_str_world	わ-ると゛
 title_str_demo	て゛も
 ver_str_daisy	DAISY
 ver_str_os	OS GB
-ver_str_ver	V0.3.1
+ver_str_ver	V0.3.2
 daisy_desc_str_white	🌼しろのて゛いし゛-:0.1゜Cほうねつ
 daisy_desc_str_black	🌻くろのて゛いし゛-:0.1゜Cちくねつ
 operation_str_title	そうさせつめい
