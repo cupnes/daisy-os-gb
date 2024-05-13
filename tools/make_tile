@@ -1,0 +1,86 @@
+#!/bin/bash
+
+# タイル処理を作成する
+# コマンドライン引数：
+# - TILE_NAME
+#   - タイルのシンボル名
+#   - tilesディレクトリのtxtファイルのファイル名の拡張子を除いた部分に相当
+#     ※ このスクリプト実行時、そのファイル名でファイルが存在していること
+#   - 例) predator
+# - TILE_DESC
+#   - コメントに使用される説明
+#   - 例) 捕食者
+
+# set -uex
+set -ue
+
+. include/common.sh
+. tools/common.sh
+
+usage() {
+	echo 'Usage:' 1>&2
+	echo -e "\t$0 TILE_NAME TILE_DESC" 1>&2
+	echo -e "\t$0 -h" 1>&2
+}
+
+while getopts h option; do
+	case $option in
+	h)
+		usage
+		exit 0
+		;;
+	*)
+		usage
+		exit 1
+	esac
+done
+shift $((OPTIND - 1))
+if [ $# -ne 2 ]; then
+	usage
+	exit 1
+fi
+
+TILE_NAME=$1
+TILE_DESC=$2
+
+# 指定されたタイルのtxtを、tiles/txt22bpp.shを用いて2bppへ変換
+TILE_2BPP_HEX=$(tiles/txt22bpp.sh tiles/${TILE_NAME}.txt tiles/${TILE_NAME}.2bpp)
+## 分割
+TILE_2BPP_HEX_1=${TILE_2BPP_HEX:0:32}
+TILE_2BPP_HEX_2=${TILE_2BPP_HEX:32:32}
+## エスケープ
+TILE_2BPP_HEX_1_ESC=$(printf %q "$TILE_2BPP_HEX_1")
+TILE_2BPP_HEX_2_ESC=$(printf %q "$TILE_2BPP_HEX_2")
+
+# src/tiles.sh: 定数GBOS_NUM_ALL_TILESを更新
+## 現在の値を取得
+GBOS_NUM_ALL_TILES_PREV=$(sed -n -r \
+			      's/^GBOS_NUM_ALL_TILES=([0-9A-Za-z][0-9A-Za-z])$/\1/p' \
+			      src/tiles.sh)
+### 小文字化
+GBOS_NUM_ALL_TILES_PREV=${GBOS_NUM_ALL_TILES_PREV,,}
+## インクリメント
+GBOS_NUM_ALL_TILES=$(calc16_2 "${GBOS_NUM_ALL_TILES_PREV}+1")
+## 更新
+sed -i \
+    "s/^GBOS_NUM_ALL_TILES=[0-9A-Za-z][0-9A-Za-z]\$/GBOS_NUM_ALL_TILES=$GBOS_NUM_ALL_TILES/" \
+    src/tiles.sh
+
+# src/tiles.sh: char_tiles(): 末尾にタイルの定義を追加
+## 処理追加行番号を取得
+INSERT_NR=$(sed -n "/INSERT_char_tiles/=" src/tiles.sh)
+## 定義を追加
+sed -i \
+    -e "${INSERT_NR}i${TAB}# $GBOS_NUM_ALL_TILES_PREV: $TILE_DESC" \
+    -e "${INSERT_NR}i${TAB}echo -en '$TILE_2BPP_HEX_1_ESC'" \
+    -e "${INSERT_NR}i${TAB}echo -en '$TILE_2BPP_HEX_2_ESC'" \
+    -e "${INSERT_NR}i\\\\" \
+    src/tiles.sh
+
+# include/tiles.sh: タイル番号の定数を追加
+## 処理追加行番号を取得
+INSERT_NR=$(sed -n "/INSERT_GBOS_TILE_NUM/=" include/tiles.sh)
+## 定義を追加
+sed -i \
+    -e "${INSERT_NR}iGBOS_TILE_NUM_${TILE_NAME^^}=$GBOS_NUM_ALL_TILES_PREV" \
+    include/tiles.sh

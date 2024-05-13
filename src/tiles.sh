@@ -493,4 +493,6 @@ char_tiles() {
 	# 8d: 黒デイジー
 	echo -en '\x3c\x3c\x7e\x7e\xe7\xff\xe7\xff'
 	echo -en '\x7e\x7e\x3c\x3c\x00\xdb\x00\x3c'
+
+	# INSERT_char_tiles
 }

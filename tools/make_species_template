@@ -44,8 +44,6 @@ SPECIES_DESC=$2
 SPECIES_NAME_UPPER=${SPECIES_NAME^^}
 ## 生物種固有のスクリプト名
 SPECIES_SCRIPT_PATH="src/species_${SPECIES_NAME}.sh"
-## タブ文字
-TAB="$(printf '\\\011')"
 
 # 既存のスクリプトへ今回の生物種の処理を追加
 insert_new_species_proc() {
