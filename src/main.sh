@@ -4869,12 +4869,20 @@ a_binbio_cell_eval_fixedval=$(four_digits $fadr)
 echo -e "a_binbio_cell_eval_fixedval=$a_binbio_cell_eval_fixedval" >>$MAP_FILE_NAME
 ## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
 
-# 現在の細胞を評価する
-# out: regA - 評価結果の適応度(0x00〜0xff)
-# ※ フラグレジスタは破壊される
+# 捕食者用評価関数
 f_binbio_cell_eval_fixedval >src/f_binbio_cell_eval_fixedval.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_eval_fixedval.o))
 fadr=$(calc16 "${a_binbio_cell_eval_fixedval}+${fsz}")
+a_binbio_cell_eval_predator=$(four_digits $fadr)
+echo -e "a_binbio_cell_eval_predator=$a_binbio_cell_eval_predator" >>$MAP_FILE_NAME
+## 定義はsrc/species_predator.shにある
+
+# 現在の細胞を評価する
+# out: regA - 評価結果の適応度(0x00〜0xff)
+# ※ フラグレジスタは破壊される
+f_binbio_cell_eval_predator >src/f_binbio_cell_eval_predator.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_eval_predator.o))
+fadr=$(calc16 "${a_binbio_cell_eval_predator}+${fsz}")
 a_binbio_cell_eval=$(four_digits $fadr)
 echo -e "a_binbio_cell_eval=$a_binbio_cell_eval" >>$MAP_FILE_NAME
 ## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
@@ -5399,10 +5407,18 @@ a_binbio_cell_growth_daisy=$(four_digits $fadr)
 echo -e "a_binbio_cell_growth_daisy=$a_binbio_cell_growth_daisy" >>$MAP_FILE_NAME
 ## 定義はsrc/expset_daisyworld.shにある
 
-# 細胞の「成長」の振る舞い
+# 捕食者用成長関数
 f_binbio_cell_growth_daisy >src/f_binbio_cell_growth_daisy.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_growth_daisy.o))
 fadr=$(calc16 "${a_binbio_cell_growth_daisy}+${fsz}")
+a_binbio_cell_growth_predator=$(four_digits $fadr)
+echo -e "a_binbio_cell_growth_predator=$a_binbio_cell_growth_predator" >>$MAP_FILE_NAME
+## 定義はsrc/species_predator.shにある
+
+# 細胞の「成長」の振る舞い
+f_binbio_cell_growth_predator >src/f_binbio_cell_growth_predator.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_growth_predator.o))
+fadr=$(calc16 "${a_binbio_cell_growth_predator}+${fsz}")
 a_binbio_cell_growth=$(four_digits $fadr)
 echo -e "a_binbio_cell_growth=$a_binbio_cell_growth" >>$MAP_FILE_NAME
 f_binbio_cell_growth() {
@@ -5426,6 +5442,16 @@ f_binbio_cell_growth() {
 	lr35902_compare_regA_and $GBOS_TILE_NUM_DAISY_BLACK
 	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_daisy)
 	cat src/f_binbio_cell_growth.daisy.o
+
+	# regA == 捕食者 ?
+	lr35902_compare_regA_and $GBOS_TILE_NUM_PREDATOR
+	(
+		lr35902_call $a_binbio_cell_growth_predator
+		lr35902_return
+	) >src/f_binbio_cell_growth.predator.o
+	local sz_predator=$(stat -c '%s' src/f_binbio_cell_growth.predator.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_predator)
+	cat src/f_binbio_cell_growth.predator.o
 
 	# INSERT_f_binbio_cell_growth
 
@@ -6363,11 +6389,19 @@ a_binbio_cell_mutation_daisy=$(four_digits $fadr)
 echo -e "a_binbio_cell_mutation_daisy=$a_binbio_cell_mutation_daisy" >>$MAP_FILE_NAME
 ## 定義はsrc/expset_daisyworld.shにある
 
-# 突然変異
-# in : regHL - 対象の細胞のアドレス
+# 捕食者用突然変異関数
 f_binbio_cell_mutation_daisy >src/f_binbio_cell_mutation_daisy.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_mutation_daisy.o))
 fadr=$(calc16 "${a_binbio_cell_mutation_daisy}+${fsz}")
+a_binbio_cell_mutation_predator=$(four_digits $fadr)
+echo -e "a_binbio_cell_mutation_predator=$a_binbio_cell_mutation_predator" >>$MAP_FILE_NAME
+## 定義はsrc/species_predator.shにある
+
+# 突然変異
+# in : regHL - 対象の細胞のアドレス
+f_binbio_cell_mutation_predator >src/f_binbio_cell_mutation_predator.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_mutation_predator.o))
+fadr=$(calc16 "${a_binbio_cell_mutation_predator}+${fsz}")
 a_binbio_cell_mutation=$(four_digits $fadr)
 echo -e "a_binbio_cell_mutation=$a_binbio_cell_mutation" >>$MAP_FILE_NAME
 ## 定義は実験セットのスクリプト(src/expset_XXX.sh)内にある
@@ -8042,12 +8076,14 @@ global_functions() {
 	cat src/f_binbio_cell_eval_hello.o
 	cat src/f_binbio_cell_eval_daisyworld.o
 	cat src/f_binbio_cell_eval_fixedval.o
+	cat src/f_binbio_cell_eval_predator.o
 	cat src/f_binbio_cell_eval.o
 	cat src/f_binbio_cell_metabolism_and_motion.o
 	cat src/f_binbio_get_code_comp_all.o
 	cat src/f_binbio_get_code_comp_hello.o
 	cat src/f_binbio_get_code_comp.o
 	cat src/f_binbio_cell_growth_daisy.o
+	cat src/f_binbio_cell_growth_predator.o
 	cat src/f_binbio_cell_growth.o
 	cat src/f_binbio_cell_is_dividable.o
 	cat src/f_binbio_clear_cell_data_area.o
@@ -8058,6 +8094,7 @@ global_functions() {
 	cat src/f_binbio_cell_mutation_all.o
 	cat src/f_binbio_cell_mutation_alphabet.o
 	cat src/f_binbio_cell_mutation_daisy.o
+	cat src/f_binbio_cell_mutation_predator.o
 	cat src/f_binbio_cell_mutation.o
 	cat src/f_binbio_cell_division.o
 	cat src/f_binbio_cell_division_fix.o

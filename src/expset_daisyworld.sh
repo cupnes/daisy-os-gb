@@ -145,6 +145,7 @@ var_binbio_surface_temp=c035
 
 # この実験セットで使用するスクリプトを読み込む
 . src/status_disp_cell_eval_conf.sh
+. src/species_predator.sh
 # INSERT_source_scripts
 
 # 繰り返し使用する処理をファイル書き出し
@@ -525,6 +526,16 @@ f_binbio_cell_eval() {
 	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_daisyworld)
 	cat src/expset_daisyworld.f_binbio_cell_eval.daisyworld.o
 
+	# regA == 捕食者 ?
+	lr35902_compare_regA_and $GBOS_TILE_NUM_PREDATOR
+	(
+		lr35902_call $a_binbio_cell_eval_predator
+		lr35902_return
+	) >src/f_binbio_cell_eval.predator.o
+	local sz_predator=$(stat -c '%s' src/f_binbio_cell_eval.predator.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_predator)
+	cat src/f_binbio_cell_eval.predator.o
+
 	# INSERT_f_binbio_cell_eval
 
 	# regAがその他の値の場合(現状、このパスには来ないはず)
@@ -680,6 +691,16 @@ f_binbio_cell_mutation() {
 	lr35902_compare_regA_and $GBOS_TILE_NUM_DAISY_BLACK
 	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_daisy)
 	cat src/expset_daisyworld.f_binbio_cell_mutation.daisy.o
+
+	# regA == 捕食者 ?
+	lr35902_compare_regA_and $GBOS_TILE_NUM_PREDATOR
+	(
+		lr35902_call $a_binbio_cell_mutation_predator
+		lr35902_return
+	) >src/f_binbio_cell_mutation.predator.o
+	local sz_predator=$(stat -c '%s' src/f_binbio_cell_mutation.predator.o)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_predator)
+	cat src/f_binbio_cell_mutation.predator.o
 
 	# INSERT_f_binbio_cell_mutation
 
