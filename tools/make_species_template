@@ -96,3 +96,10 @@ for LINE in 'eval,評価,src/expset_daisyworld.sh' 'growth,成長,src/main.sh' '
 	insert_new_species_proc $BEHAVE $SCRIPT
 	insert_new_func_template $BEHAVE $DESC
 done
+
+# src/expset_daisyworld.sh: 「# この実験セットで使用するスクリプトを読み込む」
+## 作成したスクリプトを読み込む処理を配置
+### 処理追加行番号を取得
+INSERT_NR=$(sed -n "/INSERT_source_scripts/=" src/expset_daisyworld.sh)
+### 配置
+sed -i "${INSERT_NR}i\. $SPECIES_SCRIPT_PATH" src/expset_daisyworld.sh

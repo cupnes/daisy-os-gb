@@ -145,6 +145,7 @@ var_binbio_surface_temp=c035
 
 # この実験セットで使用するスクリプトを読み込む
 . src/status_disp_cell_eval_conf.sh
+# INSERT_source_scripts
 
 # 繰り返し使用する処理をファイル書き出し
 ## regAへ現在の細胞のtile_numを取得
