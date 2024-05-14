@@ -7,7 +7,7 @@ SRC_TILES_SH=true
 
 # 全タイル数
 # ※ src/main.shのdump_all_tiles()で使用している
-GBOS_NUM_ALL_TILES=8e
+GBOS_NUM_ALL_TILES=8F
 
 # 全タイルの合計バイト数
 # ※ src/main.shのload_all_tiles()とf_rstr_tiles_cyc()で使用している
@@ -493,6 +493,10 @@ char_tiles() {
 	# 8d: 黒デイジー
 	echo -en '\x3c\x3c\x7e\x7e\xe7\xff\xe7\xff'
 	echo -en '\x7e\x7e\x3c\x3c\x00\xdb\x00\x3c'
+
+	# 8e: 捕食者
+	echo -en '\x7e\x7e\xff\xff\xfc\xfc\xe0\xe0'
+	echo -en '\xe0\xe0\xfc\xfc\xff\xff\x7e\x7e'
 
 	# INSERT_char_tiles
 }
