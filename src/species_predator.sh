@@ -1,14 +1,22 @@
 # 生物種「捕食者」用のスクリプト
 
+# [定数]
+
+# 適応度
+SPECIES_PREDATOR_FITNESS=7f
+
+
+
+# [関数]
+
 # 捕食者用評価関数
+# 定義された固定値を適応度として返す
+# out: regA - 評価結果の適応度(0x00〜0xff)
 f_binbio_cell_eval_predator() {
-	# push
-	## TODO
+	# 戻り値としてregAへ固定値を設定
+	lr35902_set_reg regA $SPECIES_PREDATOR_FITNESS
 
-	# TODO
-
-	# pop & return
-	## TODO
+	# return
 	lr35902_return
 }
 
