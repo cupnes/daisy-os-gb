@@ -511,7 +511,10 @@ f_binbio_cell_eval() {
 	# 繰り返し使用する処理をファイル書き出し
 	## デイジーワールドの評価関数を呼び出してreturn
 	(
+		# 評価関数呼び出し
 		lr35902_call $a_binbio_cell_eval_daisyworld
+
+		# return
 		lr35902_return
 	) >src/expset_daisyworld.f_binbio_cell_eval.daisyworld.o
 	local sz_daisyworld=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_eval.daisyworld.o)
@@ -529,7 +532,10 @@ f_binbio_cell_eval() {
 	# regA == 捕食者 ?
 	lr35902_compare_regA_and $GBOS_TILE_NUM_PREDATOR
 	(
+		# 評価関数呼び出し
 		lr35902_call $a_binbio_cell_eval_predator
+
+		# return
 		lr35902_return
 	) >src/f_binbio_cell_eval.predator.o
 	local sz_predator=$(stat -c '%s' src/f_binbio_cell_eval.predator.o)
