@@ -49,6 +49,7 @@ SPECIES_SCRIPT_PATH="src/species_${SPECIES_NAME}.sh"
 insert_new_species_proc() {
 	local behave=$1
 	local script=$2
+	local desc=$3
 
 	# 処理追加行番号を取得
 	INSERT_NR=$(sed -n "/INSERT_f_binbio_cell_$behave/=" $script)
@@ -58,18 +59,40 @@ insert_new_species_proc() {
 	FUNC_ADDR="a_binbio_cell_${behave}_$SPECIES_NAME"
 	OBJ="src/f_binbio_cell_${behave}.${SPECIES_NAME}.o"
 	SZ_CMD="two_digits_d \$sz_$SPECIES_NAME"
-	sed -i \
-	    -e "${INSERT_NR}i${TAB}# regA == ${SPECIES_DESC} ?" \
-	    -e "${INSERT_NR}i${TAB}lr35902_compare_regA_and \$$TILE_DEF" \
-	    -e "${INSERT_NR}i${TAB}(" \
-	    -e "${INSERT_NR}i${TAB}${TAB}lr35902_call \$$FUNC_ADDR" \
-	    -e "${INSERT_NR}i${TAB}${TAB}lr35902_return" \
-	    -e "${INSERT_NR}i${TAB}) >$OBJ" \
-	    -e "${INSERT_NR}i${TAB}local sz_$SPECIES_NAME=\$(stat -c '%s' $OBJ)" \
-	    -e "${INSERT_NR}i${TAB}lr35902_rel_jump_with_cond NZ \$($SZ_CMD)" \
-	    -e "${INSERT_NR}i${TAB}cat $OBJ" \
-	    -e "${INSERT_NR}i\\\\" \
-	    $script
+	if [ "$behave" = 'eval' ]; then
+		sed -i \
+		    -e "${INSERT_NR}i${TAB}# regA == ${SPECIES_DESC} ?" \
+		    -e "${INSERT_NR}i${TAB}lr35902_compare_regA_and \$$TILE_DEF" \
+		    -e "${INSERT_NR}i${TAB}(" \
+		    -e "${INSERT_NR}i${TAB}${TAB}# 評価関数呼び出し" \
+		    -e "${INSERT_NR}i${TAB}${TAB}lr35902_call \$$FUNC_ADDR" \
+		    -e "${INSERT_NR}i\\\\" \
+		    -e "${INSERT_NR}i${TAB}${TAB}# return" \
+		    -e "${INSERT_NR}i${TAB}${TAB}lr35902_return" \
+		    -e "${INSERT_NR}i${TAB}) >$OBJ" \
+		    -e "${INSERT_NR}i${TAB}local sz_$SPECIES_NAME=\$(stat -c '%s' $OBJ)" \
+		    -e "${INSERT_NR}i${TAB}lr35902_rel_jump_with_cond NZ \$($SZ_CMD)" \
+		    -e "${INSERT_NR}i${TAB}cat $OBJ" \
+		    -e "${INSERT_NR}i\\\\" \
+		    $script
+	else
+		sed -i \
+		    -e "${INSERT_NR}i${TAB}# regA == ${SPECIES_DESC} ?" \
+		    -e "${INSERT_NR}i${TAB}lr35902_compare_regA_and \$$TILE_DEF" \
+		    -e "${INSERT_NR}i${TAB}(" \
+		    -e "${INSERT_NR}i${TAB}${TAB}# ${desc}関数呼び出し" \
+		    -e "${INSERT_NR}i${TAB}${TAB}lr35902_call \$$FUNC_ADDR" \
+		    -e "${INSERT_NR}i\\\\" \
+		    -e "${INSERT_NR}i${TAB}${TAB}# pop & return" \
+		    -e "${INSERT_NR}i${TAB}${TAB}lr35902_pop_reg regAF" \
+		    -e "${INSERT_NR}i${TAB}${TAB}lr35902_return" \
+		    -e "${INSERT_NR}i${TAB}) >$OBJ" \
+		    -e "${INSERT_NR}i${TAB}local sz_$SPECIES_NAME=\$(stat -c '%s' $OBJ)" \
+		    -e "${INSERT_NR}i${TAB}lr35902_rel_jump_with_cond NZ \$($SZ_CMD)" \
+		    -e "${INSERT_NR}i${TAB}cat $OBJ" \
+		    -e "${INSERT_NR}i\\\\" \
+		    $script
+	fi
 }
 
 # 生物種別のスクリプトへ関数テンプレを追加
@@ -93,7 +116,7 @@ for LINE in 'eval,評価,src/expset_daisyworld.sh' 'growth,成長,src/main.sh' '
 	BEHAVE=$(echo $LINE | cut -d',' -f1)
 	DESC=$(echo $LINE | cut -d',' -f2)
 	SCRIPT=$(echo $LINE | cut -d',' -f3)
-	insert_new_species_proc $BEHAVE $SCRIPT
+	insert_new_species_proc $BEHAVE $SCRIPT $DESC
 	insert_new_func_template $BEHAVE $DESC
 done
 
