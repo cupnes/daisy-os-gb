@@ -1402,45 +1402,13 @@ f_binbio_init() {
 # 白/黒デイジー用の成長関数
 # 現在の細胞の機械語バイナリの中に取得したコード化合物と同じものが存在したら、
 # 対応するcollected_flagsのビットをセットする
+# in  : regHL - 現在の細胞のfitnessのアドレス
 f_binbio_cell_growth_daisy() {
 	# push
 	lr35902_push_reg regAF
 	lr35902_push_reg regBC
-	lr35902_push_reg regHL
-
-	# regHLへ現在の細胞のアドレスを設定する
-	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
-	lr35902_copy_to_from regL regA
-	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
-	lr35902_copy_to_from regH regA
-
-	# regHLのアドレスをfitnessの位置まで進める
-	lr35902_set_reg regBC 0005
-	lr35902_add_to_regHL regBC
-
-	# regBへ現在の細胞の適応度を取得
-	lr35902_copy_to_from regB ptrHL
-
-	# regAへ乱数を取得
-	lr35902_call $a_get_rnd
-
-	# regA(乱数) < regB(現在の細胞の適応度) ?
-	lr35902_compare_regA_and regB
-	(
-		# regA(乱数) >= regB(現在の細胞の適応度) の場合
-
-		# pop & return
-		lr35902_pop_reg regHL
-		lr35902_pop_reg regBC
-		lr35902_pop_reg regAF
-		lr35902_return
-	) >src/f_binbio_cell_growth_daisy.9.o
-	local sz_9=$(stat -c '%s' src/f_binbio_cell_growth_daisy.9.o)
-	lr35902_rel_jump_with_cond C $(two_digits_d $sz_9)
-	cat src/f_binbio_cell_growth_daisy.9.o
-
-	# push
 	lr35902_push_reg regDE
+	lr35902_push_reg regHL
 
 	# コード化合物を取得
 	lr35902_call $a_binbio_get_code_comp
@@ -1626,8 +1594,8 @@ f_binbio_cell_growth_daisy() {
 	lr35902_copy_to_from ptrHL regE
 
 	# pop & return
-	lr35902_pop_reg regDE
 	lr35902_pop_reg regHL
+	lr35902_pop_reg regDE
 	lr35902_pop_reg regBC
 	lr35902_pop_reg regAF
 	lr35902_return
