@@ -671,13 +671,20 @@ f_binbio_get_code_comp() {
 
 # 突然変異
 f_binbio_cell_mutation() {
+	# push
+	lr35902_push_reg regAF
+
 	# regAへ現在の細胞のtile_numを取得
 	cat src/expset_daisyworld.get_current_cell_tile_num.o
 
 	# 繰り返し使用する処理をファイル書き出し
 	## デイジーワールドの突然変異関数を呼び出してreturn
 	(
+		# 突然変異関数呼び出し
 		lr35902_call $a_binbio_cell_mutation_daisy
+
+		# pop & return
+		lr35902_pop_reg regAF
 		lr35902_return
 	) >src/expset_daisyworld.f_binbio_cell_mutation.daisy.o
 	local sz_daisy=$(stat -c '%s' src/expset_daisyworld.f_binbio_cell_mutation.daisy.o)
@@ -695,7 +702,11 @@ f_binbio_cell_mutation() {
 	# regA == 捕食者 ?
 	lr35902_compare_regA_and $GBOS_TILE_NUM_PREDATOR
 	(
+		# 突然変異関数呼び出し
 		lr35902_call $a_binbio_cell_mutation_predator
+
+		# pop & return
+		lr35902_pop_reg regAF
 		lr35902_return
 	) >src/f_binbio_cell_mutation.predator.o
 	local sz_predator=$(stat -c '%s' src/f_binbio_cell_mutation.predator.o)
@@ -708,7 +719,8 @@ f_binbio_cell_mutation() {
 	# もしこのパスに来るようであれば無限ループで止める
 	infinite_halt
 
-	# return
+	# pop & return
+	lr35902_pop_reg regAF
 	lr35902_return
 }
 
