@@ -5422,13 +5422,20 @@ fadr=$(calc16 "${a_binbio_cell_growth_predator}+${fsz}")
 a_binbio_cell_growth=$(four_digits $fadr)
 echo -e "a_binbio_cell_growth=$a_binbio_cell_growth" >>$MAP_FILE_NAME
 f_binbio_cell_growth() {
+	# push
+	lr35902_push_reg regAF
+
 	# regAへ現在の細胞のtile_numを取得
 	cat src/expset_daisyworld.get_current_cell_tile_num.o
 
 	# 繰り返し使用する処理をファイル書き出し
 	## デイジーワールドの成長関数を呼び出してreturn
 	(
+		# 成長関数呼び出し
 		lr35902_call $a_binbio_cell_growth_daisy
+
+		# pop & return
+		lr35902_pop_reg regAF
 		lr35902_return
 	) >src/f_binbio_cell_growth.daisy.o
 	local sz_daisy=$(stat -c '%s' src/f_binbio_cell_growth.daisy.o)
@@ -5446,7 +5453,11 @@ f_binbio_cell_growth() {
 	# regA == 捕食者 ?
 	lr35902_compare_regA_and $GBOS_TILE_NUM_PREDATOR
 	(
+		# 成長関数呼び出し
 		lr35902_call $a_binbio_cell_growth_predator
+
+		# pop & return
+		lr35902_pop_reg regAF
 		lr35902_return
 	) >src/f_binbio_cell_growth.predator.o
 	local sz_predator=$(stat -c '%s' src/f_binbio_cell_growth.predator.o)
@@ -5459,7 +5470,8 @@ f_binbio_cell_growth() {
 	# もしこのパスに来るようであれば無限ループで止める
 	infinite_halt
 
-	# return
+	# pop & return
+	lr35902_pop_reg regAF
 	lr35902_return
 }
 
