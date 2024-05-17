@@ -502,6 +502,9 @@ f_tcoord_to_mrraddr() {
 }
 
 # ミラーアドレスをタイル座標へ変換
+# in : regHL - ミラーアドレス(dc00h〜)
+# out: regD  - タイル座標Y
+#      regE  - タイル座標X
 f_tcoord_to_mrraddr >src/f_tcoord_to_mrraddr.o
 fsz=$(to16 $(stat -c '%s' src/f_tcoord_to_mrraddr.o))
 fadr=$(calc16 "${a_tcoord_to_mrraddr}+${fsz}")
@@ -509,11 +512,27 @@ a_mrraddr_to_tcoord=$(four_digits $fadr)
 echo -e "a_mrraddr_to_tcoord=$a_mrraddr_to_tcoord" >>$MAP_FILE_NAME
 f_mrraddr_to_tcoord() {
 	# push
+	lr35902_push_reg regBC
+	lr35902_push_reg regHL
 	## TODO
+
+	# regHL -= 0xdc00 (2の補数:0x2400)
+	lr35902_set_reg regBC 2400
+	lr35902_add_to_regHL regBC
+
+	# regD = regHL / $GB_SC_WIDTH_T
+	# $GB_SC_WIDTH_T = 0x20なので、regHLを5ビット右シフトすれば良い
+	## TODO regHL(16ビット)の右シフトをなんとかしないといけない
+	local i
+	for ((i = 0; i < 5; i++)); do
+		lr35902_shift_right_logical
+	done
 
 	# TODO
 
 	# pop & return
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regBC
 	## TODO
 	lr35902_return
 }
