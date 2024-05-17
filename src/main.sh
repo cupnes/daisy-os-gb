@@ -501,10 +501,27 @@ f_tcoord_to_mrraddr() {
 	lr35902_return
 }
 
-# 背景タイルマップを白タイル(タイル番号0)で初期化
+# ミラーアドレスをタイル座標へ変換
 f_tcoord_to_mrraddr >src/f_tcoord_to_mrraddr.o
 fsz=$(to16 $(stat -c '%s' src/f_tcoord_to_mrraddr.o))
 fadr=$(calc16 "${a_tcoord_to_mrraddr}+${fsz}")
+a_mrraddr_to_tcoord=$(four_digits $fadr)
+echo -e "a_mrraddr_to_tcoord=$a_mrraddr_to_tcoord" >>$MAP_FILE_NAME
+f_mrraddr_to_tcoord() {
+	# push
+	## TODO
+
+	# TODO
+
+	# pop & return
+	## TODO
+	lr35902_return
+}
+
+# 背景タイルマップを白タイル(タイル番号0)で初期化
+f_mrraddr_to_tcoord >src/f_mrraddr_to_tcoord.o
+fsz=$(to16 $(stat -c '%s' src/f_mrraddr_to_tcoord.o))
+fadr=$(calc16 "${a_mrraddr_to_tcoord}+${fsz}")
 a_clear_bg=$(four_digits $fadr)
 echo -e "a_clear_bg=$a_clear_bg" >>$MAP_FILE_NAME
 f_clear_bg() {
@@ -8064,6 +8081,7 @@ global_functions() {
 	cat src/f_tcoord_to_addr.o
 	cat src/f_wtcoord_to_tcoord.o
 	cat src/f_tcoord_to_mrraddr.o
+	cat src/f_mrraddr_to_tcoord.o
 	cat src/f_clear_bg.o
 	cat src/f_init_tmrr.o
 	cat src/f_lay_tile_at_tcoord.o
