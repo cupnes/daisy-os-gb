@@ -352,13 +352,30 @@ f_compare_regHL_and_regDE() {
 	lr35902_return
 }
 
+# 符号なしの2バイト値同士の除算
+f_compare_regHL_and_regDE >src/f_compare_regHL_and_regDE.o
+fsz=$(to16 $(stat -c '%s' src/f_compare_regHL_and_regDE.o))
+fadr=$(calc16 "${a_compare_regHL_and_regDE}+${fsz}")
+a_div_regHL_by_regDE=$(four_digits $fadr)
+echo -e "a_div_regHL_by_regDE=$a_div_regHL_by_regDE" >>$MAP_FILE_NAME
+f_div_regHL_by_regDE() {
+	# push
+	## TODO
+
+	# TODO
+
+	# pop & return
+	## TODO
+	lr35902_return
+}
+
 # 現在のマウスカーソルが指すタイル座標を取得
 # in : $var_mouse_{x,y}
 # out: regD - タイル座標Y
 #    : regE - タイル座標X
-f_compare_regHL_and_regDE >src/f_compare_regHL_and_regDE.o
-fsz=$(to16 $(stat -c '%s' src/f_compare_regHL_and_regDE.o))
-fadr=$(calc16 "${a_compare_regHL_and_regDE}+${fsz}")
+f_div_regHL_by_regDE >src/f_div_regHL_by_regDE.o
+fsz=$(to16 $(stat -c '%s' src/f_div_regHL_by_regDE.o))
+fadr=$(calc16 "${a_div_regHL_by_regDE}+${fsz}")
 a_get_mouse_tcoord=$(four_digits $fadr)
 echo -e "a_get_mouse_tcoord=$a_get_mouse_tcoord" >>$MAP_FILE_NAME
 f_get_mouse_tcoord() {
@@ -8096,6 +8113,7 @@ f_binbio_event_btn_select_release >src/f_binbio_event_btn_select_release.o
 # 1000h〜の領域に配置される
 global_functions() {
 	cat src/f_compare_regHL_and_regDE.o
+	cat src/f_div_regHL_by_regDE.o
 	cat src/f_get_mouse_tcoord.o
 	cat src/f_tcoord_to_addr.o
 	cat src/f_wtcoord_to_tcoord.o
