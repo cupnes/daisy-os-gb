@@ -353,6 +353,10 @@ f_compare_regHL_and_regDE() {
 }
 
 # 符号なしの2バイト値同士の除算
+# in  : regHL - 割られる値
+#     : regDE - 割る値
+# out : regHL - 商
+#       regDE - 余り
 f_compare_regHL_and_regDE >src/f_compare_regHL_and_regDE.o
 fsz=$(to16 $(stat -c '%s' src/f_compare_regHL_and_regDE.o))
 fadr=$(calc16 "${a_compare_regHL_and_regDE}+${fsz}")
@@ -360,12 +364,58 @@ a_div_regHL_by_regDE=$(four_digits $fadr)
 echo -e "a_div_regHL_by_regDE=$a_div_regHL_by_regDE" >>$MAP_FILE_NAME
 f_div_regHL_by_regDE() {
 	# push
-	## TODO
+	lr35902_push_reg regAF
+	lr35902_push_reg regBC
 
-	# TODO
+	local obj
+
+	# regBC = 0
+	lr35902_clear_reg regBC
+
+	# regHLからregDEを何回減算できるかをregBCでカウントする
+	(
+		# regHL < regDE ?
+		## regHLとregDEを比較
+		lr35902_call $a_compare_regHL_and_regDE
+		## regAが負の値(MSBが1)か ?
+		lr35902_test_bitN_of_reg 7 regA
+		obj=src/f_div_regHL_by_regDE.break.o
+		(
+			# regAが負の値 の場合
+			# (regHL < regDE の場合)
+
+			# ループを脱出する
+			lr35902_rel_jump $(two_digits_d $((7 + 1 + 1 + 2)))
+		) >$obj
+		local sz_break=$(stat -c '%s' $obj)
+		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_break)
+		cat $obj
+
+		# regHL -= regDE
+		## regDEを2の補数で上書きする
+		get_comp_of regDE	# 7
+		## regHL += regDE
+		lr35902_add_to_regHL regDE	# 1
+
+		# regBC++
+		lr35902_inc regBC	# 1
+	) >src/f_div_regHL_by_regDE.loop.o
+	local sz_loop=$(stat -c '%s' src/f_div_regHL_by_regDE.loop.o)
+	lr35902_rel_jump $(two_comp_d $((sz_loop + 2)))	# 2
+
+	# この時点でregBCに商、regHLに余りが設定されている
+
+	# regDE = regHL
+	lr35902_copy_to_from regE regL
+	lr35902_copy_to_from regD regH
+
+	# regHL = regBC
+	lr35902_copy_to_from regL regC
+	lr35902_copy_to_from regH regB
 
 	# pop & return
-	## TODO
+	lr35902_pop_reg regBC
+	lr35902_pop_reg regAF
 	lr35902_return
 }
 
