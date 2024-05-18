@@ -130,6 +130,44 @@ infinite_halt() {
 	lr35902_rel_jump $(two_comp 04)
 }
 
+# 指定されたレジスタの2の補数を求める
+# in : 第1引数
+#      - 2の補数を求める値が入っているレジスタ
+#      - 結果で上書きされる
+# work: regA
+get_comp_of() {
+	local reg=$1
+
+	_flip_byte() {
+		local reg=$1
+		lr35902_copy_to_from regA $reg
+		lr35902_complement_regA
+		lr35902_copy_to_from $reg regA
+	}
+
+	case $reg in
+	regA)
+		lr35902_complement_regA
+		;;
+	regB|regC|regD|regE|regH|regL)
+		_flip_byte $reg
+		;;
+	regBC|regDE|regHL)
+		local reg_th="$(echo $reg | cut -c1-4)"
+		local reg_bh="reg$(echo $reg | cut -c5)"
+		local r
+		for r in $reg_th $reg_bh; do
+			_flip_byte $r
+		done
+		;;
+	*)
+		echo -n 'Error: invalid argument: ' 1>&2
+		echo "get_comp_of $reg" 1>&2
+		return 1
+	esac
+	lr35902_inc $reg
+}
+
 # 指定されたバイナリサイズ分の相対ジャンプの処理を1行で書くためのラッパー
 # in : 第1引数
 #      - NZ|Z|NC|C: 条件付きジャンプ
