@@ -83,6 +83,7 @@ f_binbio_cell_growth_predator() {
 	obj=src/f_binbio_cell_growth_predator.check_and_prey.o
 	(
 		# TODO
+		:
 	) >$obj
 	local sz_check_and_prey=$(stat -c '%s' $obj)
 

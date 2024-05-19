@@ -579,28 +579,24 @@ a_mrraddr_to_tcoord=$(four_digits $fadr)
 echo -e "a_mrraddr_to_tcoord=$a_mrraddr_to_tcoord" >>$MAP_FILE_NAME
 f_mrraddr_to_tcoord() {
 	# push
-	lr35902_push_reg regBC
 	lr35902_push_reg regHL
-	## TODO
 
 	# regHL -= 0xdc00 (2の補数:0x2400)
-	lr35902_set_reg regBC 2400
-	lr35902_add_to_regHL regBC
+	lr35902_set_reg regDE 2400
+	lr35902_add_to_regHL regDE
 
-	# regD = regHL / $GB_SC_WIDTH_T
-	# $GB_SC_WIDTH_T = 0x20なので、regHLを5ビット右シフトすれば良い
-	## TODO regHL(16ビット)の右シフトをなんとかしないといけない
-	local i
-	for ((i = 0; i < 5; i++)); do
-		lr35902_shift_right_logical
-	done
-
-	# TODO
+	# regHL / $GB_SC_WIDTH_T の商(regHL)と余り(regDE)のそれぞれ下位1バイトを
+	# regD、regEへ設定
+	# (ただし、余りの下位1バイトは元々regEなので設定不要)
+	## regDE = $GB_SC_WIDTH_T
+	lr35902_set_reg regDE $(four_digits $GB_SC_WIDTH_T)
+	## regHL /= regBC
+	lr35902_call $a_div_regHL_by_regDE
+	## regD = regL
+	lr35902_copy_to_from regD regL
 
 	# pop & return
 	lr35902_pop_reg regHL
-	lr35902_pop_reg regBC
-	## TODO
 	lr35902_return
 }
 
@@ -3659,11 +3655,131 @@ f_binbio_get_tile_family_num() {
 	lr35902_copy_to_addr_from_regA $var_mouse_enable
 ) >src/hide_mouse_cursor.o
 
-# 現在の細胞に指定されたタイル番号を設定する
-# in : regA  - タイル番号
+# 指定されたタイル座標の細胞のアドレスを取得
+# in : regD  - タイル座標Y
+#      regE  - タイル座標X
+# out: regHL - 細胞アドレス(指定された座標に細胞が存在しない場合はNULL)
 f_binbio_get_tile_family_num >src/f_binbio_get_tile_family_num.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_get_tile_family_num.o))
 fadr=$(calc16 "${a_binbio_get_tile_family_num}+${fsz}")
+a_binbio_find_cell_data_by_tile_xy=$(four_digits $fadr)
+echo -e "a_binbio_find_cell_data_by_tile_xy=$a_binbio_find_cell_data_by_tile_xy" >>$MAP_FILE_NAME
+f_binbio_find_cell_data_by_tile_xy() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regBC
+
+	# タイル座標に対応する細胞を細胞データ領域から探す
+	## regHLへ細胞データ領域開始アドレスを設定
+	lr35902_set_reg regHL $BINBIO_CELL_DATA_AREA_BEGIN
+	## 指定されたタイル座標が細胞の(tile_x,tile_y)に見つかるまで繰り返す
+	(
+		# この細胞は生きているか?
+		## flags.alive == 1 ?
+		lr35902_test_bitN_of_reg 0 ptrHL
+		(
+			# flags.alive == 0 の場合
+
+			# regHL += 細胞データ構造サイズ
+			lr35902_set_reg regBC $(four_digits $BINBIO_CELL_DATA_SIZE)
+			lr35902_add_to_regHL regBC
+		) >src/f_binbio_find_cell_data_by_tile_xy.4.o
+		(
+			# flags.alive == 1 の場合
+
+			# (tile_x,tile_y) == (regE,regD) ?
+			## アドレスregHLをtile_xまで進める
+			lr35902_inc regHL
+			## regAへtile_xを取得
+			lr35902_copy_to_from regA ptrHL
+			## regC = regA XOR regE
+			lr35902_xor_to_regA regE
+			lr35902_copy_to_from regC regA
+			## アドレスregHLをtile_yまで進める
+			lr35902_inc regHL
+			## regAへtile_yを取得
+			lr35902_copy_to_from regA ptrHL
+			## regB = regA XOR regD
+			lr35902_xor_to_regA regD
+			lr35902_copy_to_from regB regA
+			## regA = regC | regB
+			lr35902_copy_to_from regA regC
+			lr35902_or_to_regA regB
+			## regA == 0x00 ?
+			lr35902_compare_regA_and 00
+			(
+				# regA == 0x00 の場合
+				# (tile_x,tile_y) == (regE,regD)
+
+				# 見つかった
+
+				# アドレスregHLをこの細胞データの先頭まで戻す
+				lr35902_dec regHL
+				lr35902_dec regHL
+
+				# pop & return
+				lr35902_pop_reg regBC
+				lr35902_pop_reg regAF
+				lr35902_return
+			) >src/f_binbio_find_cell_data_by_tile_xy.2.o
+			local sz_2=$(stat -c '%s' src/f_binbio_find_cell_data_by_tile_xy.2.o)
+			lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_2)
+			cat src/f_binbio_find_cell_data_by_tile_xy.2.o
+
+			# regHL += 細胞データ構造サイズ - 2
+			lr35902_set_reg regBC $(four_digits $(calc16 "${BINBIO_CELL_DATA_SIZE}-2"))
+			lr35902_add_to_regHL regBC
+
+			# flags.alive == 0 の場合の処理を飛ばす
+			local sz_4=$(stat -c '%s' src/f_binbio_find_cell_data_by_tile_xy.4.o)
+			lr35902_rel_jump $(two_digits_d $sz_4)
+		) >src/f_binbio_find_cell_data_by_tile_xy.5.o
+		local sz_5=$(stat -c '%s' src/f_binbio_find_cell_data_by_tile_xy.5.o)
+		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_5)
+		cat src/f_binbio_find_cell_data_by_tile_xy.5.o	# flags.alive == 1 の場合
+		cat src/f_binbio_find_cell_data_by_tile_xy.4.o	# flags.alive == 0 の場合
+
+		# regHL > 細胞データ領域最終アドレス ?
+		## regDEをpush
+		lr35902_push_reg regDE
+		## regDEへ細胞データ領域最終アドレスを設定
+		lr35902_set_reg regDE $BINBIO_CELL_DATA_AREA_END
+		## regHLとregDEを比較
+		lr35902_call $a_compare_regHL_and_regDE
+		## regAに正の値が設定されている(regHL > regDE)か?
+		## (regHL == regDEはありえないので、regA == 0は考えない)
+		### regAのMSBを確認
+		lr35902_test_bitN_of_reg 7 regA
+		(
+			# regAのMSB == 0
+
+			# 見つからなかった
+
+			# regHLへNULLを設定
+			lr35902_set_reg regHL $GBOS_NULL
+
+			# pop & return
+			lr35902_pop_reg regDE
+			lr35902_pop_reg regBC
+			lr35902_pop_reg regAF
+			lr35902_return
+		) >src/f_binbio_find_cell_data_by_tile_xy.3.o
+		local sz_3=$(stat -c '%s' src/f_binbio_find_cell_data_by_tile_xy.3.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_3)
+		cat src/f_binbio_find_cell_data_by_tile_xy.3.o
+		## regDEをpop
+		lr35902_pop_reg regDE
+	) >src/f_binbio_find_cell_data_by_tile_xy.1.o
+	cat src/f_binbio_find_cell_data_by_tile_xy.1.o
+	local sz_1=$(stat -c '%s' src/f_binbio_find_cell_data_by_tile_xy.1.o)
+	lr35902_rel_jump $(two_comp_d $((sz_1 + 2)))
+}
+
+# 現在の細胞に指定されたタイル番号を設定する
+# in : regA  - タイル番号
+f_binbio_find_cell_data_by_tile_xy >src/f_binbio_find_cell_data_by_tile_xy.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_find_cell_data_by_tile_xy.o))
+fadr=$(calc16 "${a_binbio_find_cell_data_by_tile_xy}+${fsz}")
 a_binbio_cell_set_tile_num=$(four_digits $fadr)
 echo -e "a_binbio_cell_set_tile_num=$a_binbio_cell_set_tile_num" >>$MAP_FILE_NAME
 f_binbio_cell_set_tile_num() {
@@ -3721,11 +3837,83 @@ f_binbio_cell_set_tile_num() {
 	lr35902_return
 }
 
-# 評価の実装 - 8近傍の同じタイル属性のタイルの数を評価する
-# out: regA - 評価結果の適応度(0x00〜0xff)
+# 細胞の「死」の振る舞い
 f_binbio_cell_set_tile_num >src/f_binbio_cell_set_tile_num.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_set_tile_num.o))
 fadr=$(calc16 "${a_binbio_cell_set_tile_num}+${fsz}")
+a_binbio_cell_death=$(four_digits $fadr)
+echo -e "a_binbio_cell_death=$a_binbio_cell_death" >>$MAP_FILE_NAME
+f_binbio_cell_death() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regBC
+	lr35902_push_reg regDE
+	lr35902_push_reg regHL
+
+	# regHLへ現在の細胞のアドレスを設定する
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
+	lr35902_copy_to_from regL regA
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
+	lr35902_copy_to_from regH regA
+
+	# 現在の細胞(のflags)のアドレスは後でも使うのでpushしておく
+	lr35902_push_reg regHL
+
+	# マップに描画されているタイルを消去
+	## 現在の細胞のtile_x,tile_yからVRAMアドレスを算出
+	### regE = tile_x
+	lr35902_inc regHL
+	lr35902_copy_to_from regE ptrHL
+	### regD = tile_y
+	lr35902_inc regHL
+	lr35902_copy_to_from regD ptrHL
+	### タイル座標をVRAMアドレスへ変換
+	lr35902_call $a_tcoord_to_addr
+	## 算出したVRAMアドレスと空白タイル(GBOS_TILE_NUM_SPC)をtdqへエンキュー
+	### regDEへVRAMアドレス(regHL)を設定
+	### ※ regDEの値(tile_y,tile_x)は後で使うのでregDEへの上書きではなく、
+	### 　 regHLと入れ替える
+	#### regEとregLを入れ替え
+	lr35902_copy_to_from regA regE
+	lr35902_copy_to_from regE regL
+	lr35902_copy_to_from regL regA
+	#### regDとregHを入れ替え
+	lr35902_copy_to_from regA regD
+	lr35902_copy_to_from regD regH
+	lr35902_copy_to_from regH regA
+	### regB = 空白タイル
+	lr35902_set_reg regB $GBOS_TILE_NUM_SPC
+	### エンキュー
+	lr35902_call $a_enq_tdq
+	## この時点でタイルミラー領域へも手動で反映
+	### 現在の細胞のtile_x,tile_yからミラーアドレスを算出
+	#### regDEへtile_y,tile_xを設定(regHLから復帰)
+	lr35902_copy_to_from regE regL
+	lr35902_copy_to_from regD regH
+	#### タイル座標をミラーアドレスへ変換
+	lr35902_call $a_tcoord_to_mrraddr
+	### ミラー領域へタイル番号を書き込み
+	lr35902_copy_to_from ptrHL regB
+
+	# 現在の細胞のaliveフラグをクリアする
+	## 現在の細胞のflagsのアドレスをregHLへpop
+	lr35902_pop_reg regHL
+	## aliveフラグをクリア
+	lr35902_res_bitN_of_reg 0 ptrHL
+
+	# pop & return
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regDE
+	lr35902_pop_reg regBC
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
+# 評価の実装 - 8近傍の同じタイル属性のタイルの数を評価する
+# out: regA - 評価結果の適応度(0x00〜0xff)
+f_binbio_cell_death >src/f_binbio_cell_death.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_death.o))
+fadr=$(calc16 "${a_binbio_cell_death}+${fsz}")
 a_binbio_cell_eval_family=$(four_digits $fadr)
 echo -e "a_binbio_cell_eval_family=$a_binbio_cell_eval_family" >>$MAP_FILE_NAME
 f_binbio_cell_eval_family() {
@@ -5746,131 +5934,11 @@ f_binbio_clear_cell_data_area() {
 	lr35902_return
 }
 
-# 指定されたタイル座標の細胞のアドレスを取得
-# in : regD  - タイル座標Y
-#      regE  - タイル座標X
-# out: regHL - 細胞アドレス(指定された座標に細胞が存在しない場合はNULL)
+# マウスカーソルが指す細胞のアドレスを返す
+# out: regHL - 細胞アドレス(マウスカーソルが指す座標に細胞が存在しない場合はNULL)
 f_binbio_clear_cell_data_area >src/f_binbio_clear_cell_data_area.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_clear_cell_data_area.o))
 fadr=$(calc16 "${a_binbio_clear_cell_data_area}+${fsz}")
-a_binbio_find_cell_data_by_tile_xy=$(four_digits $fadr)
-echo -e "a_binbio_find_cell_data_by_tile_xy=$a_binbio_find_cell_data_by_tile_xy" >>$MAP_FILE_NAME
-f_binbio_find_cell_data_by_tile_xy() {
-	# push
-	lr35902_push_reg regAF
-	lr35902_push_reg regBC
-
-	# タイル座標に対応する細胞を細胞データ領域から探す
-	## regHLへ細胞データ領域開始アドレスを設定
-	lr35902_set_reg regHL $BINBIO_CELL_DATA_AREA_BEGIN
-	## 指定されたタイル座標が細胞の(tile_x,tile_y)に見つかるまで繰り返す
-	(
-		# この細胞は生きているか?
-		## flags.alive == 1 ?
-		lr35902_test_bitN_of_reg 0 ptrHL
-		(
-			# flags.alive == 0 の場合
-
-			# regHL += 細胞データ構造サイズ
-			lr35902_set_reg regBC $(four_digits $BINBIO_CELL_DATA_SIZE)
-			lr35902_add_to_regHL regBC
-		) >src/f_binbio_find_cell_data_by_tile_xy.4.o
-		(
-			# flags.alive == 1 の場合
-
-			# (tile_x,tile_y) == (regE,regD) ?
-			## アドレスregHLをtile_xまで進める
-			lr35902_inc regHL
-			## regAへtile_xを取得
-			lr35902_copy_to_from regA ptrHL
-			## regC = regA XOR regE
-			lr35902_xor_to_regA regE
-			lr35902_copy_to_from regC regA
-			## アドレスregHLをtile_yまで進める
-			lr35902_inc regHL
-			## regAへtile_yを取得
-			lr35902_copy_to_from regA ptrHL
-			## regB = regA XOR regD
-			lr35902_xor_to_regA regD
-			lr35902_copy_to_from regB regA
-			## regA = regC | regB
-			lr35902_copy_to_from regA regC
-			lr35902_or_to_regA regB
-			## regA == 0x00 ?
-			lr35902_compare_regA_and 00
-			(
-				# regA == 0x00 の場合
-				# (tile_x,tile_y) == (regE,regD)
-
-				# 見つかった
-
-				# アドレスregHLをこの細胞データの先頭まで戻す
-				lr35902_dec regHL
-				lr35902_dec regHL
-
-				# pop & return
-				lr35902_pop_reg regBC
-				lr35902_pop_reg regAF
-				lr35902_return
-			) >src/f_binbio_find_cell_data_by_tile_xy.2.o
-			local sz_2=$(stat -c '%s' src/f_binbio_find_cell_data_by_tile_xy.2.o)
-			lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_2)
-			cat src/f_binbio_find_cell_data_by_tile_xy.2.o
-
-			# regHL += 細胞データ構造サイズ - 2
-			lr35902_set_reg regBC $(four_digits $(calc16 "${BINBIO_CELL_DATA_SIZE}-2"))
-			lr35902_add_to_regHL regBC
-
-			# flags.alive == 0 の場合の処理を飛ばす
-			local sz_4=$(stat -c '%s' src/f_binbio_find_cell_data_by_tile_xy.4.o)
-			lr35902_rel_jump $(two_digits_d $sz_4)
-		) >src/f_binbio_find_cell_data_by_tile_xy.5.o
-		local sz_5=$(stat -c '%s' src/f_binbio_find_cell_data_by_tile_xy.5.o)
-		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_5)
-		cat src/f_binbio_find_cell_data_by_tile_xy.5.o	# flags.alive == 1 の場合
-		cat src/f_binbio_find_cell_data_by_tile_xy.4.o	# flags.alive == 0 の場合
-
-		# regHL > 細胞データ領域最終アドレス ?
-		## regDEをpush
-		lr35902_push_reg regDE
-		## regDEへ細胞データ領域最終アドレスを設定
-		lr35902_set_reg regDE $BINBIO_CELL_DATA_AREA_END
-		## regHLとregDEを比較
-		lr35902_call $a_compare_regHL_and_regDE
-		## regAに正の値が設定されている(regHL > regDE)か?
-		## (regHL == regDEはありえないので、regA == 0は考えない)
-		### regAのMSBを確認
-		lr35902_test_bitN_of_reg 7 regA
-		(
-			# regAのMSB == 0
-
-			# 見つからなかった
-
-			# regHLへNULLを設定
-			lr35902_set_reg regHL $GBOS_NULL
-
-			# pop & return
-			lr35902_pop_reg regDE
-			lr35902_pop_reg regBC
-			lr35902_pop_reg regAF
-			lr35902_return
-		) >src/f_binbio_find_cell_data_by_tile_xy.3.o
-		local sz_3=$(stat -c '%s' src/f_binbio_find_cell_data_by_tile_xy.3.o)
-		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_3)
-		cat src/f_binbio_find_cell_data_by_tile_xy.3.o
-		## regDEをpop
-		lr35902_pop_reg regDE
-	) >src/f_binbio_find_cell_data_by_tile_xy.1.o
-	cat src/f_binbio_find_cell_data_by_tile_xy.1.o
-	local sz_1=$(stat -c '%s' src/f_binbio_find_cell_data_by_tile_xy.1.o)
-	lr35902_rel_jump $(two_comp_d $((sz_1 + 2)))
-}
-
-# マウスカーソルが指す細胞のアドレスを返す
-# out: regHL - 細胞アドレス(マウスカーソルが指す座標に細胞が存在しない場合はNULL)
-f_binbio_find_cell_data_by_tile_xy >src/f_binbio_find_cell_data_by_tile_xy.o
-fsz=$(to16 $(stat -c '%s' src/f_binbio_find_cell_data_by_tile_xy.o))
-fadr=$(calc16 "${a_binbio_find_cell_data_by_tile_xy}+${fsz}")
 a_binbio_get_pointed_cell_addr=$(four_digits $fadr)
 echo -e "a_binbio_get_pointed_cell_addr=$a_binbio_get_pointed_cell_addr" >>$MAP_FILE_NAME
 f_binbio_get_pointed_cell_addr() {
@@ -6825,82 +6893,10 @@ f_binbio_cell_division_fix() {
 	lr35902_return
 }
 
-# 細胞の「死」の振る舞い
+# 次の細胞を選択
 f_binbio_cell_division_fix >src/f_binbio_cell_division_fix.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_division_fix.o))
 fadr=$(calc16 "${a_binbio_cell_division_fix}+${fsz}")
-a_binbio_cell_death=$(four_digits $fadr)
-echo -e "a_binbio_cell_death=$a_binbio_cell_death" >>$MAP_FILE_NAME
-f_binbio_cell_death() {
-	# push
-	lr35902_push_reg regAF
-	lr35902_push_reg regBC
-	lr35902_push_reg regDE
-	lr35902_push_reg regHL
-
-	# regHLへ現在の細胞のアドレスを設定する
-	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
-	lr35902_copy_to_from regL regA
-	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
-	lr35902_copy_to_from regH regA
-
-	# 現在の細胞(のflags)のアドレスは後でも使うのでpushしておく
-	lr35902_push_reg regHL
-
-	# マップに描画されているタイルを消去
-	## 現在の細胞のtile_x,tile_yからVRAMアドレスを算出
-	### regE = tile_x
-	lr35902_inc regHL
-	lr35902_copy_to_from regE ptrHL
-	### regD = tile_y
-	lr35902_inc regHL
-	lr35902_copy_to_from regD ptrHL
-	### タイル座標をVRAMアドレスへ変換
-	lr35902_call $a_tcoord_to_addr
-	## 算出したVRAMアドレスと空白タイル(GBOS_TILE_NUM_SPC)をtdqへエンキュー
-	### regDEへVRAMアドレス(regHL)を設定
-	### ※ regDEの値(tile_y,tile_x)は後で使うのでregDEへの上書きではなく、
-	### 　 regHLと入れ替える
-	#### regEとregLを入れ替え
-	lr35902_copy_to_from regA regE
-	lr35902_copy_to_from regE regL
-	lr35902_copy_to_from regL regA
-	#### regDとregHを入れ替え
-	lr35902_copy_to_from regA regD
-	lr35902_copy_to_from regD regH
-	lr35902_copy_to_from regH regA
-	### regB = 空白タイル
-	lr35902_set_reg regB $GBOS_TILE_NUM_SPC
-	### エンキュー
-	lr35902_call $a_enq_tdq
-	## この時点でタイルミラー領域へも手動で反映
-	### 現在の細胞のtile_x,tile_yからミラーアドレスを算出
-	#### regDEへtile_y,tile_xを設定(regHLから復帰)
-	lr35902_copy_to_from regE regL
-	lr35902_copy_to_from regD regH
-	#### タイル座標をミラーアドレスへ変換
-	lr35902_call $a_tcoord_to_mrraddr
-	### ミラー領域へタイル番号を書き込み
-	lr35902_copy_to_from ptrHL regB
-
-	# 現在の細胞のaliveフラグをクリアする
-	## 現在の細胞のflagsのアドレスをregHLへpop
-	lr35902_pop_reg regHL
-	## aliveフラグをクリア
-	lr35902_res_bitN_of_reg 0 ptrHL
-
-	# pop & return
-	lr35902_pop_reg regHL
-	lr35902_pop_reg regDE
-	lr35902_pop_reg regBC
-	lr35902_pop_reg regAF
-	lr35902_return
-}
-
-# 次の細胞を選択
-f_binbio_cell_death >src/f_binbio_cell_death.o
-fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_death.o))
-fadr=$(calc16 "${a_binbio_cell_death}+${fsz}")
 a_binbio_select_next_cell=$(four_digits $fadr)
 echo -e "a_binbio_select_next_cell=$a_binbio_select_next_cell" >>$MAP_FILE_NAME
 f_binbio_select_next_cell() {
@@ -8218,7 +8214,9 @@ global_functions() {
 	cat src/f_get_rnd.o
 	cat src/f_tdq_enq.o
 	cat src/f_binbio_get_tile_family_num.o
+	cat src/f_binbio_find_cell_data_by_tile_xy.o
 	cat src/f_binbio_cell_set_tile_num.o
+	cat src/f_binbio_cell_death.o
 	cat src/f_binbio_cell_eval_family.o
 	cat src/f_binbio_cell_eval_helloworld.o
 	cat src/f_binbio_cell_eval_daisy.o
@@ -8236,7 +8234,6 @@ global_functions() {
 	cat src/f_binbio_cell_growth.o
 	cat src/f_binbio_cell_is_dividable.o
 	cat src/f_binbio_clear_cell_data_area.o
-	cat src/f_binbio_find_cell_data_by_tile_xy.o
 	cat src/f_binbio_get_pointed_cell_addr.o
 	cat src/f_binbio_cell_alloc.o
 	cat src/f_binbio_cell_find_free_neighbor.o
@@ -8247,7 +8244,6 @@ global_functions() {
 	cat src/f_binbio_cell_mutation.o
 	cat src/f_binbio_cell_division.o
 	cat src/f_binbio_cell_division_fix.o
-	cat src/f_binbio_cell_death.o
 	cat src/f_binbio_select_next_cell.o
 	cat src/f_binbio_place_soft_desc.o
 	cat src/f_binbio_clear_soft_desc.o
