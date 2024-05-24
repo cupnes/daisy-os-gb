@@ -1,0 +1,173 @@
+#!/bin/bash
+
+# 関数定義を移動させる
+# コマンドライン引数について：
+# ※ 関数名は接頭辞"f_"を除いて指定する
+# - TARGET_FUNC (対象関数名)
+#   - 例) binbio_cell_alloc
+# - TO_BEFORE_FUNC (移動先の直前関数名)
+#   - ここで指定した関数の直後に挿入される
+#   - 例) binbio_find_cell_data_by_tile_xy
+
+# set -uex
+set -ue
+
+. tools/common.sh
+
+usage() {
+	echo 'Usage:' 1>&2
+	echo -e "\t$0 TARGET_FUNC TO_BEFORE_FUNC" 1>&2
+	echo -e "\t$0 -h" 1>&2
+}
+
+while getopts h option; do
+	case $option in
+	h)
+		usage
+		exit 0
+		;;
+	*)
+		usage
+		exit 1
+	esac
+done
+shift $((OPTIND - 1))
+if [ $# -ne 2 ]; then
+	usage
+	exit 1
+fi
+
+TARGET_FUNC=$1
+TO_BEFORE_FUNC=$2
+
+# 何度も使用する定数
+## 対象関数定義を一時退避するファイル名
+TARGET_FUNC_TMP_FILE="move_func_def_tmp_${TARGET_FUNC}.sh"
+
+# 対象関数の開始・終了行番号を取得
+TARGET_FUNC_ADDR_NR=$(sed -n "/^a_${TARGET_FUNC}=.(four_digits .fadr)\$/=" \
+			  src/main.sh)
+BLANK_NR_LIST=$(sed -n '/^$/=' src/main.sh)
+TARGET_FUNC_BEGIN_NR=$((TARGET_FUNC_ADDR_NR - 1))
+while :; do
+	if grep -xq $TARGET_FUNC_BEGIN_NR <(printf "%s\n" $BLANK_NR_LIST); then
+		TARGET_FUNC_BEGIN_NR=$((TARGET_FUNC_BEGIN_NR + 1))
+		break
+	fi
+
+	TARGET_FUNC_BEGIN_NR=$((TARGET_FUNC_BEGIN_NR - 1))
+done
+TARGET_FUNC_END_NR=$(awk "
+  NR > $TARGET_FUNC_BEGIN_NR && \$0 == \"}\" {
+    print NR
+    exit
+  }
+" src/main.sh)
+TARGET_FUNC_END_NR=$((TARGET_FUNC_END_NR + 1))
+
+# 対象関数定義をファイルへ退避
+sed -n "$TARGET_FUNC_BEGIN_NR,${TARGET_FUNC_END_NR}p" src/main.sh \
+    >$TARGET_FUNC_TMP_FILE
+
+# 終了時に削除
+trap "rm $TARGET_FUNC_TMP_FILE" EXIT
+
+# 対象関数定義をsrc/main.shから削除
+sed -i "$TARGET_FUNC_BEGIN_NR,${TARGET_FUNC_END_NR}d" src/main.sh
+
+# 移動元の直前の関数名を取得
+FROM_BEFORE_FUNC=$(grep -v '^# ' $TARGET_FUNC_TMP_FILE | head -n 1 | \
+			 sed -r 's%^f_([a-z_]+) >src/f_[a-z_]+.o$%\1%')
+
+# 対象関数定義の関数のアドレス計算部分を更新
+TARGET_FUNC_ADDR_CALC_BEGIN_NR=$(awk "
+  \$0 == \"f_${FROM_BEFORE_FUNC} >src/f_${FROM_BEFORE_FUNC}.o\" {
+    print NR
+    exit
+  }
+" $TARGET_FUNC_TMP_FILE)
+TARGET_FUNC_ADDR_CALC_END_NR=$(awk "
+  NR > $TARGET_FUNC_ADDR_CALC_BEGIN_NR && /^fadr=/ {
+    print NR
+    exit
+  }
+" $TARGET_FUNC_TMP_FILE)
+sed -i "$TARGET_FUNC_ADDR_CALC_BEGIN_NR,${TARGET_FUNC_ADDR_CALC_END_NR}s/$FROM_BEFORE_FUNC/$TO_BEFORE_FUNC/g" \
+    $TARGET_FUNC_TMP_FILE
+
+# 移動元の直後の関数のアドレス計算部分を更新
+FROM_NEXT_FUNC_ADDR_CALC_BEGIN_NR=$(awk "
+  \$0 == \"f_${TARGET_FUNC} >src/f_${TARGET_FUNC}.o\" {
+    print NR
+    exit
+  }
+" src/main.sh)
+FROM_NEXT_FUNC_ADDR_CALC_END_NR=$(awk "
+  NR > $FROM_NEXT_FUNC_ADDR_CALC_BEGIN_NR && /^fadr=/ {
+    print NR
+    exit
+  }
+" src/main.sh)
+sed -i "$FROM_NEXT_FUNC_ADDR_CALC_BEGIN_NR,${FROM_NEXT_FUNC_ADDR_CALC_END_NR}s/$TARGET_FUNC/$FROM_BEFORE_FUNC/g" \
+    src/main.sh
+
+# 移動先の直後の関数のアドレス計算部分を更新
+TO_BEFORE_FUNC_ADDR_NR=$(sed -n \
+			     "/^a_${TO_BEFORE_FUNC}=.(four_digits .fadr)\$/=" \
+			     src/main.sh)
+TO_NEXT_FUNC_ADDR_CALC_BEGIN_NR=$(awk "
+  NR > $TO_BEFORE_FUNC_ADDR_NR && \$0 == \"f_${TO_BEFORE_FUNC} >src/f_${TO_BEFORE_FUNC}.o\" {
+    print NR
+    exit
+  }
+" src/main.sh)
+TO_NEXT_FUNC_ADDR_CALC_END_NR=$(awk "
+  NR > $TO_NEXT_FUNC_ADDR_CALC_BEGIN_NR && /^fadr=/ {
+    print NR
+    exit
+  }
+" src/main.sh)
+sed -i "$TO_NEXT_FUNC_ADDR_CALC_BEGIN_NR,${TO_NEXT_FUNC_ADDR_CALC_END_NR}s/$TO_BEFORE_FUNC/$TARGET_FUNC/g" \
+    src/main.sh
+
+# 挿入箇所の行番号を取得
+APPEND_NR=$(awk "
+  NR > $TO_BEFORE_FUNC_ADDR_NR && \$0 == \"}\" {
+    print NR
+    exit
+  }
+" src/main.sh)
+APPEND_NR=$((APPEND_NR + 1))
+
+# 対象関数定義を指定された移動先へ挿入
+cat <(sed -n "1,${APPEND_NR}p" src/main.sh) $TARGET_FUNC_TMP_FILE \
+    <(sed -n "$((APPEND_NR + 1)),\$p" src/main.sh) | sponge src/main.sh
+
+# global_functions()を更新
+## global_functions()の開始・終了行番号を取得
+GF_BEGIN_NR=$(sed -n '/^global_functions() {$/=' src/main.sh)
+GF_END_NR=$(awk "
+  NR > $GF_BEGIN_NR && \$0 == \"}\" {
+    print NR
+    exit
+  }
+" src/main.sh)
+## 対象関数の行番号を取得
+TARGET_FUNC_NR=$(awk "
+  NR > $GF_BEGIN_NR && NR < $GF_END_NR && /${TARGET_FUNC}/ {
+    print NR
+    exit
+  }
+" src/main.sh)
+## 対象関数の行を削除
+sed -i "${TARGET_FUNC_NR}d" src/main.sh
+## 移動先の直前関数の行番号を取得
+TO_BEFORE_FUNC_NR=$(awk "
+  NR > $GF_BEGIN_NR && NR < $GF_END_NR && /${TO_BEFORE_FUNC}/ {
+    print NR
+    exit
+  }
+" src/main.sh)
+## 対象関数の行を追加
+APPEND_NR=$TO_BEFORE_FUNC_NR
+sed -i "${APPEND_NR}a${TAB}cat src/f_${TARGET_FUNC}.o" src/main.sh
