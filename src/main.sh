@@ -3781,11 +3781,78 @@ f_binbio_find_cell_data_by_tile_xy() {
 	lr35902_rel_jump $(two_comp_d $((sz_1 + 2)))
 }
 
-# 現在の細胞に指定されたタイル番号を設定する
-# in : regA  - タイル番号
+# 細胞データ領域を確保
+# out: regHL - 確保した領域のアドレス(確保できなかった場合はNULL)
 f_binbio_find_cell_data_by_tile_xy >src/f_binbio_find_cell_data_by_tile_xy.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_find_cell_data_by_tile_xy.o))
 fadr=$(calc16 "${a_binbio_find_cell_data_by_tile_xy}+${fsz}")
+a_binbio_cell_alloc=$(four_digits $fadr)
+echo -e "a_binbio_cell_alloc=$a_binbio_cell_alloc" >>$MAP_FILE_NAME
+f_binbio_cell_alloc() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regDE
+
+	# CELL_DATA_AREA_BEGINからCELL_DATA_SIZEバイト毎に
+	# flags.aliveが0の場所を探す
+	## CELL_DATA_AREA_BEGINをregHLへ設定
+	lr35902_set_reg regHL $BINBIO_CELL_DATA_AREA_BEGIN
+	## flags.aliveが0の場所を探す
+	(
+		# flags.alive == 0 ?
+		lr35902_test_bitN_of_reg 0 ptrHL
+		(
+			# flags.alive == 0 の場合
+
+			# 現在のregHLを返す
+			## pop & return
+			lr35902_pop_reg regDE
+			lr35902_pop_reg regAF
+			lr35902_return
+		) >src/f_binbio_cell_alloc.1.o
+		local sz_1=$(stat -c '%s' src/f_binbio_cell_alloc.1.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_1)
+		cat src/f_binbio_cell_alloc.1.o
+
+		# regHL += 細胞データ構造サイズ
+		lr35902_set_reg regDE $(four_digits $BINBIO_CELL_DATA_SIZE)
+		lr35902_add_to_regHL regDE
+
+		# regHL > 細胞データ領域最終アドレス ?
+		## 細胞データ領域最終アドレスをregDEへ設定
+		lr35902_set_reg regDE $BINBIO_CELL_DATA_AREA_END
+		## regHLとregDEを比較
+		lr35902_call $a_compare_regHL_and_regDE
+		lr35902_test_bitN_of_reg 7 regA
+		(
+			# regHL >= regDE の場合
+
+			# ループを脱出
+			lr35902_rel_jump $(two_digits_d 2)
+		) >src/f_binbio_cell_alloc.2.o
+		local sz_2=$(stat -c '%s' src/f_binbio_cell_alloc.2.o)
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_2)
+		cat src/f_binbio_cell_alloc.2.o
+	) >src/f_binbio_cell_alloc.3.o
+	cat src/f_binbio_cell_alloc.3.o
+	# (sz_3 + 2)のサイズ分、上方へ無条件ジャンプ
+	local sz_3=$(stat -c '%s' src/f_binbio_cell_alloc.3.o)
+	lr35902_rel_jump $(two_comp_d $((sz_3 + 2)))	# 2
+
+	# regHLへNULLを設定
+	lr35902_set_reg regHL $GBOS_NULL
+
+	# pop & return
+	lr35902_pop_reg regDE
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
+# 現在の細胞に指定されたタイル番号を設定する
+# in : regA  - タイル番号
+f_binbio_cell_alloc >src/f_binbio_cell_alloc.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_alloc.o))
+fadr=$(calc16 "${a_binbio_cell_alloc}+${fsz}")
 a_binbio_cell_set_tile_num=$(four_digits $fadr)
 echo -e "a_binbio_cell_set_tile_num=$a_binbio_cell_set_tile_num" >>$MAP_FILE_NAME
 f_binbio_cell_set_tile_num() {
@@ -5989,79 +6056,12 @@ f_binbio_get_pointed_cell_addr() {
 	lr35902_return
 }
 
-# 細胞データ領域を確保
-# out: regHL - 確保した領域のアドレス(確保できなかった場合はNULL)
-f_binbio_get_pointed_cell_addr >src/f_binbio_get_pointed_cell_addr.o
-fsz=$(to16 $(stat -c '%s' src/f_binbio_get_pointed_cell_addr.o))
-fadr=$(calc16 "${a_binbio_get_pointed_cell_addr}+${fsz}")
-a_binbio_cell_alloc=$(four_digits $fadr)
-echo -e "a_binbio_cell_alloc=$a_binbio_cell_alloc" >>$MAP_FILE_NAME
-f_binbio_cell_alloc() {
-	# push
-	lr35902_push_reg regAF
-	lr35902_push_reg regDE
-
-	# CELL_DATA_AREA_BEGINからCELL_DATA_SIZEバイト毎に
-	# flags.aliveが0の場所を探す
-	## CELL_DATA_AREA_BEGINをregHLへ設定
-	lr35902_set_reg regHL $BINBIO_CELL_DATA_AREA_BEGIN
-	## flags.aliveが0の場所を探す
-	(
-		# flags.alive == 0 ?
-		lr35902_test_bitN_of_reg 0 ptrHL
-		(
-			# flags.alive == 0 の場合
-
-			# 現在のregHLを返す
-			## pop & return
-			lr35902_pop_reg regDE
-			lr35902_pop_reg regAF
-			lr35902_return
-		) >src/f_binbio_cell_alloc.1.o
-		local sz_1=$(stat -c '%s' src/f_binbio_cell_alloc.1.o)
-		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_1)
-		cat src/f_binbio_cell_alloc.1.o
-
-		# regHL += 細胞データ構造サイズ
-		lr35902_set_reg regDE $(four_digits $BINBIO_CELL_DATA_SIZE)
-		lr35902_add_to_regHL regDE
-
-		# regHL > 細胞データ領域最終アドレス ?
-		## 細胞データ領域最終アドレスをregDEへ設定
-		lr35902_set_reg regDE $BINBIO_CELL_DATA_AREA_END
-		## regHLとregDEを比較
-		lr35902_call $a_compare_regHL_and_regDE
-		lr35902_test_bitN_of_reg 7 regA
-		(
-			# regHL >= regDE の場合
-
-			# ループを脱出
-			lr35902_rel_jump $(two_digits_d 2)
-		) >src/f_binbio_cell_alloc.2.o
-		local sz_2=$(stat -c '%s' src/f_binbio_cell_alloc.2.o)
-		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_2)
-		cat src/f_binbio_cell_alloc.2.o
-	) >src/f_binbio_cell_alloc.3.o
-	cat src/f_binbio_cell_alloc.3.o
-	# (sz_3 + 2)のサイズ分、上方へ無条件ジャンプ
-	local sz_3=$(stat -c '%s' src/f_binbio_cell_alloc.3.o)
-	lr35902_rel_jump $(two_comp_d $((sz_3 + 2)))	# 2
-
-	# regHLへNULLを設定
-	lr35902_set_reg regHL $GBOS_NULL
-
-	# pop & return
-	lr35902_pop_reg regDE
-	lr35902_pop_reg regAF
-	lr35902_return
-}
-
 # 近傍の空き座標を探す
 # out: regD - 見つけたY座標(見つからなかった場合は0xff)
 #      regE - 見つけたX座標(見つからなかった場合は0xff)
-f_binbio_cell_alloc >src/f_binbio_cell_alloc.o
-fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_alloc.o))
-fadr=$(calc16 "${a_binbio_cell_alloc}+${fsz}")
+f_binbio_get_pointed_cell_addr >src/f_binbio_get_pointed_cell_addr.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_get_pointed_cell_addr.o))
+fadr=$(calc16 "${a_binbio_get_pointed_cell_addr}+${fsz}")
 a_binbio_cell_find_free_neighbor=$(four_digits $fadr)
 echo -e "a_binbio_cell_find_free_neighbor=$a_binbio_cell_find_free_neighbor" >>$MAP_FILE_NAME
 f_binbio_cell_find_free_neighbor() {
@@ -8246,6 +8246,7 @@ global_functions() {
 	cat src/f_tdq_enq.o
 	cat src/f_binbio_get_tile_family_num.o
 	cat src/f_binbio_find_cell_data_by_tile_xy.o
+	cat src/f_binbio_cell_alloc.o
 	cat src/f_binbio_cell_set_tile_num.o
 	cat src/f_binbio_place_cell.o
 	cat src/f_binbio_cell_death.o
@@ -8268,7 +8269,6 @@ global_functions() {
 	cat src/f_binbio_cell_is_dividable.o
 	cat src/f_binbio_clear_cell_data_area.o
 	cat src/f_binbio_get_pointed_cell_addr.o
-	cat src/f_binbio_cell_alloc.o
 	cat src/f_binbio_cell_find_free_neighbor.o
 	cat src/f_binbio_cell_mutation_all.o
 	cat src/f_binbio_cell_mutation_alphabet.o
