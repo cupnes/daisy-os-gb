@@ -385,21 +385,27 @@ f_div_regHL_by_regDE() {
 			# (regHL < regDE の場合)
 
 			# ループを脱出する
-			lr35902_rel_jump $(two_digits_d $((7 + 1 + 1 + 2)))
+			local loop_bh_bytes=$((1 + 7 + 1 + 1 + 1))
+			lr35902_rel_jump $(two_digits_d $((loop_bh_bytes + 2)))
 		) >$obj
 		local sz_break=$(stat -c '%s' $obj)
 		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_break)
 		cat $obj
 
 		# regHL -= regDE
+		## regDEをスタックへ退避
+		lr35902_push_reg regDE	# 1
 		## regDEを2の補数で上書きする
 		get_comp_of regDE	# 7
 		## regHL += regDE
 		lr35902_add_to_regHL regDE	# 1
+		## regDEをスタックから復帰
+		lr35902_pop_reg regDE	# 1
 
 		# regBC++
 		lr35902_inc regBC	# 1
 	) >src/f_div_regHL_by_regDE.loop.o
+	cat src/f_div_regHL_by_regDE.loop.o
 	local sz_loop=$(stat -c '%s' src/f_div_regHL_by_regDE.loop.o)
 	lr35902_rel_jump $(two_comp_d $((sz_loop + 2)))	# 2
 
