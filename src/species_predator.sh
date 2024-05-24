@@ -30,62 +30,171 @@ f_binbio_cell_growth_predator() {
 	lr35902_push_reg regHL
 
 	local obj
+	local obj_base
 
 	# [8近傍をチェック]
-	# 現在の細胞の8近傍を左上から順に時計回りでチェック
+	# 自身の細胞の8近傍を左上から順に時計回りでチェック
 
-	# 現在の細胞のタイル座標(X, Y)を(regE, regD)へ取得
-	## 現在の細胞のアドレスをregHLへ取得
+	# 自身の細胞のタイル座標(X, Y)を(regE, regD)へ取得
+	## 自身の細胞のアドレスをregHLへ取得
 	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
 	lr35902_copy_to_from regL regA
 	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
 	lr35902_copy_to_from regH regA
 	## アドレスregHLをtile_xまで進める
 	lr35902_inc regHL
-	## regEへ現在の細胞のtile_xを取得
+	## regEへ自身の細胞のtile_xを取得
 	lr35902_copy_to_from regE ptrHL
 	## アドレスregHLをtile_yまで進める
 	lr35902_inc regHL
-	## regDへ現在の細胞のtile_yを取得
+	## regDへ自身の細胞のtile_yを取得
 	lr35902_copy_to_from regD ptrHL
 
-	# 現在の細胞のタイルのタイルミラー領域上のアドレスをregHLへ設定
+	# 自身の細胞のタイルのタイルミラー領域上のアドレスをregHLへ設定
 	lr35902_call $a_tcoord_to_mrraddr
 
 	# 繰り返し使用する処理をファイル書き出し/マクロ定義
-	## 捕食処理
-	obj=src/f_binbio_cell_growth_predator.prey.o
+	## 捕食処理を実施しreturn
+	obj=src/f_binbio_cell_growth_predator.prey_return.o
 	(
-		# 対象の生物を消去
-		## 対象の生物のタイルミラー領域上のアドレス(regHL)から
-		## 対象の生物のアドレスを算出
+		# 対象の細胞を消去
+		## 対象の細胞のタイルミラー領域上のアドレス(regHL)から
+		## 対象の細胞のアドレスを算出
 		### タイルミラー領域上のアドレスからタイル座標を算出
-		#### TODO
+		lr35902_call $a_mrraddr_to_tcoord
 		### タイル座標から細胞のアドレスを取得
 		lr35902_call $a_binbio_find_cell_data_by_tile_xy
-		## regBCへ現在の細胞のアドレス変数の値を退避
-		### TODO
-		## 対象の生物のアドレスを現在の細胞のアドレス変数へ設定
-		### TODO
+		## regBCへ自身の細胞のアドレス変数の値を退避
+		lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
+		lr35902_copy_to_from regC regA
+		lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
+		lr35902_copy_to_from regB regA
+		## 対象の細胞のアドレスを自身の細胞のアドレス変数へ設定
+		lr35902_copy_to_from regA regL
+		lr35902_copy_to_addr_from_regA $var_binbio_cur_cell_addr_bh
+		lr35902_copy_to_from regA regH
+		lr35902_copy_to_addr_from_regA $var_binbio_cur_cell_addr_th
 		## 死の振る舞いを実施
 		lr35902_call $a_binbio_cell_death
-		## regBCから現在の細胞のアドレス変数の値を復帰
-		### TODO
+		## regBCから自身の細胞のアドレス変数の値を復帰
+		lr35902_copy_to_from regA regC
+		lr35902_copy_to_addr_from_regA $var_binbio_cur_cell_addr_bh
+		lr35902_copy_to_from regA regB
+		lr35902_copy_to_addr_from_regA $var_binbio_cur_cell_addr_th
 
-		# 自身のステータス更新
-		## TODO
+		# この時、regBCに自身の細胞のアドレスが、
+		# regHLに対象の細胞のアドレスが設定されている
 
-		# BGマップの表示を更新
-		## TODO
+		# 自身のtile_{x,y}を対象の細胞のtile_{x,y}で更新
+		## regHLの対象の細胞のアドレスをtile_xまで進める
+		lr35902_inc regHL
+		## regEへ対象の細胞のtile_xを取得
+		lr35902_copy_to_from regE ptrHL
+		## regHLをtile_yまで進める
+		lr35902_inc regHL
+		## regDへ対象の細胞のtile_yを取得
+		lr35902_copy_to_from regE ptrHL
+		## regHLへ自身のアドレスを設定
+		lr35902_copy_to_from regL regC
+		lr35902_copy_to_from regH regB
+		## regHLをtile_xまで進める
+		lr35902_inc regHL
+		## 後のためにregCへ自身のtile_xを退避
+		lr35902_copy_to_from regC ptrHL
+		## 自身のtile_xへregEを設定
+		lr35902_copy_to_from ptrHL regE
+		## regHLをtile_yまで進める
+		lr35902_inc regHL
+		## 後のためにregBへ自身のtile_yを退避
+		lr35902_copy_to_from regB ptrHL
+		## 自身のtile_yへregDを設定
+		lr35902_copy_to_from ptrHL regD
+
+		# この時、(regC, regB)に自身のtile{x,y}が、
+		# (regE, regD)に対象の細胞のtile_{x,y}が、
+		# regHLには自身のtile_yのアドレスが設定されている
+
+		# 自身のcollected_flagsを更新
+		# 現状はインクリメントするようにしている
+		# bin_sizeが5なので、collected_flagsのbin_size分のビットが
+		# 全て立つまで31(0x1f)サイクルかかる形
+		# TODO チューニング項目
+		## regBC(自身のtile{x,y})をスタックへ退避
+		lr35902_push_reg regBC
+		## regHLをcollected_flagsまで進める
+		lr35902_set_reg regBC 000b
+		lr35902_add_to_regHL regBC
+		## 自身のcollected_flagsをインクリメント
+		lr35902_inc ptrHL
+
+		# 背景タイルマップ上で自身の表示を更新
+		## 対象の細胞の座標へ捕食者タイルを配置
+		### 対象の細胞のタイル座標(regE, regD)を
+		### VRAMアドレス(regHL)へ変換
+		lr35902_call $a_tcoord_to_addr
+		### VRAMアドレスへ捕食者タイルを配置するエントリを
+		### tdqへエンキュー
+		lr35902_set_reg regB $GBOS_TILE_NUM_PREDATOR
+		lr35902_copy_to_from regE regL
+		lr35902_copy_to_from regD regH
+		lr35902_call $a_enq_tdq
+		## 自身の表示を消す(空白タイルを配置)
+		### regBC(自身のtile{x,y})をスタックから復帰
+		lr35902_pop_reg regBC
+		### 自身のタイル座標をVRAMアドレス(regHL)へ変換
+		lr35902_copy_to_from regE regC
+		lr35902_copy_to_from regD regB
+		lr35902_call $a_tcoord_to_addr
+		### VRAMアドレスへ空白タイルを配置するエントリをtdqへエンキュー
+		lr35902_set_reg regB $GBOS_TILE_NUM_SPC
+		lr35902_copy_to_from regE regL
+		lr35902_copy_to_from regD regH
+		lr35902_call $a_enq_tdq
+
+		# pop & return
+		lr35902_pop_reg regHL
+		lr35902_pop_reg regDE
+		lr35902_pop_reg regBC
+		lr35902_pop_reg regAF
+		lr35902_return
 	) >$obj
-	local sz_prey=$(stat -c '%s' $obj)
-	## アドレスregHLのタイル番号が白/黒デイジーであれば捕食処理を実施
-	obj=src/f_binbio_cell_growth_predator.check_and_prey.o
+	local sz_prey_return=$(stat -c '%s' $obj)
+	## アドレスregHLのタイル番号が白/黒デイジーであれば
+	## 捕食処理を実施しreturn
+	## ※ regDE・regHLを変更しないこと
+	obj_base=src/f_binbio_cell_growth_predator.check_and_prey_return
 	(
-		# TODO
-		:
-	) >$obj
-	local sz_check_and_prey=$(stat -c '%s' $obj)
+		# regAへアドレスregHLのタイル番号を取得
+		lr35902_copy_to_from regA ptrHL
+
+		# regAが白/黒デイジーであればregBへ1を設定
+		# (そうでなければ0を設定)
+		## regBをゼロクリア
+		lr35902_clear_reg regB
+		## フラグセット処理をファイルへ出力
+		(
+			# regBへ1を設定
+			lr35902_set_reg regB 01
+		) >${obj_base}.set_flag.o
+		local sz_check_and_prey_return_set_flag=$(stat -c '%s' ${obj_base}.set_flag.o)
+		## regA == 白デイジー ?
+		lr35902_compare_regA_and $GBOS_TILE_NUM_DAISY_WHITE
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_check_and_prey_return_set_flag)
+		### そうならregBへ1を設定
+		cat ${obj_base}.set_flag.o
+		## regA == 黒デイジー ?
+		lr35902_compare_regA_and $GBOS_TILE_NUM_DAISY_BLACK
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_check_and_prey_return_set_flag)
+		### そうならregBへ1を設定
+		cat ${obj_base}.set_flag.o
+		## regB == 1 ?
+		lr35902_set_reg regA 01
+		lr35902_compare_regA_and regB
+		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_prey_return)
+		### そうなら捕食処理を実施しreturn
+		cat src/f_binbio_cell_growth_predator.prey_return.o
+	) >${obj_base}.o
+	local sz_check_and_prey_return=$(stat -c '%s' ${obj_base}.o)
 
 	# regD(tile_y) == 0 ?
 	lr35902_copy_to_from regA regD
@@ -104,8 +213,9 @@ f_binbio_cell_growth_predator() {
 			## アドレスregHLを対象座標へ移動
 			lr35902_set_reg regBC $(two_comp_4 21)
 			lr35902_add_to_regHL regBC
-			## アドレスregHLのタイル番号が白/黒デイジーであれば捕食処理を実施
-			cat src/f_binbio_cell_growth_predator.check_and_prey.o
+			## アドレスregHLのタイル番号が白/黒デイジーであれば
+			## 捕食処理を実施しreturn
+			cat src/f_binbio_cell_growth_predator.check_and_prey_return.o
 			## アドレスregHLを元に戻す
 			lr35902_set_reg regBC 0021
 			lr35902_add_to_regHL regBC
@@ -119,8 +229,9 @@ f_binbio_cell_growth_predator() {
 		## アドレスregHLを対象座標へ移動
 		lr35902_set_reg regBC $(two_comp_4 20)
 		lr35902_add_to_regHL regBC
-		## アドレスregHLのタイル番号が白/黒デイジーであれば捕食処理を実施
-		cat src/f_binbio_cell_growth_predator.check_and_prey.o
+		## アドレスregHLのタイル番号が白/黒デイジーであれば
+		## 捕食処理を実施しreturn
+		cat src/f_binbio_cell_growth_predator.check_and_prey_return.o
 		## アドレスregHLを元に戻す
 		lr35902_set_reg regBC 0020
 		lr35902_add_to_regHL regBC
@@ -136,8 +247,9 @@ f_binbio_cell_growth_predator() {
 			## アドレスregHLを対象座標へ移動
 			lr35902_set_reg regBC $(two_comp_4 1f)
 			lr35902_add_to_regHL regBC
-			## アドレスregHLのタイル番号が白/黒デイジーであれば捕食処理を実施
-			cat src/f_binbio_cell_growth_predator.check_and_prey.o
+			## アドレスregHLのタイル番号が白/黒デイジーであれば
+			## 捕食処理を実施しreturn
+			cat src/f_binbio_cell_growth_predator.check_and_prey_return.o
 			## アドレスregHLを元に戻す
 			lr35902_set_reg regBC 001f
 			lr35902_add_to_regHL regBC
@@ -160,8 +272,9 @@ f_binbio_cell_growth_predator() {
 		# タイル番号が白/黒デイジーであれば捕食処理を実施
 		## アドレスregHLを対象座標へ移動
 		lr35902_inc regHL
-		## アドレスregHLのタイル番号が白/黒デイジーであれば捕食処理を実施
-		cat src/f_binbio_cell_growth_predator.check_and_prey.o
+		## アドレスregHLのタイル番号が白/黒デイジーであれば
+		## 捕食処理を実施しreturn
+		cat src/f_binbio_cell_growth_predator.check_and_prey_return.o
 		## アドレスregHLを元に戻す
 		lr35902_dec regHL
 	) >src/f_binbio_cell_growth_predator.5.o
@@ -186,8 +299,9 @@ f_binbio_cell_growth_predator() {
 			## アドレスregHLを対象座標へ移動
 			lr35902_set_reg regBC 0021
 			lr35902_add_to_regHL regBC
-			## アドレスregHLのタイル番号が白/黒デイジーであれば捕食処理を実施
-			cat src/f_binbio_cell_growth_predator.check_and_prey.o
+			## アドレスregHLのタイル番号が白/黒デイジーであれば
+			## 捕食処理を実施しreturn
+			cat src/f_binbio_cell_growth_predator.check_and_prey_return.o
 			## アドレスregHLを元に戻す
 			lr35902_set_reg regBC $(two_comp_4 21)
 			lr35902_add_to_regHL regBC
@@ -201,8 +315,9 @@ f_binbio_cell_growth_predator() {
 		## アドレスregHLを対象座標へ移動
 		lr35902_set_reg regBC 0020
 		lr35902_add_to_regHL regBC
-		## アドレスregHLのタイル番号が白/黒デイジーであれば捕食処理を実施
-		cat src/f_binbio_cell_growth_predator.check_and_prey.o
+		## アドレスregHLのタイル番号が白/黒デイジーであれば
+		## 捕食処理を実施しreturn
+		cat src/f_binbio_cell_growth_predator.check_and_prey_return.o
 		## アドレスregHLを元に戻す
 		lr35902_set_reg regBC $(two_comp_4 20)
 		lr35902_add_to_regHL regBC
@@ -218,8 +333,9 @@ f_binbio_cell_growth_predator() {
 			## アドレスregHLを対象座標へ移動
 			lr35902_set_reg regBC 001f
 			lr35902_add_to_regHL regBC
-			## アドレスregHLのタイル番号が白/黒デイジーであれば捕食処理を実施
-			cat src/f_binbio_cell_growth_predator.check_and_prey.o
+			## アドレスregHLのタイル番号が白/黒デイジーであれば
+			## 捕食処理を実施しreturn
+			cat src/f_binbio_cell_growth_predator.check_and_prey_return.o
 			## アドレスregHLを元に戻す
 			lr35902_set_reg regBC $(two_comp_4 1f)
 			lr35902_add_to_regHL regBC
@@ -242,16 +358,15 @@ f_binbio_cell_growth_predator() {
 		# タイル番号が白/黒デイジーであれば捕食処理を実施
 		## アドレスregHLを対象座標へ移動
 		lr35902_dec regHL
-		## アドレスregHLのタイル番号が白/黒デイジーであれば捕食処理を実施
-		cat src/f_binbio_cell_growth_predator.check_and_prey.o
+		## アドレスregHLのタイル番号が白/黒デイジーであれば
+		## 捕食処理を実施しreturn
+		cat src/f_binbio_cell_growth_predator.check_and_prey_return.o
 		## アドレスregHLを元に戻す
 		lr35902_inc regHL
 	) >src/f_binbio_cell_growth_predator.9.o
 	local sz_9=$(stat -c '%s' src/f_binbio_cell_growth_predator.9.o)
 	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_9)
 	cat src/f_binbio_cell_growth_predator.9.o
-
-	# TODO
 
 	# pop & return
 	lr35902_pop_reg regHL
