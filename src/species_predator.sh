@@ -387,13 +387,8 @@ f_binbio_cell_growth_predator() {
 }
 
 # 捕食者用突然変異関数
+# 何もしない
 f_binbio_cell_mutation_predator() {
-	# push
-	## TODO
-
-	# TODO
-
-	# pop & return
-	## TODO
+	# return
 	lr35902_return
 }
