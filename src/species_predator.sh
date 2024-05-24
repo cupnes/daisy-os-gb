@@ -20,6 +20,107 @@ f_binbio_cell_eval_predator() {
 	lr35902_return
 }
 
+# 捕食者用成長関数用の捕食処理
+# ※ 捕食者用成長関数で呼ばれることを想定し、特にpush・popは行っていない
+f_binbio_cell_growth_predator_prey() {
+	# 対象の細胞を消去
+	## 対象の細胞のタイルミラー領域上のアドレス(regHL)から
+	## 対象の細胞のアドレスを算出
+	### タイルミラー領域上のアドレスからタイル座標を算出
+	lr35902_call $a_mrraddr_to_tcoord
+	### タイル座標から細胞のアドレスを取得
+	lr35902_call $a_binbio_find_cell_data_by_tile_xy
+	## regBCへ自身の細胞のアドレス変数の値を退避
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
+	lr35902_copy_to_from regC regA
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
+	lr35902_copy_to_from regB regA
+	## 対象の細胞のアドレスを自身の細胞のアドレス変数へ設定
+	lr35902_copy_to_from regA regL
+	lr35902_copy_to_addr_from_regA $var_binbio_cur_cell_addr_bh
+	lr35902_copy_to_from regA regH
+	lr35902_copy_to_addr_from_regA $var_binbio_cur_cell_addr_th
+	## 死の振る舞いを実施
+	lr35902_call $a_binbio_cell_death
+	## regBCから自身の細胞のアドレス変数の値を復帰
+	lr35902_copy_to_from regA regC
+	lr35902_copy_to_addr_from_regA $var_binbio_cur_cell_addr_bh
+	lr35902_copy_to_from regA regB
+	lr35902_copy_to_addr_from_regA $var_binbio_cur_cell_addr_th
+
+	# この時、regBCに自身の細胞のアドレスが、
+	# regHLに対象の細胞のアドレスが設定されている
+
+	# 自身のtile_{x,y}を対象の細胞のtile_{x,y}で更新
+	## regHLの対象の細胞のアドレスをtile_xまで進める
+	lr35902_inc regHL
+	## regEへ対象の細胞のtile_xを取得
+	lr35902_copy_to_from regE ptrHL
+	## regHLをtile_yまで進める
+	lr35902_inc regHL
+	## regDへ対象の細胞のtile_yを取得
+	lr35902_copy_to_from regE ptrHL
+	## regHLへ自身のアドレスを設定
+	lr35902_copy_to_from regL regC
+	lr35902_copy_to_from regH regB
+	## regHLをtile_xまで進める
+	lr35902_inc regHL
+	## 後のためにregCへ自身のtile_xを退避
+	lr35902_copy_to_from regC ptrHL
+	## 自身のtile_xへregEを設定
+	lr35902_copy_to_from ptrHL regE
+	## regHLをtile_yまで進める
+	lr35902_inc regHL
+	## 後のためにregBへ自身のtile_yを退避
+	lr35902_copy_to_from regB ptrHL
+	## 自身のtile_yへregDを設定
+	lr35902_copy_to_from ptrHL regD
+
+	# この時、(regC, regB)に自身のtile{x,y}が、
+	# (regE, regD)に対象の細胞のtile_{x,y}が、
+	# regHLには自身のtile_yのアドレスが設定されている
+
+	# 自身のcollected_flagsを更新
+	# 現状はインクリメントするようにしている
+	# bin_sizeが5なので、collected_flagsのbin_size分のビットが
+	# 全て立つまで31(0x1f)サイクルかかる形
+	# TODO チューニング項目
+	## regBC(自身のtile{x,y})をスタックへ退避
+	lr35902_push_reg regBC
+	## regHLをcollected_flagsまで進める
+	lr35902_set_reg regBC 000b
+	lr35902_add_to_regHL regBC
+	## 自身のcollected_flagsをインクリメント
+	lr35902_inc ptrHL
+
+	# 背景タイルマップ上で自身の表示を更新
+	## 対象の細胞の座標へ捕食者タイルを配置
+	### 対象の細胞のタイル座標(regE, regD)を
+	### VRAMアドレス(regHL)へ変換
+	lr35902_call $a_tcoord_to_addr
+	### VRAMアドレスへ捕食者タイルを配置するエントリを
+	### tdqへエンキュー
+	lr35902_set_reg regB $GBOS_TILE_NUM_PREDATOR
+	lr35902_copy_to_from regE regL
+	lr35902_copy_to_from regD regH
+	lr35902_call $a_enq_tdq
+	## 自身の表示を消す(空白タイルを配置)
+	### regBC(自身のtile{x,y})をスタックから復帰
+	lr35902_pop_reg regBC
+	### 自身のタイル座標をVRAMアドレス(regHL)へ変換
+	lr35902_copy_to_from regE regC
+	lr35902_copy_to_from regD regB
+	lr35902_call $a_tcoord_to_addr
+	### VRAMアドレスへ空白タイルを配置するエントリをtdqへエンキュー
+	lr35902_set_reg regB $GBOS_TILE_NUM_SPC
+	lr35902_copy_to_from regE regL
+	lr35902_copy_to_from regD regH
+	lr35902_call $a_enq_tdq
+
+	# return
+	lr35902_return
+}
+
 # 捕食者用成長関数
 # 8近傍を見て、デイジーが居れば補食し、その座標へ移動する
 f_binbio_cell_growth_predator() {
@@ -54,111 +155,6 @@ f_binbio_cell_growth_predator() {
 	lr35902_call $a_tcoord_to_mrraddr
 
 	# 繰り返し使用する処理をファイル書き出し/マクロ定義
-	## 捕食処理を実施しreturn
-	obj=src/f_binbio_cell_growth_predator.prey_return.o
-	(
-		# 対象の細胞を消去
-		## 対象の細胞のタイルミラー領域上のアドレス(regHL)から
-		## 対象の細胞のアドレスを算出
-		### タイルミラー領域上のアドレスからタイル座標を算出
-		lr35902_call $a_mrraddr_to_tcoord
-		### タイル座標から細胞のアドレスを取得
-		lr35902_call $a_binbio_find_cell_data_by_tile_xy
-		## regBCへ自身の細胞のアドレス変数の値を退避
-		lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
-		lr35902_copy_to_from regC regA
-		lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
-		lr35902_copy_to_from regB regA
-		## 対象の細胞のアドレスを自身の細胞のアドレス変数へ設定
-		lr35902_copy_to_from regA regL
-		lr35902_copy_to_addr_from_regA $var_binbio_cur_cell_addr_bh
-		lr35902_copy_to_from regA regH
-		lr35902_copy_to_addr_from_regA $var_binbio_cur_cell_addr_th
-		## 死の振る舞いを実施
-		lr35902_call $a_binbio_cell_death
-		## regBCから自身の細胞のアドレス変数の値を復帰
-		lr35902_copy_to_from regA regC
-		lr35902_copy_to_addr_from_regA $var_binbio_cur_cell_addr_bh
-		lr35902_copy_to_from regA regB
-		lr35902_copy_to_addr_from_regA $var_binbio_cur_cell_addr_th
-
-		# この時、regBCに自身の細胞のアドレスが、
-		# regHLに対象の細胞のアドレスが設定されている
-
-		# 自身のtile_{x,y}を対象の細胞のtile_{x,y}で更新
-		## regHLの対象の細胞のアドレスをtile_xまで進める
-		lr35902_inc regHL
-		## regEへ対象の細胞のtile_xを取得
-		lr35902_copy_to_from regE ptrHL
-		## regHLをtile_yまで進める
-		lr35902_inc regHL
-		## regDへ対象の細胞のtile_yを取得
-		lr35902_copy_to_from regE ptrHL
-		## regHLへ自身のアドレスを設定
-		lr35902_copy_to_from regL regC
-		lr35902_copy_to_from regH regB
-		## regHLをtile_xまで進める
-		lr35902_inc regHL
-		## 後のためにregCへ自身のtile_xを退避
-		lr35902_copy_to_from regC ptrHL
-		## 自身のtile_xへregEを設定
-		lr35902_copy_to_from ptrHL regE
-		## regHLをtile_yまで進める
-		lr35902_inc regHL
-		## 後のためにregBへ自身のtile_yを退避
-		lr35902_copy_to_from regB ptrHL
-		## 自身のtile_yへregDを設定
-		lr35902_copy_to_from ptrHL regD
-
-		# この時、(regC, regB)に自身のtile{x,y}が、
-		# (regE, regD)に対象の細胞のtile_{x,y}が、
-		# regHLには自身のtile_yのアドレスが設定されている
-
-		# 自身のcollected_flagsを更新
-		# 現状はインクリメントするようにしている
-		# bin_sizeが5なので、collected_flagsのbin_size分のビットが
-		# 全て立つまで31(0x1f)サイクルかかる形
-		# TODO チューニング項目
-		## regBC(自身のtile{x,y})をスタックへ退避
-		lr35902_push_reg regBC
-		## regHLをcollected_flagsまで進める
-		lr35902_set_reg regBC 000b
-		lr35902_add_to_regHL regBC
-		## 自身のcollected_flagsをインクリメント
-		lr35902_inc ptrHL
-
-		# 背景タイルマップ上で自身の表示を更新
-		## 対象の細胞の座標へ捕食者タイルを配置
-		### 対象の細胞のタイル座標(regE, regD)を
-		### VRAMアドレス(regHL)へ変換
-		lr35902_call $a_tcoord_to_addr
-		### VRAMアドレスへ捕食者タイルを配置するエントリを
-		### tdqへエンキュー
-		lr35902_set_reg regB $GBOS_TILE_NUM_PREDATOR
-		lr35902_copy_to_from regE regL
-		lr35902_copy_to_from regD regH
-		lr35902_call $a_enq_tdq
-		## 自身の表示を消す(空白タイルを配置)
-		### regBC(自身のtile{x,y})をスタックから復帰
-		lr35902_pop_reg regBC
-		### 自身のタイル座標をVRAMアドレス(regHL)へ変換
-		lr35902_copy_to_from regE regC
-		lr35902_copy_to_from regD regB
-		lr35902_call $a_tcoord_to_addr
-		### VRAMアドレスへ空白タイルを配置するエントリをtdqへエンキュー
-		lr35902_set_reg regB $GBOS_TILE_NUM_SPC
-		lr35902_copy_to_from regE regL
-		lr35902_copy_to_from regD regH
-		lr35902_call $a_enq_tdq
-
-		# pop & return
-		lr35902_pop_reg regHL
-		lr35902_pop_reg regDE
-		lr35902_pop_reg regBC
-		lr35902_pop_reg regAF
-		lr35902_return
-	) >$obj
-	local sz_prey_return=$(stat -c '%s' $obj)
 	## アドレスregHLのタイル番号が白/黒デイジーであれば
 	## 捕食処理を実施しreturn
 	## ※ regDE・regHLを変更しないこと
@@ -190,9 +186,23 @@ f_binbio_cell_growth_predator() {
 		## regB == 1 ?
 		lr35902_set_reg regA 01
 		lr35902_compare_regA_and regB
+		obj=src/f_binbio_cell_growth_predator.prey_return.o
+		(
+			# regB == 1 の場合
+
+			# 捕食処理
+			lr35902_call $a_binbio_cell_growth_predator_prey
+
+			# pop & return
+			lr35902_pop_reg regHL
+			lr35902_pop_reg regDE
+			lr35902_pop_reg regBC
+			lr35902_pop_reg regAF
+			lr35902_return
+		) >$obj
+		local sz_prey_return=$(stat -c '%s' $obj)
 		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_prey_return)
-		### そうなら捕食処理を実施しreturn
-		cat src/f_binbio_cell_growth_predator.prey_return.o
+		cat $obj
 	) >${obj_base}.o
 	local sz_check_and_prey_return=$(stat -c '%s' ${obj_base}.o)
 
@@ -378,18 +388,6 @@ f_binbio_cell_growth_predator() {
 
 # 捕食者用突然変異関数
 f_binbio_cell_mutation_predator() {
-	# push
-	## TODO
-
-	# TODO
-
-	# pop & return
-	## TODO
-	lr35902_return
-}
-
-# 捕食者用成長関数用の捕食処理
-f_binbio_cell_growth_predator_prey() {
 	# push
 	## TODO
 
