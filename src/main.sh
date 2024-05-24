@@ -3843,10 +3843,27 @@ f_binbio_cell_set_tile_num() {
 	lr35902_return
 }
 
-# 細胞の「死」の振る舞い
+# 指定された生物種の細胞を指定されたタイル座標へ配置する
 f_binbio_cell_set_tile_num >src/f_binbio_cell_set_tile_num.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_set_tile_num.o))
 fadr=$(calc16 "${a_binbio_cell_set_tile_num}+${fsz}")
+a_binbio_place_cell=$(four_digits $fadr)
+echo -e "a_binbio_place_cell=$a_binbio_place_cell" >>$MAP_FILE_NAME
+f_binbio_place_cell() {
+	# push
+	## TODO
+
+	# TODO
+
+	# pop & return
+	## TODO
+	lr35902_return
+}
+
+# 細胞の「死」の振る舞い
+f_binbio_place_cell >src/f_binbio_place_cell.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_place_cell.o))
+fadr=$(calc16 "${a_binbio_place_cell}+${fsz}")
 a_binbio_cell_death=$(four_digits $fadr)
 echo -e "a_binbio_cell_death=$a_binbio_cell_death" >>$MAP_FILE_NAME
 f_binbio_cell_death() {
@@ -8230,6 +8247,7 @@ global_functions() {
 	cat src/f_binbio_get_tile_family_num.o
 	cat src/f_binbio_find_cell_data_by_tile_xy.o
 	cat src/f_binbio_cell_set_tile_num.o
+	cat src/f_binbio_place_cell.o
 	cat src/f_binbio_cell_death.o
 	cat src/f_binbio_cell_eval_family.o
 	cat src/f_binbio_cell_eval_helloworld.o
