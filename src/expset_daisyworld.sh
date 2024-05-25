@@ -1664,3 +1664,15 @@ f_binbio_cell_mutation_daisy() {
 	lr35902_pop_reg regBC
 	lr35902_return
 }
+
+# 指定されたアドレスへ白/黒デイジーのデフォルト値を設定
+f_binbio_cell_set_default_daisy() {
+	# push
+	## TODO
+
+	# TODO
+
+	# pop & return
+	## TODO
+	lr35902_return
+}

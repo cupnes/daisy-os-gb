@@ -3848,11 +3848,19 @@ f_binbio_cell_alloc() {
 	lr35902_return
 }
 
-# 現在の細胞に指定されたタイル番号を設定する
-# in : regA  - タイル番号
+# 指定されたアドレスへ白/黒デイジーのデフォルト値を設定
 f_binbio_cell_alloc >src/f_binbio_cell_alloc.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_alloc.o))
 fadr=$(calc16 "${a_binbio_cell_alloc}+${fsz}")
+a_binbio_cell_set_default_daisy=$(four_digits $fadr)
+echo -e "a_binbio_cell_set_default_daisy=$a_binbio_cell_set_default_daisy" >>$MAP_FILE_NAME
+## 定義はsrc/expset_daisyworld.shにある
+
+# 現在の細胞に指定されたタイル番号を設定する
+# in : regA  - タイル番号
+f_binbio_cell_set_default_daisy >src/f_binbio_cell_set_default_daisy.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_set_default_daisy.o))
+fadr=$(calc16 "${a_binbio_cell_set_default_daisy}+${fsz}")
 a_binbio_cell_set_tile_num=$(four_digits $fadr)
 echo -e "a_binbio_cell_set_tile_num=$a_binbio_cell_set_tile_num" >>$MAP_FILE_NAME
 f_binbio_cell_set_tile_num() {
@@ -8289,6 +8297,7 @@ global_functions() {
 	cat src/f_binbio_get_tile_family_num.o
 	cat src/f_binbio_find_cell_data_by_tile_xy.o
 	cat src/f_binbio_cell_alloc.o
+	cat src/f_binbio_cell_set_default_daisy.o
 	cat src/f_binbio_cell_set_tile_num.o
 	cat src/f_binbio_place_cell.o
 	cat src/f_binbio_cell_death.o
