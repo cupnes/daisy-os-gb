@@ -392,3 +392,15 @@ f_binbio_cell_mutation_predator() {
 	# return
 	lr35902_return
 }
+
+# 指定されたアドレスへ捕食者のデフォルト値を設定
+f_binbio_cell_set_default_predator() {
+	# push
+	## TODO
+
+	# TODO
+
+	# pop & return
+	## TODO
+	lr35902_return
+}
