@@ -1291,7 +1291,6 @@ f_binbio_cell_set_default_daisy() {
 	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_bin_data_black)
 	cat $obj_pref.bin_data.black.o
 	cat $obj_pref.bin_data.white.o
-	lr35902_copyinc_to_ptrHL_from_regA
 
 	# collected_flags
 	lr35902_set_reg regA $CELL_DEFAULT_COLLECTED_FLAGS_DAISY
