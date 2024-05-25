@@ -3911,6 +3911,12 @@ f_binbio_cell_set_tile_num() {
 }
 
 # 指定された生物種の細胞を指定されたタイル座標へ配置する
+# 備考:
+# - 各パラメータはその生物種のデフォルト値が設定される
+# 引数:
+# in : regB - 生物種のタイル番号
+#      regD - タイル座標Y
+#      regE - タイル座標X
 f_binbio_cell_set_tile_num >src/f_binbio_cell_set_tile_num.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_set_tile_num.o))
 fadr=$(calc16 "${a_binbio_cell_set_tile_num}+${fsz}")
@@ -3918,11 +3924,47 @@ a_binbio_place_cell=$(four_digits $fadr)
 echo -e "a_binbio_place_cell=$a_binbio_place_cell" >>$MAP_FILE_NAME
 f_binbio_place_cell() {
 	# push
-	## TODO
+	lr35902_push_reg regAF
+	lr35902_push_reg regHL
+
+	local obj
+
+	# 1つ分の細胞データ領域を確保する
+	lr35902_call $a_binbio_cell_alloc
+
+	# 確保できた(regHL != NULL(0))か?
+	lr35902_clear_reg regA
+	lr35902_or_to_regA regL
+	lr35902_or_to_regA regH
+	lr35902_compare_regA_and 00
+	obj=src/f_binbio_place_cell.alloc_failed.o
+	(
+		# 確保できなかった(regHL == NULL)場合
+
+		# pop & return
+		lr35902_pop_reg regHL
+		lr35902_pop_reg regAF
+		lr35902_return
+	) >$obj
+	local sz_alloc_failed=$(stat -c '%s' $obj)
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_alloc_failed)
+	cat $obj
+
+	# 繰り返し使用する処理をファイル書き出し
+	## 白/黒デイジーのデフォルト値設定
+	### TODO
+
+	# 確保した細胞データ領域へ指定された生物種のデフォルト値を設定する
+	## 指定された生物種は白デイジーか?
+	lr35902_copy_to_from regA regB
+	lr35902_compare_regA_and $GBOS_TILE_NUM_DAISY_WHITE
+	### TODO
 
 	# TODO
 
 	# pop & return
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regAF
 	## TODO
 	lr35902_return
 }
