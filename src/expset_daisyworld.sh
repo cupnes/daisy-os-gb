@@ -6,7 +6,31 @@ SRC_EXPSET_DAISYWORLD_SH=true
 # main.shの中で一通りのシェルスクリプトの読み込みが終わった後でこのファイルが読み込まれる想定
 # なので、main.shで既に読み込んでいるスクリプトは読み込む処理を書いていない
 
+# 変数
+## 固定値を返す評価関数が返す固定値
+var_binbio_cell_eval_fixedval_val=c032
+## 現在のステータス表示領域の状態
+var_binbio_status_disp_status=c033
+## 地表温度をインクリメント/デクリメントする前段のカウンタのアドレス
+## 黒/白デイジーはこの変数をインクリメント/デクリメントする
+var_binbio_surface_temp_prev_counter=c034
+## 地表温度(-128〜127)のアドレス
+var_binbio_surface_temp=c035
+
 # 定数
+## 白/黒デイジーの細胞データのデフォルト値
+CELL_DEFAULT_FLAGS_DAISY=01
+CELL_DEFAULT_LIFE_DURATION_DAISY=$BINBIO_CELL_LIFE_DURATION_INIT
+CELL_DEFAULT_LIFE_LEFT_DAISY=$BINBIO_CELL_LIFE_DURATION_INIT
+CELL_DEFAULT_FITNESS_DAISY=$BINBIO_CELL_FITNESS_INIT
+CELL_DEFAULT_BIN_SIZE_DAISY=05
+CELL_DEFAULT_BIN_DATA_0_DAISY=21
+CELL_DEFAULT_BIN_DATA_1_DAISY=$(echo $var_binbio_surface_temp_prev_counter | cut -c3-4)
+CELL_DEFAULT_BIN_DATA_2_DAISY=$(echo $var_binbio_surface_temp_prev_counter | cut -c1-2)
+CELL_DEFAULT_BIN_DATA_3_DAISY_WHITE=35
+CELL_DEFAULT_BIN_DATA_3_DAISY_BLACK=34
+CELL_DEFAULT_BIN_DATA_4_DAISY=00
+CELL_DEFAULT_COLLECTED_FLAGS_DAISY=00
 ## デイジーの生育適温(20℃)
 DAISY_GROWING_TEMP=14
 ## 地表温度をインクリメント/デクリメントする前段カウンタのしきい値
@@ -131,17 +155,6 @@ CELL_EVAL_SEL_DAISYWORLD_END_MOUSE_Y=77	# 関数名「でいじーわーるど�
 CELL_EVAL_SEL_FIXEDVAL_END_MOUSE_Y=7F	# 関数名「こていち」のY座標終端
 CELL_EVAL_SEL_BEGIN_MOUSE_X=10	# 関数名領域のX座標始端
 CELL_EVAL_SEL_END_MOUSE_X=6F	# 関数名領域のX座標終端
-
-# 変数
-## 固定値を返す評価関数が返す固定値
-var_binbio_cell_eval_fixedval_val=c032
-## 現在のステータス表示領域の状態
-var_binbio_status_disp_status=c033
-## 地表温度をインクリメント/デクリメントする前段のカウンタのアドレス
-## 黒/白デイジーはこの変数をインクリメント/デクリメントする
-var_binbio_surface_temp_prev_counter=c034
-## 地表温度(-128〜127)のアドレス
-var_binbio_surface_temp=c035
 
 # この実験セットで使用するスクリプトを読み込む
 . src/status_disp_cell_eval_conf.sh
@@ -1194,6 +1207,102 @@ f_binbio_clear_cell_eval_sel() {
 	lr35902_return
 }
 
+# 指定されたアドレスへ白/黒デイジーのデフォルト値を設定
+# in : regB  - 白/黒どちらか?(タイル番号で指定)
+#      regD  - 白/黒デイジーのタイル座標Y
+#      regE  - 白/黒デイジーのタイル座標X
+#      regHL - デフォルト値を設定する領域の先頭アドレス
+f_binbio_cell_set_default_daisy() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regHL
+
+	# flags
+	lr35902_set_reg regA $CELL_DEFAULT_FLAGS_DAISY
+	lr35902_copyinc_to_ptrHL_from_regA
+
+	# tile_x
+	lr35902_copy_to_from regA regE
+	lr35902_copyinc_to_ptrHL_from_regA
+
+	# tile_y
+	lr35902_copy_to_from regA regD
+	lr35902_copyinc_to_ptrHL_from_regA
+
+	# life_duration
+	lr35902_set_reg regA $CELL_DEFAULT_LIFE_DURATION_DAISY
+	lr35902_copyinc_to_ptrHL_from_regA
+
+	# life_left
+	lr35902_set_reg regA $CELL_DEFAULT_LIFE_LEFT_DAISY
+	lr35902_copyinc_to_ptrHL_from_regA
+
+	# fitness
+	lr35902_set_reg regA $CELL_DEFAULT_FITNESS_DAISY
+	lr35902_copyinc_to_ptrHL_from_regA
+
+	local obj_pref=src/f_binbio_cell_set_default_daisy
+
+	# tile_num
+	lr35902_copy_to_from regA regB
+	lr35902_copyinc_to_ptrHL_from_regA
+
+	# bin_size
+	lr35902_set_reg regA $CELL_DEFAULT_BIN_SIZE_DAISY
+	lr35902_copyinc_to_ptrHL_from_regA
+
+	# bin_data
+	lr35902_copy_to_from regA regB
+	lr35902_compare_regA_and $GBOS_TILE_NUM_DAISY_WHITE
+	local byte_in_inst
+	(
+		# 白デイジーの場合
+
+		# 地表温度を下げる命令列を配置
+		for byte_in_inst in \
+			$CELL_DEFAULT_BIN_DATA_0_DAISY \
+				$CELL_DEFAULT_BIN_DATA_1_DAISY \
+				$CELL_DEFAULT_BIN_DATA_2_DAISY \
+				$CELL_DEFAULT_BIN_DATA_3_DAISY_WHITE \
+				$CELL_DEFAULT_BIN_DATA_4_DAISY; do
+			lr35902_set_reg regA $byte_in_inst
+			lr35902_copyinc_to_ptrHL_from_regA
+		done
+	) >$obj_pref.bin_data.white.o
+	(
+		# 黒デイジーの場合
+
+		# 地表温度を上げる命令列を配置
+		for byte_in_inst in \
+			$CELL_DEFAULT_BIN_DATA_0_DAISY \
+				$CELL_DEFAULT_BIN_DATA_1_DAISY \
+				$CELL_DEFAULT_BIN_DATA_2_DAISY \
+				$CELL_DEFAULT_BIN_DATA_3_DAISY_BLACK \
+				$CELL_DEFAULT_BIN_DATA_4_DAISY; do
+			lr35902_set_reg regA $byte_in_inst
+			lr35902_copyinc_to_ptrHL_from_regA
+		done
+
+		# 白デイジーの場合の処理を飛ばす
+		local sz_bin_data_white=$(stat -c '%s' $obj_pref.bin_data.white.o)
+		lr35902_rel_jump $(two_digits_d $sz_bin_data_white)
+	) >$obj_pref.bin_data.black.o
+	local sz_bin_data_black=$(stat -c '%s' $obj_pref.bin_data.black.o)
+	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_bin_data_black)
+	cat $obj_pref.bin_data.black.o
+	cat $obj_pref.bin_data.white.o
+	lr35902_copyinc_to_ptrHL_from_regA
+
+	# collected_flags
+	lr35902_set_reg regA $CELL_DEFAULT_COLLECTED_FLAGS_DAISY
+	lr35902_copy_to_from ptrHL regA
+
+	# pop & return
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regAF
+	lr35902_return
+}
+
 # バイナリ生物環境の初期化
 # in : regA - 実験セット番号
 f_binbio_init() {
@@ -1662,17 +1771,5 @@ f_binbio_cell_mutation_daisy() {
 	# pop & return
 	lr35902_pop_reg regHL
 	lr35902_pop_reg regBC
-	lr35902_return
-}
-
-# 指定されたアドレスへ白/黒デイジーのデフォルト値を設定
-f_binbio_cell_set_default_daisy() {
-	# push
-	## TODO
-
-	# TODO
-
-	# pop & return
-	## TODO
 	lr35902_return
 }
