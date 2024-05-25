@@ -2,12 +2,87 @@
 
 # [定数]
 
+## 白/黒デイジーの細胞データのデフォルト値
+CELL_DEFAULT_FLAGS_PREDATOR=01
+CELL_DEFAULT_LIFE_DURATION_PREDATOR=60
+CELL_DEFAULT_LIFE_LEFT_PREDATOR=$CELL_DEFAULT_LIFE_DURATION_PREDATOR
+CELL_DEFAULT_FITNESS_PREDATOR=$BINBIO_CELL_FITNESS_INIT
+CELL_DEFAULT_BIN_SIZE_PREDATOR=05
+CELL_DEFAULT_BIN_DATA_0_PREDATOR=00
+CELL_DEFAULT_BIN_DATA_1_PREDATOR=00
+CELL_DEFAULT_BIN_DATA_2_PREDATOR=00
+CELL_DEFAULT_BIN_DATA_3_PREDATOR=00
+CELL_DEFAULT_BIN_DATA_4_PREDATOR=00
+CELL_DEFAULT_COLLECTED_FLAGS_PREDATOR=00
+
 # 適応度
 SPECIES_PREDATOR_FITNESS=7f
 
 
 
 # [関数]
+
+# 指定されたアドレスへ捕食者のデフォルト値を設定
+# in : regD  - 捕食者のタイル座標Y
+#      regE  - 捕食者のタイル座標X
+#      regHL - デフォルト値を設定する領域の先頭アドレス
+f_binbio_cell_set_default_predator() {
+	# push
+	lr35902_push_reg regAF
+	lr35902_push_reg regHL
+
+	# flags
+	lr35902_set_reg regA $CELL_DEFAULT_FLAGS_PREDATOR
+	lr35902_copyinc_to_ptrHL_from_regA
+
+	# tile_x
+	lr35902_copy_to_from regA regE
+	lr35902_copyinc_to_ptrHL_from_regA
+
+	# tile_y
+	lr35902_copy_to_from regA regD
+	lr35902_copyinc_to_ptrHL_from_regA
+
+	# life_duration
+	lr35902_set_reg regA $CELL_DEFAULT_LIFE_DURATION_PREDATOR
+	lr35902_copyinc_to_ptrHL_from_regA
+
+	# life_left
+	lr35902_set_reg regA $CELL_DEFAULT_LIFE_LEFT_PREDATOR
+	lr35902_copyinc_to_ptrHL_from_regA
+
+	# fitness
+	lr35902_set_reg regA $CELL_DEFAULT_FITNESS_PREDATOR
+	lr35902_copyinc_to_ptrHL_from_regA
+
+	# tile_num
+	lr35902_set_reg regA $GBOS_TILE_NUM_PREDATOR
+	lr35902_copyinc_to_ptrHL_from_regA
+
+	# bin_size
+	lr35902_set_reg regA $CELL_DEFAULT_BIN_SIZE_PREDATOR
+	lr35902_copyinc_to_ptrHL_from_regA
+
+	# bin_data
+	local byte_in_inst
+	for byte_in_inst in $CELL_DEFAULT_BIN_DATA_0_PREDATOR \
+				    $CELL_DEFAULT_BIN_DATA_1_PREDATOR \
+				    $CELL_DEFAULT_BIN_DATA_2_PREDATOR \
+				    $CELL_DEFAULT_BIN_DATA_3_PREDATOR \
+				    $CELL_DEFAULT_BIN_DATA_4_PREDATOR; do
+		lr35902_set_reg regA $byte_in_inst
+		lr35902_copyinc_to_ptrHL_from_regA
+	done
+
+	# collected_flags
+	lr35902_set_reg regA $CELL_DEFAULT_COLLECTED_FLAGS_PREDATOR
+	lr35902_copy_to_from ptrHL regA
+
+	# pop & return
+	lr35902_pop_reg regHL
+	lr35902_pop_reg regAF
+	lr35902_return
+}
 
 # 捕食者用評価関数
 # 定義された固定値を適応度として返す
@@ -390,17 +465,5 @@ f_binbio_cell_growth_predator() {
 # 何もしない
 f_binbio_cell_mutation_predator() {
 	# return
-	lr35902_return
-}
-
-# 指定されたアドレスへ捕食者のデフォルト値を設定
-f_binbio_cell_set_default_predator() {
-	# push
-	## TODO
-
-	# TODO
-
-	# pop & return
-	## TODO
 	lr35902_return
 }
