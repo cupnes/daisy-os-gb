@@ -1319,7 +1319,7 @@ f_binbio_init() {
 	# 細胞データ領域をゼロクリア
 	lr35902_call $a_binbio_clear_cell_data_area
 
-	# 初期細胞を生成
+	# 初期細胞を生成(デイジー)
 	## 細胞データ領域の最初のアドレスをregHLへ設定
 	lr35902_set_reg regHL $BINBIO_CELL_DATA_AREA_BEGIN
 	## flags = 0x01
@@ -1362,6 +1362,32 @@ f_binbio_init() {
 	lr35902_xor_to_regA regA
 	lr35902_copy_to_from ptrHL regA
 
+	# 初期細胞をマップへ配置(デイジー)
+	## タイル座標をVRAMアドレスへ変換
+	lr35902_call $a_tcoord_to_addr
+	## VRAMアドレスと細胞のタイル番号をtdqへエンキュー
+	### VRAMアドレスをregDEへ設定
+	lr35902_copy_to_from regD regH
+	lr35902_copy_to_from regE regL
+	### tdqへエンキューする
+	lr35902_call $a_enq_tdq
+
+	# 初期細胞を生成(捕食者)
+	lr35902_set_reg regB $GBOS_TILE_NUM_PREDATOR
+	lr35902_set_reg regD $BINBIO_CELL_TILE_Y_INIT
+	lr35902_set_reg regE $(calc16_2 "${BINBIO_CELL_TILE_X_INIT}+2")
+	lr35902_call $a_binbio_place_cell
+
+	# 初期細胞をマップへ配置(捕食者)
+	## タイル座標をVRAMアドレスへ変換
+	lr35902_call $a_tcoord_to_addr
+	## VRAMアドレスと細胞のタイル番号をtdqへエンキュー
+	### VRAMアドレスをregDEへ設定
+	lr35902_copy_to_from regD regH
+	lr35902_copy_to_from regE regL
+	### tdqへエンキューする
+	lr35902_call $a_enq_tdq
+
 	# その他のシステム変数へ初期値を設定
 	## cur_cell_addr = $BINBIO_CELL_DATA_AREA_BEGIN
 	lr35902_set_reg regA $(echo $BINBIO_CELL_DATA_AREA_BEGIN | cut -c3-4)
@@ -1392,16 +1418,6 @@ f_binbio_init() {
 	## binbio_surface_temp = $DAISY_GROWING_TEMP
 	lr35902_set_reg regA $DAISY_GROWING_TEMP
 	lr35902_copy_to_addr_from_regA $var_binbio_surface_temp
-
-	# 初期細胞をマップへ配置
-	## タイル座標をVRAMアドレスへ変換
-	lr35902_call $a_tcoord_to_addr
-	## VRAMアドレスと細胞のタイル番号をtdqへエンキュー
-	### VRAMアドレスをregDEへ設定
-	lr35902_copy_to_from regD regH
-	lr35902_copy_to_from regE regL
-	### tdqへエンキューする
-	lr35902_call $a_enq_tdq
 
 	# 地表温度情報をマップへ配置
 	## カーソル位置を設定しタイトル文字列を配置
