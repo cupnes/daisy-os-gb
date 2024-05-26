@@ -3966,22 +3966,44 @@ f_binbio_place_cell() {
 	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_alloc_failed)
 	cat $obj
 
-	# 繰り返し使用する処理をファイル書き出し
-	## 白/黒デイジーのデフォルト値設定
-	### TODO
-
 	# 確保した細胞データ領域へ指定された生物種のデフォルト値を設定する
-	## 指定された生物種は白デイジーか?
 	lr35902_copy_to_from regA regB
+	## 指定された生物種は白デイジーか?
 	lr35902_compare_regA_and $GBOS_TILE_NUM_DAISY_WHITE
-	### TODO
+	(
+		# 白デイジーの場合
+		lr35902_call $a_binbio_cell_set_default_daisy
+	) | rel_jump_wrapper_binsz NZ forward
+	## 指定された生物種は黒デイジーか?
+	lr35902_compare_regA_and $GBOS_TILE_NUM_DAISY_BLACK
+	(
+		# 黒デイジーの場合
+		lr35902_call $a_binbio_cell_set_default_daisy
+	) | rel_jump_wrapper_binsz NZ forward
+	## 指定された生物種は捕食者か?
+	lr35902_compare_regA_and $GBOS_TILE_NUM_PREDATOR
+	(
+		# 捕食者の場合
+		lr35902_call $a_binbio_cell_set_default_predator
+	) | rel_jump_wrapper_binsz NZ forward
 
-	# TODO
+	# 細胞をマップへ配置
+	## タイル座標をVRAMアドレスへ変換
+	lr35902_call $a_tcoord_to_addr
+	## VRAMアドレスと細胞のタイル番号をtdqへエンキュー
+	### regDEをスタックへ退避
+	lr35902_push_reg regDE
+	### VRAMアドレスをregDEへ設定
+	lr35902_copy_to_from regD regH
+	lr35902_copy_to_from regE regL
+	### tdqへエンキューする
+	lr35902_call $a_enq_tdq
+	### regDEをスタックから復帰
+	lr35902_pop_reg regDE
 
 	# pop & return
 	lr35902_pop_reg regHL
 	lr35902_pop_reg regAF
-	## TODO
 	lr35902_return
 }
 
