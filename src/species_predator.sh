@@ -134,7 +134,7 @@ f_binbio_cell_growth_predator_prey() {
 	## regHLをtile_yまで進める
 	lr35902_inc regHL
 	## regDへ対象の細胞のtile_yを取得
-	lr35902_copy_to_from regE ptrHL
+	lr35902_copy_to_from regD ptrHL
 	## regHLへ自身のアドレスを設定
 	lr35902_copy_to_from regL regC
 	lr35902_copy_to_from regH regB
