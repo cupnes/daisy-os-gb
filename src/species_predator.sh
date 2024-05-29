@@ -18,6 +18,9 @@ CELL_DEFAULT_COLLECTED_FLAGS_PREDATOR=00
 # 適応度
 SPECIES_PREDATOR_FITNESS=$CELL_DEFAULT_FITNESS_PREDATOR
 
+# 捕食サイクル
+SPECIES_PREDATOR_PREY_CYCLE=03
+
 
 
 # [関数]
@@ -202,11 +205,61 @@ f_binbio_cell_growth_predator() {
 	# push
 	lr35902_push_reg regAF
 	lr35902_push_reg regBC
-	lr35902_push_reg regDE
 	lr35902_push_reg regHL
 
 	local obj
+	local obj_pref=src/f_binbio_cell_growth_predator
 	local obj_base
+
+	# [捕食サイクルチェック]
+	# 自身の細胞のアドレスをregHLへ取得
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
+	lr35902_copy_to_from regL regA
+	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
+	lr35902_copy_to_from regH regA
+
+	# regAへflagsを取得
+	lr35902_copy_to_from regA ptrHL
+
+	# 捕食サイクルカウンタ部分をインクリメント
+	lr35902_add_to_regA 04
+
+	# regBへインクリメント後のflagsを退避
+	lr35902_copy_to_from regB regA
+
+	# regAへ捕食サイクルカウンタ部分のみを取り出す
+	# (2ビット右シフトする)
+	lr35902_shift_right_logical regA
+	lr35902_shift_right_logical regA
+
+	# 捕食サイクルカウンタが捕食サイクルに達したか?
+	lr35902_compare_regA_and $SPECIES_PREDATOR_PREY_CYCLE
+	(
+		# 捕食サイクルカウンタが捕食サイクルに達していない場合
+		# (捕食中。まだ捕食が完了していない)
+
+		# インクリメント後のflagsを変数へ書き戻す
+		lr35902_copy_to_from ptrHL regB
+
+		# pop & return
+		lr35902_pop_reg regHL
+		lr35902_pop_reg regBC
+		lr35902_pop_reg regAF
+		lr35902_return
+	) | rel_jump_wrapper_binsz NC forward
+
+	# 捕食サイクルカウンタが捕食サイクルに達した場合
+	## regAへインクリメント後のflagsを復帰
+	lr35902_copy_to_from regA regB
+	## 捕食サイクルカウンタ部分をゼロクリア
+	lr35902_and_to_regA f3
+	## 変数へ書き戻す
+	lr35902_copy_to_from ptrHL regA
+
+
+
+	# push
+	lr35902_push_reg regDE
 
 	# [8近傍をチェック]
 	# 自身の細胞の8近傍を左上から順に時計回りでチェック
@@ -230,10 +283,19 @@ f_binbio_cell_growth_predator() {
 	lr35902_call $a_tcoord_to_mrraddr
 
 	# 繰り返し使用する処理をファイル書き出し/マクロ定義
+	## pop & return
+	(
+		# pop & return
+		lr35902_pop_reg regDE
+		lr35902_pop_reg regHL
+		lr35902_pop_reg regBC
+		lr35902_pop_reg regAF
+		lr35902_return
+	) >$obj_pref.pop_and_return.o
 	## アドレスregHLのタイル番号が白/黒デイジーであれば
 	## 捕食処理を実施しreturn
 	## ※ regDE・regHLを変更しないこと
-	obj_base=src/f_binbio_cell_growth_predator.check_and_prey_return
+	obj_base=$obj_pref.check_and_prey_return
 	(
 		# regAへアドレスregHLのタイル番号を取得
 		lr35902_copy_to_from regA ptrHL
@@ -269,11 +331,7 @@ f_binbio_cell_growth_predator() {
 			lr35902_call $a_binbio_cell_growth_predator_prey
 
 			# pop & return
-			lr35902_pop_reg regHL
-			lr35902_pop_reg regDE
-			lr35902_pop_reg regBC
-			lr35902_pop_reg regAF
-			lr35902_return
+			cat $obj_pref.pop_and_return.o
 		) >$obj
 		local sz_prey_return=$(stat -c '%s' $obj)
 		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_prey_return)
@@ -454,11 +512,7 @@ f_binbio_cell_growth_predator() {
 	cat src/f_binbio_cell_growth_predator.9.o
 
 	# pop & return
-	lr35902_pop_reg regHL
-	lr35902_pop_reg regDE
-	lr35902_pop_reg regBC
-	lr35902_pop_reg regAF
-	lr35902_return
+	cat $obj_pref.pop_and_return.o
 }
 
 # 捕食者用突然変異関数
