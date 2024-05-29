@@ -21,6 +21,11 @@ SPECIES_PREDATOR_FITNESS=$CELL_DEFAULT_FITNESS_PREDATOR
 # 捕食サイクル
 SPECIES_PREDATOR_PREY_CYCLE=03
 
+# collected_flags更新方式
+# - 'bit': 1ビットずつセット
+# - 'inc': インクリメント
+SPECIES_PREDATOR_COLLECTED_FLAGS_UPDATE_MODE='bit'
+
 
 
 # [関数]
@@ -101,6 +106,8 @@ f_binbio_cell_eval_predator() {
 # 捕食者用成長関数用の捕食処理
 # ※ 捕食者用成長関数で呼ばれることを想定し、特にpush・popは行っていない
 f_binbio_cell_growth_predator_prey() {
+	local obj_pref
+
 	# 対象の細胞を消去
 	## 対象の細胞のタイルミラー領域上のアドレス(regHL)から
 	## 対象の細胞のアドレスを算出
@@ -168,8 +175,54 @@ f_binbio_cell_growth_predator_prey() {
 	## regHLをcollected_flagsまで進める
 	lr35902_set_reg regBC 000b
 	lr35902_add_to_regHL regBC
-	## 自身のcollected_flagsをインクリメント
-	lr35902_inc ptrHL
+	## collected_flags更新方式別に分岐
+	case $SPECIES_PREDATOR_COLLECTED_FLAGS_UPDATE_MODE in
+	'bit')
+		# 1ビットずつセットする方式の場合
+
+		# regAへcollected_flagsを取得
+		lr35902_copy_to_from regA ptrHL
+
+		# collected_flags(regA)は0か?
+		lr35902_compare_regA_and 00
+		obj_pref=src/f_binbio_cell_growth_predator_prey.regA_is_0
+		(
+			# regAが0の場合
+
+			# regAの最下位ビットに1を設定する
+			lr35902_inc regA
+		) >$obj_pref.true.o
+		(
+			# regAが0でない場合
+
+			# regAを1ビット左シフト
+			lr35902_shift_left_arithmetic regA
+
+			# collected_flagsの最下位ビットに1を設定する
+			lr35902_inc regA
+
+			# regAが0の場合の処理を飛ばす
+			local sz_regA_is_0_true=$(stat -c '%s' $obj_pref.true.o)
+			lr35902_rel_jump $(two_digits_d $sz_regA_is_0_true)
+		) >$obj_pref.false.o
+		local sz_regA_is_0_false=$(stat -c '%s' $obj_pref.false.o)
+		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_regA_is_0_false)
+		cat $obj_pref.false.o
+		cat $obj_pref.true.o
+		## 更新後のregAをcollected_flagsへ設定
+		lr35902_copy_to_from ptrHL regA
+		;;
+	'inc')
+		# インクリメント方式の場合
+
+		# 自身のcollected_flagsをインクリメント
+		lr35902_inc ptrHL
+		;;
+	*)
+		echo -n 'Error: invalid collected_flags update mode: ' 1>&2
+		echo "$SPECIES_PREDATOR_COLLECTED_FLAGS_UPDATE_MODE" 1>&2
+		return 1
+	esac
 
 	# 背景タイルマップ上で自身の表示を更新
 	## 対象の細胞の座標へ捕食者タイルを配置
