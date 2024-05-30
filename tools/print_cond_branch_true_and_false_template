@@ -1,0 +1,66 @@
+#!/bin/bash
+
+# 条件の真偽それぞれに処理がある条件分岐処理のテンプレを標準出力へ出力する
+# コマンドライン引数について：
+# - COND (条件)
+#   - NZ/Z/NC/Cのいずれか
+# - OBJ_PREF (オブジェクトファイル名の接頭辞)
+#   - パス先頭の"src/"は不要
+#   - 例) f_binbio_cell_growth_predator_prey
+# - CB_ID (この条件分岐の識別子)
+#   - 例) collected_flags_is_0
+# - CB_DESC (この条件分岐の説明)
+#   - 例) 'collected_flagsが0'
+
+# set -uex
+set -ue
+
+usage() {
+	echo 'Usage:' 1>&2
+	echo -e "\t$0 COND OBJ_PREF CB_ID CB_DESC" 1>&2
+	echo -e "\t$0 -h" 1>&2
+}
+
+while getopts h option; do
+	case $option in
+	h)
+		usage
+		exit 0
+		;;
+	*)
+		usage
+		exit 1
+	esac
+done
+shift $((OPTIND - 1))
+if [ $# -ne 4 ]; then
+	usage
+	exit 1
+fi
+
+COND=$1
+OBJ_PREF=$2
+CB_ID=$3
+CB_DESC=$4
+
+cat <<EOF
+local obj_pref=src/$OBJ_PREF.$CB_ID
+(
+	# ${CB_DESC}の場合
+
+	# TODO
+) >\$obj_pref.true.o
+(
+	# ${CB_DESC}でない場合
+
+	# TODO
+
+	# ${CB_DESC}の場合の処理を飛ばす
+	local sz_${CB_ID}_true=\$(stat -c '%s' \$obj_pref.true.o)
+	lr35902_rel_jump \$(two_digits_d \$sz_${CB_ID}_true)
+) >\$obj_pref.false.o
+local sz_${CB_ID}_false=\$(stat -c '%s' \$obj_pref.false.o)
+lr35902_rel_jump_with_cond $COND \$(two_digits_d \$sz_${CB_ID}_false)
+cat \$obj_pref.false.o
+cat \$obj_pref.true.o
+EOF
