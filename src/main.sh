@@ -5894,45 +5894,17 @@ echo -e "a_binbio_cell_growth=$a_binbio_cell_growth" >>$MAP_FILE_NAME
 f_binbio_cell_growth() {
 	# push
 	lr35902_push_reg regAF
-	lr35902_push_reg regBC
-	lr35902_push_reg regHL
-
-	# regHLへ現在の細胞のアドレスを設定する
-	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
-	lr35902_copy_to_from regL regA
-	lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
-	lr35902_copy_to_from regH regA
-
-	# regHLのアドレスをfitnessの位置まで進める
-	lr35902_set_reg regBC 0005
-	lr35902_add_to_regHL regBC
-
-	# regBへ現在の細胞の適応度を取得
-	lr35902_copy_to_from regB ptrHL
-
-	# regAへ乱数を取得
-	lr35902_call $a_get_rnd
-
-	# 繰り返し使用する処理をファイル書き出し
-	## pop & return
-	(
-		lr35902_pop_reg regHL
-		lr35902_pop_reg regBC
-		lr35902_pop_reg regAF
-		lr35902_return
-	) >src/f_binbio_cell_growth.pop_and_return.o
-	local sz_pop_and_return=$(stat -c '%s' src/f_binbio_cell_growth.pop_and_return.o)
-
-	# regA(乱数) < regB(現在の細胞の適応度) ?
-	lr35902_compare_regA_and regB
-	lr35902_rel_jump_with_cond C $(two_digits_d $sz_pop_and_return)
-	## regA(乱数) >= regB(現在の細胞の適応度) の場合、pop & return
-	cat src/f_binbio_cell_growth.pop_and_return.o
 
 	# regAへ現在の細胞のtile_numを取得
 	cat src/expset_daisyworld.get_current_cell_tile_num.o
 
 	# 繰り返し使用する処理をファイル書き出し
+	## pop & return
+	(
+		lr35902_pop_reg regAF
+		lr35902_return
+	) >src/f_binbio_cell_growth.pop_and_return.o
+	local sz_pop_and_return=$(stat -c '%s' src/f_binbio_cell_growth.pop_and_return.o)
 	## デイジーワールドの成長関数を呼び出してreturn
 	(
 		# 成長関数呼び出し
