@@ -104,7 +104,7 @@ f_binbio_cell_eval_predator() {
 }
 
 # 捕食者用成長関数用の捕食処理
-# ※ 捕食者用成長関数で呼ばれることを想定し、特にpush・popは行っていない
+# ※ 捕食者用成長関数用の確認&捕食処理で呼ばれることを想定し、特にpush・popは行っていない
 f_binbio_cell_growth_predator_prey() {
 	local obj_pref
 
@@ -252,6 +252,98 @@ f_binbio_cell_growth_predator_prey() {
 	lr35902_return
 }
 
+# 捕食者用成長関数用の確認&捕食処理
+# out : regA - 捕食した(=1)か否(=0)か
+# ※ 捕食者用成長関数で呼ばれることを想定し、特にpush・popは行っていない
+f_binbio_cell_growth_predator_check_and_prey() {
+	local obj
+
+	# regAへアドレスregHLのタイル番号を取得
+	lr35902_copy_to_from regA ptrHL
+
+	# regAが白/黒デイジーであればregBへ1を設定
+	# (そうでなければ0を設定)
+	## regBをゼロクリア
+	lr35902_clear_reg regB
+	## フラグセット処理をファイルへ出力
+	obj=f_binbio_cell_growth_predator_check_and_prey.set_flag.o
+	(
+		# regBへ1を設定
+		lr35902_set_reg regB 01
+	) >$obj
+	local sz_set_flag=$(stat -c '%s' $obj)
+	## regA == 白デイジー ?
+	lr35902_compare_regA_and $GBOS_TILE_NUM_DAISY_WHITE
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_set_flag)
+	### そうならregBへ1を設定
+	cat $obj
+	## regA == 黒デイジー ?
+	lr35902_compare_regA_and $GBOS_TILE_NUM_DAISY_BLACK
+	lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_set_flag)
+	### そうならregBへ1を設定
+	cat $obj
+	## regB == 0 ?
+	lr35902_clear_reg regA
+	lr35902_compare_regA_and regB
+	(
+		# regB != 0 の場合
+
+		# push
+		lr35902_push_reg regHL
+
+		# regBへ自身の細胞の適応度を取得
+		## regHLへ自身の細胞のアドレスを取得
+		lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
+		lr35902_copy_to_from regL regA
+		lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
+		lr35902_copy_to_from regH regA
+		## アドレスregHLをfitnessまで進める
+		lr35902_set_reg regBC 0005
+		lr35902_add_to_regHL regBC
+		## regBへ適応度を取得
+		lr35902_copy_to_from regB ptrHL
+
+		# regBをregC含めてスタックへ退避
+		lr35902_push_reg regBC
+
+		# regAへ対象の細胞の適応度を取得
+		## regHLへタイル座標(regE, regD)の細胞のアドレスを取得
+		lr35902_call $a_binbio_find_cell_data_by_tile_xy
+		## アドレスregHLをfitnessまで進める
+		lr35902_set_reg regBC 0005
+		lr35902_add_to_regHL regBC
+		## regAへ適応度を取得
+		lr35902_copy_to_from regA ptrHL
+
+		# regBをregC含めてスタックから復帰
+		lr35902_pop_reg regBC
+
+		# pop
+		lr35902_pop_reg regHL
+
+		# regA(対象の適応度) < regB(自身の適応度) ?
+		lr35902_compare_regA_and regB
+		(
+			# regA(対象の適応度) < regB(自身の適応度) の場合
+
+			# 捕食処理
+			lr35902_call $a_binbio_cell_growth_predator_prey
+
+			# regA(戻り値)へ捕食した旨を設定
+			lr35902_set_reg regA 01
+
+			# return
+			lr35902_return
+		) | rel_jump_wrapper_binsz NC forward
+	) | rel_jump_wrapper_binsz Z forward
+
+	# regA(戻り値)へ捕食しなかった旨を設定
+	lr35902_clear_reg regA
+
+	# return
+	lr35902_return
+}
+
 # 捕食者用成長関数
 # 8近傍を見て、デイジーが居れば補食し、その座標へ移動する
 f_binbio_cell_growth_predator() {
@@ -345,8 +437,7 @@ f_binbio_cell_growth_predator() {
 		lr35902_pop_reg regAF
 		lr35902_return
 	) >$obj_pref.pop_and_return.o
-	## アドレスregHLのタイル番号が白/黒デイジーであれば
-	## 捕食処理を実施しreturn
+	## 条件に合えば捕食処理を実施しreturn
 	## in  : regHL - 対象のミラー領域上のアドレス
 	##       regD  - 対象のタイル座標Y
 	##       regE  - 対象のタイル座標X
@@ -354,84 +445,17 @@ f_binbio_cell_growth_predator() {
 	## ※ regDE・regHLを変更しないこと
 	obj_base=$obj_pref.check_and_prey_return
 	(
-		# regAへアドレスregHLのタイル番号を取得
-		lr35902_copy_to_from regA ptrHL
+		# 条件に合えば捕食処理を実施
+		lr35902_call $a_binbio_cell_growth_predator_check_and_prey
 
-		# regAが白/黒デイジーであればregBへ1を設定
-		# (そうでなければ0を設定)
-		## regBをゼロクリア
-		lr35902_clear_reg regB
-		## フラグセット処理をファイルへ出力
+		# regA == 1 (捕食した) ?
+		lr35902_compare_regA_and 01
 		(
-			# regBへ1を設定
-			lr35902_set_reg regB 01
-		) >${obj_base}.set_flag.o
-		local sz_check_and_prey_return_set_flag=$(stat -c '%s' ${obj_base}.set_flag.o)
-		## regA == 白デイジー ?
-		lr35902_compare_regA_and $GBOS_TILE_NUM_DAISY_WHITE
-		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_check_and_prey_return_set_flag)
-		### そうならregBへ1を設定
-		cat ${obj_base}.set_flag.o
-		## regA == 黒デイジー ?
-		lr35902_compare_regA_and $GBOS_TILE_NUM_DAISY_BLACK
-		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_check_and_prey_return_set_flag)
-		### そうならregBへ1を設定
-		cat ${obj_base}.set_flag.o
-		## regB == 1 ?
-		lr35902_set_reg regA 01
-		lr35902_compare_regA_and regB
-		obj=src/f_binbio_cell_growth_predator.prey_return.o
-		(
-			# regB == 1 の場合
+			# regA == 1 の場合
 
-			# push
-			lr35902_push_reg regHL
-
-			# regBへ自身の細胞の適応度を取得
-			## regHLへ自身の細胞のアドレスを取得
-			lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
-			lr35902_copy_to_from regL regA
-			lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_th
-			lr35902_copy_to_from regH regA
-			## アドレスregHLをfitnessまで進める
-			lr35902_set_reg regBC 0005
-			lr35902_add_to_regHL regBC
-			## regBへ適応度を取得
-			lr35902_copy_to_from regB ptrHL
-
-			# regBをregC含めてスタックへ退避
-			lr35902_push_reg regBC
-
-			# regAへ対象の細胞の適応度を取得
-			## regHLへタイル座標(regE, regD)の細胞のアドレスを取得
-			lr35902_call $a_binbio_find_cell_data_by_tile_xy
-			## アドレスregHLをfitnessまで進める
-			lr35902_set_reg regBC 0005
-			lr35902_add_to_regHL regBC
-			## regAへ適応度を取得
-			lr35902_copy_to_from regA ptrHL
-
-			# regBをregC含めてスタックから復帰
-			lr35902_pop_reg regBC
-
-			# pop
-			lr35902_pop_reg regHL
-
-			# regA(対象の適応度) < regB(自身の適応度) ?
-			lr35902_compare_regA_and regB
-			(
-				# regA(対象の適応度) < regB(自身の適応度) の場合
-
-				# 捕食処理
-				lr35902_call $a_binbio_cell_growth_predator_prey
-
-				# pop & return
-				cat $obj_pref.pop_and_return.o
-			) | rel_jump_wrapper_binsz NC forward
-		) >$obj
-		local sz_prey_return=$(stat -c '%s' $obj)
-		lr35902_rel_jump_with_cond NZ $(two_digits_d $sz_prey_return)
-		cat $obj
+			# pop & return
+			cat $obj_pref.pop_and_return.o
+		) | rel_jump_wrapper_binsz NZ forward
 	) >${obj_base}.o
 	local sz_check_and_prey_return=$(stat -c '%s' ${obj_base}.o)
 
@@ -642,14 +666,4 @@ f_binbio_cell_mutation_predator() {
 	lr35902_return
 }
 
-# 捕食者用成長関数用の確認&捕食処理
-f_binbio_cell_growth_predator_check_and_prey() {
-	# push
-	## TODO
 
-	# TODO
-
-	# pop & return
-	## TODO
-	lr35902_return
-}
