@@ -256,6 +256,7 @@ f_binbio_cell_growth_predator_prey() {
 # out : regA - 捕食した(=1)か否(=0)か
 # ※ 捕食者用成長関数で呼ばれることを想定し、特にpush・popは行っていない
 f_binbio_cell_growth_predator_check_and_prey() {
+	local obj_pref=f_binbio_cell_growth_predator_check_and_prey
 	local obj
 
 	# regAへアドレスregHLのタイル番号を取得
@@ -266,7 +267,7 @@ f_binbio_cell_growth_predator_check_and_prey() {
 	## regBをゼロクリア
 	lr35902_clear_reg regB
 	## フラグセット処理をファイルへ出力
-	obj=f_binbio_cell_growth_predator_check_and_prey.set_flag.o
+	obj=$obj_pref.set_flag.o
 	(
 		# regBへ1を設定
 		lr35902_set_reg regB 01
@@ -323,6 +324,7 @@ f_binbio_cell_growth_predator_check_and_prey() {
 
 		# regA(対象の適応度) < regB(自身の適応度) ?
 		lr35902_compare_regA_and regB
+		obj=$obj_pref.prey.o
 		(
 			# regA(対象の適応度) < regB(自身の適応度) の場合
 
@@ -334,7 +336,8 @@ f_binbio_cell_growth_predator_check_and_prey() {
 
 			# return
 			lr35902_return
-		) | rel_jump_wrapper_binsz NC forward
+		) >$obj
+		rel_jump_wrapper_binsz NC forward $obj
 	) | rel_jump_wrapper_binsz Z forward
 
 	# regA(戻り値)へ捕食しなかった旨を設定
