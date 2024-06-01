@@ -641,3 +641,15 @@ f_binbio_cell_mutation_predator() {
 	# return
 	lr35902_return
 }
+
+# 捕食者用成長関数用の確認&捕食処理
+f_binbio_cell_growth_predator_check_and_prey() {
+	# push
+	## TODO
+
+	# TODO
+
+	# pop & return
+	## TODO
+	lr35902_return
+}

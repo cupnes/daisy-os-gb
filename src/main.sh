@@ -5877,10 +5877,18 @@ a_binbio_cell_growth_predator_prey=$(four_digits $fadr)
 echo -e "a_binbio_cell_growth_predator_prey=$a_binbio_cell_growth_predator_prey" >>$MAP_FILE_NAME
 ## 定義はsrc/species_predator.shにある
 
-# 捕食者用成長関数
+# 捕食者用成長関数用の確認&捕食処理
 f_binbio_cell_growth_predator_prey >src/f_binbio_cell_growth_predator_prey.o
 fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_growth_predator_prey.o))
 fadr=$(calc16 "${a_binbio_cell_growth_predator_prey}+${fsz}")
+a_binbio_cell_growth_predator_check_and_prey=$(four_digits $fadr)
+echo -e "a_binbio_cell_growth_predator_check_and_prey=$a_binbio_cell_growth_predator_check_and_prey" >>$MAP_FILE_NAME
+## 定義はsrc/species_predator.shにある
+
+# 捕食者用成長関数
+f_binbio_cell_growth_predator_check_and_prey >src/f_binbio_cell_growth_predator_check_and_prey.o
+fsz=$(to16 $(stat -c '%s' src/f_binbio_cell_growth_predator_check_and_prey.o))
+fadr=$(calc16 "${a_binbio_cell_growth_predator_check_and_prey}+${fsz}")
 a_binbio_cell_growth_predator=$(four_digits $fadr)
 echo -e "a_binbio_cell_growth_predator=$a_binbio_cell_growth_predator" >>$MAP_FILE_NAME
 ## 定義はsrc/species_predator.shにある
@@ -8318,6 +8326,7 @@ global_functions() {
 	cat src/f_binbio_get_code_comp.o
 	cat src/f_binbio_cell_growth_daisy.o
 	cat src/f_binbio_cell_growth_predator_prey.o
+	cat src/f_binbio_cell_growth_predator_check_and_prey.o
 	cat src/f_binbio_cell_growth_predator.o
 	cat src/f_binbio_cell_growth.o
 	cat src/f_binbio_cell_is_dividable.o
