@@ -14,6 +14,8 @@ BINBIO_CELL_FLAGS_BIT_FIX=1
 
 # 細胞データ構造の機械語バイナリ領域のサイズ[バイト]
 BINBIO_CELL_BIN_DATA_AREA_SIZE=05
+## collected_flagsにbin_data分のビットがセットされた状態
+BINBIO_CELL_COLLECTED_FLAGS_ALL_SET=1f
 
 # 細胞の機械語バイナリのロード先アドレス
 BINBIO_BIN_LOAD_ADDR=c007

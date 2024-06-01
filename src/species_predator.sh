@@ -223,6 +223,19 @@ f_binbio_cell_growth_predator_prey() {
 		echo "$SPECIES_PREDATOR_COLLECTED_FLAGS_UPDATE_MODE" 1>&2
 		return 1
 	esac
+	### collected_flagsがbin_data分のビットがセットされた状態を超えていたら
+	### bin_data分のビットがセットされた状態に戻す
+	#### regAへcollected_flagsを取得
+	lr35902_copy_to_from regA ptrHL
+	#### regA < bin_data分のビットがセットされた状態 + 1 ?
+	lr35902_compare_regA_and $(calc16_2 "${BINBIO_CELL_COLLECTED_FLAGS_ALL_SET}+1")
+	(
+		# regA >= bin_data分のビットがセットされた状態 + 1 の場合
+
+		# collected_flagsをbin_data分のビットがセットされた状態に戻す
+		lr35902_set_reg regA $BINBIO_CELL_COLLECTED_FLAGS_ALL_SET
+		lr35902_copy_to_from ptrHL regA
+	) | rel_jump_wrapper_binsz C forward
 
 	# 背景タイルマップ上で自身の表示を更新
 	## 対象の細胞の座標へ捕食者タイルを配置
