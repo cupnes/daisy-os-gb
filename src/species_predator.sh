@@ -242,12 +242,21 @@ f_binbio_cell_growth_predator_prey() {
 	### 対象の細胞のタイル座標(regE, regD)を
 	### VRAMアドレス(regHL)へ変換
 	lr35902_call $a_tcoord_to_addr
+	### regDEをスタックへ退避
+	lr35902_push_reg regDE
 	### VRAMアドレスへ捕食者タイルを配置するエントリを
 	### tdqへエンキュー
 	lr35902_set_reg regB $GBOS_TILE_NUM_PREDATOR
 	lr35902_copy_to_from regE regL
 	lr35902_copy_to_from regD regH
 	lr35902_call $a_enq_tdq
+	### regDEをスタックから復帰
+	lr35902_pop_reg regDE
+	## この時点でタイルミラー領域へも手動で反映
+	### タイル座標(regE, regD)をミラーアドレス(regHL)へ変換
+	lr35902_call $a_tcoord_to_mrraddr
+	### ミラー領域へタイル番号を書き込み
+	lr35902_copy_to_from ptrHL regB
 	## 自身の表示を消す(空白タイルを配置)
 	### regBC(自身のtile{x,y})をスタックから復帰
 	lr35902_pop_reg regBC
@@ -255,11 +264,20 @@ f_binbio_cell_growth_predator_prey() {
 	lr35902_copy_to_from regE regC
 	lr35902_copy_to_from regD regB
 	lr35902_call $a_tcoord_to_addr
+	### regDEをスタックへ退避
+	lr35902_push_reg regDE
 	### VRAMアドレスへ空白タイルを配置するエントリをtdqへエンキュー
 	lr35902_set_reg regB $GBOS_TILE_NUM_SPC
 	lr35902_copy_to_from regE regL
 	lr35902_copy_to_from regD regH
 	lr35902_call $a_enq_tdq
+	### regDEをスタックから復帰
+	lr35902_pop_reg regDE
+	## この時点でタイルミラー領域へも手動で反映
+	### タイル座標(regE, regD)をミラーアドレス(regHL)へ変換
+	lr35902_call $a_tcoord_to_mrraddr
+	### ミラー領域へタイル番号を書き込み
+	lr35902_copy_to_from ptrHL regB
 
 	# return
 	lr35902_return
