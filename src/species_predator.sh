@@ -386,6 +386,7 @@ f_binbio_cell_growth_predator() {
 	lr35902_push_reg regBC
 	lr35902_push_reg regHL
 
+	local i
 	local obj
 	local obj_pref=src/f_binbio_cell_growth_predator
 	local obj_base
@@ -401,15 +402,16 @@ f_binbio_cell_growth_predator() {
 	lr35902_copy_to_from regA ptrHL
 
 	# 捕食サイクルカウンタ部分をインクリメント
-	lr35902_add_to_regA 04
+	lr35902_add_to_regA 10
 
 	# regBへインクリメント後のflagsを退避
 	lr35902_copy_to_from regB regA
 
 	# regAへ捕食サイクルカウンタ部分のみを取り出す
-	# (2ビット右シフトする)
-	lr35902_shift_right_logical regA
-	lr35902_shift_right_logical regA
+	# (4ビット右シフトする)
+	for ((i = 0; i < 4; i++)); do
+		lr35902_shift_right_logical regA
+	done
 
 	# 捕食サイクルカウンタが捕食サイクルに達したか?
 	lr35902_compare_regA_and $SPECIES_PREDATOR_PREY_CYCLE
@@ -431,7 +433,7 @@ f_binbio_cell_growth_predator() {
 	## regAへインクリメント後のflagsを復帰
 	lr35902_copy_to_from regA regB
 	## 捕食サイクルカウンタ部分をゼロクリア
-	lr35902_and_to_regA f3
+	lr35902_and_to_regA cf
 	## 変数へ書き戻す
 	lr35902_copy_to_from ptrHL regA
 
