@@ -287,7 +287,7 @@ f_binbio_cell_growth_predator_prey() {
 # out : regA - 捕食した(=1)か否(=0)か
 # ※ 捕食者用成長関数で呼ばれることを想定し、特にpush・popは行っていない
 f_binbio_cell_growth_predator_check_and_prey() {
-	local obj_pref=f_binbio_cell_growth_predator_check_and_prey
+	local obj_pref=src/f_binbio_cell_growth_predator_check_and_prey
 	local obj
 
 	# regAへアドレスregHLのタイル番号を取得
@@ -323,7 +323,35 @@ f_binbio_cell_growth_predator_check_and_prey() {
 		# push
 		lr35902_push_reg regHL
 
-		# regBへ自身の細胞の適応度を取得
+		# 対象の細胞のflagsのwrote_to_bgが0だった場合、それを捕食しないようにする
+		## regHLへタイル座標(regE, regD)の細胞のアドレス(=flagsのアドレス)を取得
+		lr35902_call $a_binbio_find_cell_data_by_tile_xy
+		## ptrHL(flags)のwrote_to_bgフラグをチェック
+		lr35902_test_bitN_of_reg 2 ptrHL
+		obj=$obj_pref.not_yet_written_to_bg.o
+		(
+			# wrote_to_bgフラグがセットされていない場合
+
+			# regA(戻り値)へ捕食しなかった旨を設定
+			lr35902_clear_reg regA
+
+			# pop & return
+			lr35902_pop_reg regHL
+			lr35902_return
+		) >$obj
+		rel_jump_wrapper_binsz NZ forward $obj
+
+		# regCへ対象の細胞の適応度を取得
+		## アドレスregHLをfitnessまで進める
+		lr35902_set_reg regBC 0005
+		lr35902_add_to_regHL regBC
+		## regCへ適応度を取得
+		lr35902_copy_to_from regC ptrHL
+
+		# regCをregB含めてスタックへ退避
+		lr35902_push_reg regBC
+
+		# regAへ自身の細胞の適応度を取得
 		## regHLへ自身の細胞のアドレスを取得
 		lr35902_copy_to_regA_from_addr $var_binbio_cur_cell_addr_bh
 		lr35902_copy_to_from regL regA
@@ -332,23 +360,19 @@ f_binbio_cell_growth_predator_check_and_prey() {
 		## アドレスregHLをfitnessまで進める
 		lr35902_set_reg regBC 0005
 		lr35902_add_to_regHL regBC
-		## regBへ適応度を取得
-		lr35902_copy_to_from regB ptrHL
-
-		# regBをregC含めてスタックへ退避
-		lr35902_push_reg regBC
-
-		# regAへ対象の細胞の適応度を取得
-		## regHLへタイル座標(regE, regD)の細胞のアドレスを取得
-		lr35902_call $a_binbio_find_cell_data_by_tile_xy
-		## アドレスregHLをfitnessまで進める
-		lr35902_set_reg regBC 0005
-		lr35902_add_to_regHL regBC
 		## regAへ適応度を取得
 		lr35902_copy_to_from regA ptrHL
 
-		# regBをregC含めてスタックから復帰
+		# regCをregB含めてスタックから復帰
 		lr35902_pop_reg regBC
+
+		# 今、regAに自身の適応度、regCに対象の適応度が設定されている状態
+
+		# regBへregA(自身の適応度)を設定
+		lr35902_copy_to_from regB regA
+
+		# regAへregC(対象の適応度)を設定
+		lr35902_copy_to_from regA regC
 
 		# pop
 		lr35902_pop_reg regHL
