@@ -24,7 +24,9 @@ SPECIES_PREDATOR_PREY_CYCLE=03
 # collected_flags更新方式
 # - 'bit': 1ビットずつセット
 # - 'inc': インクリメント
-SPECIES_PREDATOR_COLLECTED_FLAGS_UPDATE_MODE='bit'
+# - 'add': 定数加算
+SPECIES_PREDATOR_COLLECTED_FLAGS_UPDATE_MODE='add'
+SPECIES_PREDATOR_COLLECTED_FLAGS_ADD_UNIT=03
 
 
 
@@ -166,10 +168,6 @@ f_binbio_cell_growth_predator_prey() {
 	# regHLには自身のtile_yのアドレスが設定されている
 
 	# 自身のcollected_flagsを更新
-	# 現状はインクリメントするようにしている
-	# bin_sizeが5なので、collected_flagsのbin_size分のビットが
-	# 全て立つまで31(0x1f)サイクルかかる形
-	# TODO チューニング項目
 	## regBC(自身のtile{x,y})をスタックへ退避
 	lr35902_push_reg regBC
 	## regHLをcollected_flagsまで進める
@@ -217,6 +215,18 @@ f_binbio_cell_growth_predator_prey() {
 
 		# 自身のcollected_flagsをインクリメント
 		lr35902_inc ptrHL
+		;;
+	'add')
+		# 定数加算方式の場合
+
+		# regAへcollected_flagsを取得
+		lr35902_copy_to_from regA ptrHL
+
+		# regAへ$SPECIES_PREDATOR_COLLECTED_FLAGS_ADD_UNITを加算
+		lr35902_add_to_regA $SPECIES_PREDATOR_COLLECTED_FLAGS_ADD_UNIT
+
+		# 更新後のregAをcollected_flagsへ設定
+		lr35902_copy_to_from ptrHL regA
 		;;
 	*)
 		echo -n 'Error: invalid collected_flags update mode: ' 1>&2
