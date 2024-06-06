@@ -1381,13 +1381,38 @@ f_binbio_init() {
 	### ミラー領域へタイル番号を書き込み
 	lr35902_copy_to_from ptrHL regB
 
-	# 初期細胞を生成(捕食者)
+	# 初期細胞を生成(捕食者1)
 	lr35902_set_reg regB $GBOS_TILE_NUM_PREDATOR
 	lr35902_set_reg regD $BINBIO_CELL_TILE_Y_INIT
 	lr35902_set_reg regE $(calc16_2 "${BINBIO_CELL_TILE_X_INIT}+2")
 	lr35902_call $a_binbio_place_cell
 
-	# 初期細胞をマップへ配置(捕食者)
+	# 初期細胞をマップへ配置(捕食者1)
+	## タイル座標をVRAMアドレスへ変換
+	lr35902_call $a_tcoord_to_addr
+	## regDEをスタックへ退避
+	lr35902_push_reg regDE
+	## VRAMアドレスと細胞のタイル番号をtdqへエンキュー
+	### VRAMアドレスをregDEへ設定
+	lr35902_copy_to_from regD regH
+	lr35902_copy_to_from regE regL
+	### tdqへエンキューする
+	lr35902_call $a_enq_tdq
+	## regDEをスタックから復帰
+	lr35902_pop_reg regDE
+	## この時点でタイルミラー領域へも手動で反映
+	### タイル座標(regE, regD)をミラーアドレス(regHL)へ変換
+	lr35902_call $a_tcoord_to_mrraddr
+	### ミラー領域へタイル番号を書き込み
+	lr35902_copy_to_from ptrHL regB
+
+	# 初期細胞を生成(捕食者2)
+	lr35902_set_reg regB $GBOS_TILE_NUM_PREDATOR
+	lr35902_set_reg regD $BINBIO_CELL_TILE_Y_INIT
+	lr35902_set_reg regE $(calc16_2 "${BINBIO_CELL_TILE_X_INIT}-2")
+	lr35902_call $a_binbio_place_cell
+
+	# 初期細胞をマップへ配置(捕食者2)
 	## タイル座標をVRAMアドレスへ変換
 	lr35902_call $a_tcoord_to_addr
 	## regDEをスタックへ退避
