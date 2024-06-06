@@ -6865,6 +6865,11 @@ f_binbio_cell_division() {
 	lr35902_rel_jump_with_cond NC $(two_digits_d $sz_3)
 	cat src/f_binbio_cell_division.3.o
 
+	# この時点でregHLには生まれた細胞の先頭アドレスが設定されている
+
+	# この後、regHLが書き換えられるので、その前にスタックへpush
+	lr35902_push_reg regHL
+
 	# 生まれた細胞をマップへ描画
 	## 生まれた細胞のタイル番号をregBへ取得
 	### regHLのアドレスをtile_numまで進める
@@ -6889,6 +6894,17 @@ f_binbio_cell_division() {
 	lr35902_call $a_tcoord_to_mrraddr
 	### ミラー領域へタイル番号を書き込み
 	lr35902_copy_to_from ptrHL regB
+
+	# regDEへ生まれた細胞の先頭アドレスをスタックからpop
+	lr35902_pop_reg regDE
+
+	# BGマップへ書き込んだ旨のビットをセットするためのエントリをtdqへ追加
+	## regBへwrote_to_bgとaliveをセットした状態のflagsを設定
+	lr35902_set_reg regB 05
+	## regDEへは生まれた細胞のflagsのアドレス(=細胞の先頭アドレス)が
+	## 既に設定済
+	## 関数呼び出し
+	lr35902_call $a_enq_tdq
 
 	# 親細胞のcollected_flagsを0x00にする
 	## 現在の細胞のアドレスをregHLへ取得
