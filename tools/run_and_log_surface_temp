@@ -1,0 +1,113 @@
+#!/usr/bin/python3
+
+from typing import NamedTuple
+import subprocess as sp
+import argparse
+import os
+import sys
+import time
+import datetime
+import pyautogui as ag
+import shutil
+
+
+# 地表温度変数のアドレス
+surfaceTempVarAddr = 'c035'
+
+# DaisyOS GB実行コマンド
+dogRunCmd = './make.sh run'
+
+# タイトルバーの高さ
+titleBarHeight = 17
+
+# エミュレータウィンドウタイトル
+emuWinTitle = 'bgb - '
+
+# デバッグウィンドウタイトル
+dbgWinTitle = 'bgb debugger'
+
+# ダンプ取得間隔[秒]
+dumpIntervalSec = 10
+
+
+# ウィンドウ情報
+class WinInfo(NamedTuple):
+	x: int
+	y: int
+	width: int
+	height: int
+
+
+# 指定された文字列をタイトルに含むウィンドウの情報を返す
+def getWinInfo(title):
+	cmdList = ['xwininfo', '-tree', '-root', '|', 'grep', "'" + title + "'"]
+	cmdStr = ' '.join(cmdList)
+	result = sp.run(cmdStr, encoding='UTF-8', shell=True, stdout=sp.PIPE,
+					stderr=sp.PIPE)
+	winInfoRaw = result.stdout.split()
+	xY = winInfoRaw[-1].split('+')
+	x = int(xY[1])
+	y = int(xY[2])
+	widthHeight = winInfoRaw[-2].split('+')[0]
+	width = int(widthHeight.split('x')[0])
+	height = int(widthHeight.split('x')[1])
+	return WinInfo(x, y, width, height)
+
+
+if __name__ == '__main__':
+	# コマンドライン引数を処理
+	parser = argparse.ArgumentParser()
+	parser.add_argument("saveDir", help='directory to save dump data of surface temperature')
+	args = parser.parse_args()
+	if os.path.isfile(args.saveDir):
+		print('error: the file "' + args.saveDir + '" is exist.', file=sys.stderr)
+		sys.exit(1)
+
+	# saveDirが存在しなければ作成する
+	os.makedirs(args.saveDir, exist_ok=True)
+
+	# DaisyOS GB実行
+	sp.Popen(dogRunCmd.split())
+	time.sleep(2)
+
+	# エミュレータウィンドウ情報取得
+	emuWinInfo = getWinInfo(emuWinTitle)
+
+	# SIG_TERMで終了されるまで温度情報のダンプを周期的に繰り返す
+	while True:
+		# ダンプファイル名作成
+		dumpFileName = datetime.datetime.now().strftime('%Y%m%d%H%M%S') + '.dump'
+
+		# デバッグウィンドウを開く
+		ag.click(emuWinInfo.x + 10, emuWinInfo.y + 10, button='right')
+		ag.press('h')
+		ag.press('d')
+
+		# 地表温度変数をファイルへダンプ
+		# ※ この時点ではカレントディレクトリ(daisy-os-gbの直下)に保存
+		with ag.hold('alt'):
+			ag.press('f')
+		ag.press('y')
+		time.sleep(0.5)
+		ag.write(dumpFileName, interval = 0.05)
+		ag.press('enter')
+		time.sleep(0.1)
+		ag.write(surfaceTempVarAddr)
+		ag.press('enter')
+		time.sleep(0.1)
+		ag.press('1')
+		time.sleep(0.1)
+		ag.press('enter')
+
+		# saveDirへ保存したファイルを移動
+		shutil.move(dumpFileName, args.saveDir)
+
+		# デバッグウィンドウ情報取得
+		dbgWinInfo = getWinInfo(dbgWinTitle)
+
+		# デバッグウィンドウを閉じる
+		ag.click(dbgWinInfo.x + dbgWinInfo.width - 5,
+				 dbgWinInfo.y - titleBarHeight / 2)
+
+		# interval秒待つ
+		time.sleep(dumpIntervalSec)
