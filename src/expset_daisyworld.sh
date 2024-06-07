@@ -1408,7 +1408,7 @@ f_binbio_init() {
 
 	# 初期細胞を生成(捕食者2)
 	lr35902_set_reg regB $GBOS_TILE_NUM_PREDATOR
-	lr35902_set_reg regD $BINBIO_CELL_TILE_Y_INIT
+	lr35902_set_reg regD $(calc16_2 "${BINBIO_CELL_TILE_Y_INIT}-2")
 	lr35902_set_reg regE $(calc16_2 "${BINBIO_CELL_TILE_X_INIT}-2")
 	lr35902_call $a_binbio_place_cell
 
