@@ -1,0 +1,67 @@
+#!/bin/bash
+
+# run_and_log_surface_tempで作成した地表温度ダンプデータからCSVを生成する
+# コマンドライン引数について：
+# - SAVE_DIR (ダンプデータ保存ディレクトリ)
+#   - *.dumpというファイル名で余計なファイルが存在していないこと
+#   - このディレクトリへCSVも生成する
+
+# set -uex
+set -ue
+
+usage() {
+	echo 'Usage:' 1>&2
+	echo -e "\t$0 SAVE_DIR" 1>&2
+	echo -e "\t$0 -h" 1>&2
+}
+
+while getopts h option; do
+	case $option in
+	h)
+		usage
+		exit 0
+		;;
+	*)
+		usage
+		exit 1
+	esac
+done
+shift $((OPTIND - 1))
+if [ $# -ne 1 ]; then
+	usage
+	exit 1
+fi
+
+SAVE_DIR=$1
+
+CSV_FILE_NAME=st.csv
+
+cd $SAVE_DIR
+
+{
+	echo '日時,経過秒数,地表温度'
+	start_ut=0
+	for dump_file in $(ls *.dump); do
+		dt=$(echo $dump_file | cut -d'.' -f1 | cut -d'-' -f2)
+		year=$(echo $dt | cut -c1-4)
+		mon=$(echo $dt | cut -c5-6)
+		day=$(echo $dt | cut -c7-8)
+		hour=$(echo $dt | cut -c9-10)
+		min=$(echo $dt | cut -c11-12)
+		sec=$(echo $dt | cut -c13-14)
+		dt_fmt="$year/$mon/$day $hour:$min:$sec"
+
+		if [ $start_ut -eq 0 ]; then
+			start_ut=$(date -d "$dt_fmt" '+%s')
+			elapsed_sec=0
+		else
+			ut=$(date -d "$dt_fmt" '+%s')
+			elapsed_sec=$((ut - start_ut))
+		fi
+
+		st_hex=$(hexdump -C $dump_file | head -n 1 | awk '{print $2}')
+		st_dec=$(bc <<< "ibase=16;${st_hex^^}")
+
+		echo "\"$dt_fmt\",$elapsed_sec,$st_dec"
+	done
+}>$CSV_FILE_NAME
