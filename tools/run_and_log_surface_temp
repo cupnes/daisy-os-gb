@@ -100,6 +100,7 @@ if __name__ == '__main__':
 		ag.press('enter')
 
 		# saveDirへ保存したファイルを移動
+		time.sleep(0.1)
 		shutil.move(dumpFileName, args.saveDir)
 
 		# デバッグウィンドウ情報取得
