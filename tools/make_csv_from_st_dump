@@ -61,6 +61,9 @@ cd $SAVE_DIR
 
 		st_hex=$(hexdump -C $dump_file | head -n 1 | awk '{print $2}')
 		st_dec=$(bc <<< "ibase=16;${st_hex^^}")
+		if [ $st_dec -ge 128 ]; then
+			st_dec=$((st_dec - 256))
+		fi
 
 		echo "\"$dt_fmt\",$elapsed_sec,$st_dec"
 	done
