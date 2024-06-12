@@ -306,6 +306,10 @@ get_tile_num() {
 	'🌻')
 		echo $GBOS_TILE_NUM_DAISY_BLACK
 		;;
+	# 「口」の絵文字を捕食者の代わりに使用
+	'👄')
+		echo $GBOS_TILE_NUM_PREDATOR
+		;;
 	*)
 		echo "Error: invalid character $ch" 1>&2
 		return 1
