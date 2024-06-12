@@ -128,7 +128,7 @@ predator_desc_str	👄ほしよくしや:て゛いし゛-をたへ゛る
 operation_str_title	そうさせつめい
 operation_str_dir	+し゛き-:か-そるいと゛う
 operation_str_a	Aほ゛たん:▲▼ほ゛たんそうさ
-operation_str_b_1	Bほ゛たん:していしたて゛いし゛-を
+operation_str_b_1	Bほ゛たん:していしたせいふ゛つを
 operation_str_b_2	まひ゛く(しようきよ)
 cell_status_str_flags	ふらく゛:
 cell_status_str_coord	さ゛ひよう:
