@@ -82,6 +82,9 @@ DAISY_DESC_WHITE_TCOORD_Y=0A
 DAISY_DESC_WHITE_TCOORD_X=00
 DAISY_DESC_BLACK_TCOORD_Y=0B
 DAISY_DESC_BLACK_TCOORD_X=00
+#### 捕食者説明
+PREDATOR_DESC_TCOORD_Y=0C
+PREDATOR_DESC_TCOORD_X=00
 #### 操作説明
 OPERATION_TITLE_TCOORD_Y=0D
 OPERATION_TITLE_TCOORD_X=00
@@ -767,6 +770,9 @@ f_binbio_place_soft_desc() {
 	con_print_xy_macro $DAISY_DESC_WHITE_TCOORD_X $DAISY_DESC_WHITE_TCOORD_Y $a_const_daisy_desc_str_white
 	con_print_xy_macro $DAISY_DESC_BLACK_TCOORD_X $DAISY_DESC_BLACK_TCOORD_Y $a_const_daisy_desc_str_black
 
+	# 捕食者説明を配置
+	con_print_xy_macro $PREDATOR_DESC_TCOORD_X $PREDATOR_DESC_TCOORD_Y $a_const_predator_desc_str
+
 	# 操作説明を配置
 	con_print_xy_macro $OPERATION_TITLE_TCOORD_X $OPERATION_TITLE_TCOORD_Y $a_const_operation_str_title
 	con_print_xy_macro $OPERATION_DIR_TCOORD_X $OPERATION_DIR_TCOORD_Y $a_const_operation_str_dir
@@ -801,6 +807,9 @@ f_binbio_clear_soft_desc() {
 	# デイジー説明をクリア
 	con_delch_tadr_num_macro $DAISY_DESC_WHITE_TCOORD_X $DAISY_DESC_WHITE_TCOORD_Y $((sz_const_daisy_desc_str_white - 1))
 	con_delch_tadr_num_macro $DAISY_DESC_BLACK_TCOORD_X $DAISY_DESC_BLACK_TCOORD_Y $((sz_const_daisy_desc_str_black - 1))
+
+	# 捕食者説明をクリア
+	con_delch_tadr_num_macro $PREDATOR_DESC_TCOORD_X $PREDATOR_DESC_TCOORD_Y $((sz_const_predator_desc_str - 1))
 
 	# 操作説明をクリア
 	con_delch_tadr_num_macro $OPERATION_TITLE_TCOORD_X $OPERATION_TITLE_TCOORD_Y $((sz_const_operation_str_title - 1))

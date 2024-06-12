@@ -124,6 +124,7 @@ ver_str_os	OS GB
 ver_str_ver	V0.3.2
 daisy_desc_str_white	🌼しろのて゛いし゛-:0.1゜Cほうねつ
 daisy_desc_str_black	🌻くろのて゛いし゛-:0.1゜Cちくねつ
+predator_desc_str	👄ほしよくしや:て゛いし゛-をたへ゛る
 operation_str_title	そうさせつめい
 operation_str_dir	+し゛き-:か-そるいと゛う
 operation_str_a	Aほ゛たん:▲▼ほ゛たんそうさ
