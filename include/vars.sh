@@ -87,7 +87,9 @@ var_timer_handler=c026
 # ↑100バイトは不要だが、init()で呼び出されるtimer_init_handler()で
 # 　pop HL・pop AF・retiの3バイトを配置しているので0xc026 - 0xc028は使わないほうが良い
 
-# 0xc029 - 0xc02f : 未使用
+var_ss_enable=c029	# スライドショーの有効(=0x01)/無効(=0x00)
+
+# 0xc02a - 0xc02f : 未使用
 
 # バイナリ生物用変数
 var_binbio_cell_eval_conf_paramno=c030	# 評価関数設定で現在選択中のパラメータ番号
