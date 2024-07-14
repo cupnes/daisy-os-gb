@@ -7438,15 +7438,6 @@ f_binbio_event_btn_a_release() {
 	lr35902_push_reg regAF
 	lr35902_push_reg regBC
 
-	# スライドショー機能が無効な場合、以下の処理を出力しない
-	if [ $SS_ENABLE -eq 1 ]; then
-		# 現在のスライドのバンク・ファイル番号を変数から取得
-		lr35902_copy_to_regA_from_addr $var_ss_current_bank_file_num
-
-		# 画像表示
-		lr35902_call $a_view_img
-	fi
-
 	# デイジーワールド: 地表温度の▲▼ボタンの処理
 	## マウスカーソルY座標 <= ▲▼のY座標終端 ?
 	lr35902_copy_to_regA_from_addr $var_mouse_y
@@ -8058,12 +8049,32 @@ fadr=$(calc16 "${a_binbio_event_btn_left_release}+${fsz}")
 a_binbio_event_btn_start_release=$(four_digits $fadr)
 echo -e "a_binbio_event_btn_start_release=$a_binbio_event_btn_start_release" >>$MAP_FILE_NAME
 f_binbio_event_btn_start_release() {
+	# push
+	lr35902_push_reg regAF
+
+	# スライドショー機能が無効な場合、以下の処理を出力しない
+	if [ $SS_ENABLE -eq 1 ]; then
+		# スライドショーモードが有効な場合、専用の処理を実行しreturn
+		lr35902_copy_to_regA_from_addr $var_ss_enable
+		lr35902_compare_regA_and 01
+		(
+			# regA == 0x01(スライドショー機能が有効)の場合
+
+			# 現在のスライドのバンク・ファイル番号を変数から取得
+			lr35902_copy_to_regA_from_addr $var_ss_current_bank_file_num
+
+			# 画像表示
+			lr35902_call $a_view_img
+
+			# pop & return
+			lr35902_pop_reg regAF
+			lr35902_return
+		) | rel_jump_wrapper_binsz NZ forward
+	fi
+
 	# 実験セットの初期値がデイジーワールド以外か否か
 	if [ "$BINBIO_EXPSET_NUM_INIT" != "$BINBIO_EXPSET_DAISYWORLD" ]; then
 		# デイジーワールド以外の場合
-
-		# push
-		lr35902_push_reg regAF
 
 		# リセットを実施
 		## regA(引数)を設定
@@ -8076,9 +8087,6 @@ f_binbio_event_btn_start_release() {
 		lr35902_return
 	else
 		# デイジーワールドの場合
-
-		# push
-		lr35902_push_reg regAF
 
 		# regAへ現在のステータス表示領域の状態を取得
 		lr35902_copy_to_regA_from_addr $var_binbio_status_disp_status
