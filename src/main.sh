@@ -8783,6 +8783,9 @@ init() {
 	# - 画像表示ステータスを画像表示なしで初期化
 	lr35902_set_reg regA $GBOS_VIEW_IMG_STAT_NONE
 	lr35902_copy_to_addr_from_regA $var_view_img_state
+	# - slide show: スライドショーを無効で初期化
+	lr35902_clear_reg regA
+	lr35902_copy_to_addr_from_regA $var_ss_enable
 	# - slide show: 現在のスライドのファイル番号の初期値
 	lr35902_set_reg regA $SS_CURRENT_BANK_FILE_NUM_INIT
 	lr35902_copy_to_addr_from_regA $var_ss_current_bank_file_num
