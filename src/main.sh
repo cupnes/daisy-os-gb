@@ -8055,7 +8055,7 @@ f_binbio_event_btn_start_release() {
 	# スライドショー機能が無効な場合、以下の処理を出力しない
 	if [ $SS_ENABLE -eq 1 ]; then
 		# スライドショーモードが有効な場合、専用の処理を実行しreturn
-		lr35902_copy_to_regA_from_addr $var_ss_enable
+		lr35902_copy_to_regA_from_addr $var_ss_active
 		lr35902_compare_regA_and 01
 		(
 			# regA == 0x01(スライドショー機能が有効)の場合
@@ -8791,9 +8791,9 @@ init() {
 	# - 画像表示ステータスを画像表示なしで初期化
 	lr35902_set_reg regA $GBOS_VIEW_IMG_STAT_NONE
 	lr35902_copy_to_addr_from_regA $var_view_img_state
-	# - slide show: スライドショーを無効で初期化
+	# - slide show: スライドショーを非アクティブで初期化
 	lr35902_clear_reg regA
-	lr35902_copy_to_addr_from_regA $var_ss_enable
+	lr35902_copy_to_addr_from_regA $var_ss_active
 	# - slide show: 現在のスライドのファイル番号の初期値
 	lr35902_set_reg regA $SS_CURRENT_BANK_FILE_NUM_INIT
 	lr35902_copy_to_addr_from_regA $var_ss_current_bank_file_num
