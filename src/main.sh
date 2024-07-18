@@ -8054,11 +8054,20 @@ f_binbio_event_btn_start_release() {
 
 	# スライドショー機能が無効な場合、以下の処理を出力しない
 	if [ $SS_ENABLE -eq 1 ]; then
-		# スライドショーモードが有効な場合、専用の処理を実行しreturn
+		# スライドショーはアクティブか？
 		lr35902_copy_to_regA_from_addr $var_ss_active
 		lr35902_compare_regA_and 01
 		(
-			# regA == 0x01(スライドショー機能が有効)の場合
+			# スライドショーがアクティブの場合
+
+			# 元の表示状態へ戻す
+			## TODO
+
+			# スライドショーの変数へ非アクティブを設定
+			## TODO
+		) >src/f_binbio_event_btn_start_release.ss_active.o
+		(
+			# スライドショーが非アクティブの場合
 
 			# 現在のスライドのバンク・ファイル番号を変数から取得
 			lr35902_copy_to_regA_from_addr $var_ss_current_bank_file_num
@@ -8066,10 +8075,24 @@ f_binbio_event_btn_start_release() {
 			# 画像表示
 			lr35902_call $a_view_img
 
-			# pop & return
-			lr35902_pop_reg regAF
-			lr35902_return
-		) | rel_jump_wrapper_binsz NZ forward
+			# スライドショーの変数へアクティブを設定
+			## TODO
+
+			# スライドショーがアクティブの場合の処理を飛ばす
+			local sz_ss_active=$(stat -c '%s' src/f_binbio_event_btn_start_release.ss_active.o)
+			lr35902_rel_jump $(two_digits_d $sz_ss_active)
+		) >src/f_binbio_event_btn_start_release.ss_inactive.o
+		local sz_ss_inactive=$(stat -c '%s' src/f_binbio_event_btn_start_release.ss_inactive.o)
+		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_ss_inactive)
+		cat src/f_binbio_event_btn_start_release.ss_inactive.o	# スライドショーが非アクティブの場合
+		cat src/f_binbio_event_btn_start_release.ss_active.o	# スライドショーがアクティブの場合
+
+		# pop & return
+		lr35902_pop_reg regAF
+		lr35902_return
+
+		# この関数の内容としてもここまでとする
+		return
 	fi
 
 	# 実験セットの初期値がデイジーワールド以外か否か
