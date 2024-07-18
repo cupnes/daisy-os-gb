@@ -7549,25 +7549,6 @@ echo -e "a_binbio_event_btn_b_release=$a_binbio_event_btn_b_release" >>$MAP_FILE
 f_binbio_event_btn_b_release() {
 	# push
 	lr35902_push_reg regAF
-
-	# 何らかの画像処理中か?
-	lr35902_copy_to_regA_from_addr $var_view_img_state
-	lr35902_compare_regA_and $GBOS_VIEW_IMG_STAT_NONE
-	(
-		# 何らかの画像処理中である場合
-
-		# 画像表示終了関数を呼び出し
-		lr35902_call $a_quit_img
-
-		# pop & return
-		lr35902_pop_reg regAF
-		lr35902_return
-	) >src/f_binbio_event_btn_b_release.quit_img.o
-	local sz_quit_img=$(stat -c '%s' src/f_binbio_event_btn_b_release.quit_img.o)
-	lr35902_rel_jump_with_cond Z $(two_digits_d $sz_quit_img)
-	cat src/f_binbio_event_btn_b_release.quit_img.o
-
-	# push
 	lr35902_push_reg regDE
 	lr35902_push_reg regHL
 
@@ -8054,20 +8035,13 @@ f_binbio_event_btn_start_release() {
 
 	# スライドショー機能が無効な場合、以下の処理を出力しない
 	if [ $SS_ENABLE -eq 1 ]; then
-		# スライドショーはアクティブか？
-		lr35902_copy_to_regA_from_addr $var_ss_active
-		lr35902_compare_regA_and 01
-		(
-			# スライドショーがアクティブの場合
+		# regAへ現在の画像表示状態を取得
+		lr35902_copy_to_regA_from_addr $var_view_img_state
 
-			# 元の表示状態へ戻す
-			## TODO
-
-			# スライドショーの変数へ非アクティブを設定
-			## TODO
-		) >src/f_binbio_event_btn_start_release.ss_active.o
+		# 現在、画像表示なしか?
+		lr35902_compare_regA_and $GBOS_VIEW_IMG_STAT_NONE
 		(
-			# スライドショーが非アクティブの場合
+			# 画像表示なしの場合
 
 			# 現在のスライドのバンク・ファイル番号を変数から取得
 			lr35902_copy_to_regA_from_addr $var_ss_current_bank_file_num
@@ -8075,21 +8049,33 @@ f_binbio_event_btn_start_release() {
 			# 画像表示
 			lr35902_call $a_view_img
 
-			# スライドショーの変数へアクティブを設定
-			## TODO
+			# pop & return
+			lr35902_pop_reg regAF
+			lr35902_return
+		) | rel_jump_wrapper_binsz NZ forward
 
-			# スライドショーがアクティブの場合の処理を飛ばす
-			local sz_ss_active=$(stat -c '%s' src/f_binbio_event_btn_start_release.ss_active.o)
-			lr35902_rel_jump $(two_digits_d $sz_ss_active)
-		) >src/f_binbio_event_btn_start_release.ss_inactive.o
-		local sz_ss_inactive=$(stat -c '%s' src/f_binbio_event_btn_start_release.ss_inactive.o)
-		lr35902_rel_jump_with_cond Z $(two_digits_d $sz_ss_inactive)
-		cat src/f_binbio_event_btn_start_release.ss_inactive.o	# スライドショーが非アクティブの場合
-		cat src/f_binbio_event_btn_start_release.ss_active.o	# スライドショーがアクティブの場合
+		# 現在、tdq消費待ちか?
+		lr35902_compare_regA_and $GBOS_VIEW_IMG_STAT_WAIT_FOR_TDQEMP
+		(
+			# tdq消費待ちの場合
 
-		# pop & return
-		lr35902_pop_reg regAF
-		lr35902_return
+			# pop & return
+			lr35902_pop_reg regAF
+			lr35902_return
+		) | rel_jump_wrapper_binsz NZ forward
+
+		# 現在、画像表示中か?
+		lr35902_compare_regA_and $GBOS_VIEW_IMG_STAT_DURING_IMG_DISP
+		(
+			# 画像表示中の場合
+
+			# 画像表示終了関数を呼び出し
+			lr35902_call $a_quit_img
+
+			# pop & return
+			lr35902_pop_reg regAF
+			lr35902_return
+		) | rel_jump_wrapper_binsz NZ forward
 
 		# この関数の内容としてもここまでとする
 		return
@@ -8814,9 +8800,6 @@ init() {
 	# - 画像表示ステータスを画像表示なしで初期化
 	lr35902_set_reg regA $GBOS_VIEW_IMG_STAT_NONE
 	lr35902_copy_to_addr_from_regA $var_view_img_state
-	# - slide show: スライドショーを非アクティブで初期化
-	lr35902_clear_reg regA
-	lr35902_copy_to_addr_from_regA $var_ss_active
 	# - slide show: 現在のスライドのファイル番号の初期値
 	lr35902_set_reg regA $SS_CURRENT_BANK_FILE_NUM_INIT
 	lr35902_copy_to_addr_from_regA $var_ss_current_bank_file_num
