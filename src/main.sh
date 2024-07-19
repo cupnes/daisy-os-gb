@@ -9024,16 +9024,27 @@ tdq_handler() {
 			# (DE) = A
 			lr35902_copy_to_from ptrDE regA
 
-			# タイルミラー領域(0xDC00-)更新
-			# TODO regDEが背景マップ外のアドレスであった場合、
-			#      この処理は飛ばすようにする
+			# この時、regDEにはキューに積まれたアドレス
+			# (tdqで書き込むアドレス)が書かれている
+
+			# regAを作業に使うため、regBへ退避
 			lr35902_copy_to_from regB regA
+
+			# regDEは背景マップ領域のアドレスか?
+			# ※ ここでは単に上位8ビットを0xfcとandを取った結果が
+			# 　 0x98と等しいか否かで判断している。
 			lr35902_copy_to_from regA regD
-			lr35902_and_to_regA $GBOS_TOFS_MASK_TH
-			lr35902_add_to_regA $GBOS_TMRR_BASE_TH
-			lr35902_copy_to_from regD regA
-			lr35902_copy_to_from regA regB
-			lr35902_copy_to_from ptrDE regA
+			lr35902_and_to_regA fc
+			lr35902_compare_regA_and 98
+			(
+				# タイルミラー領域(0xDC00-)更新
+				lr35902_copy_to_from regA regD
+				lr35902_and_to_regA $GBOS_TOFS_MASK_TH
+				lr35902_add_to_regA $GBOS_TMRR_BASE_TH
+				lr35902_copy_to_from regD regA
+				lr35902_copy_to_from regA regB
+				lr35902_copy_to_from ptrDE regA
+			) | rel_jump_wrapper_binsz NZ forward
 
 			# L == TDQ_END[7:0] ?
 			lr35902_copy_to_from regA regL
