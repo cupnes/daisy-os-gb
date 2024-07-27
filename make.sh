@@ -137,7 +137,7 @@ print_boot_kern() {
 		if [ "$opt" = "--32kb-rom" ]; then
 			gb_cart_header_no_title $entry_addr_4digits
 		else
-			gb_cart_header_no_title_mbc1 $entry_addr_4digits
+			gb_cart_header_no_title_mbc1 $entry_addr_4digits rom_only
 		fi
 
 		# 0x0150 - 0x3fff: const(文字タイルデータ, 定数データ, グローバル関数),
