@@ -253,11 +253,11 @@ gb_cart_header_no_title_mbc1() {
 	local entry_addr=$(four_digits $1)
 	local cartridge_type=03
 	local ram_size=03
-	local header_checksum=25
+	local header_checksum=ba
 	if [ $# -eq 2 ] && [ "$2" = 'rom_only' ]; then
 		cartridge_type=01
 		ram_size=00
-		header_checksum=2a
+		header_checksum=bf
 	fi
 
 	# エントリアドレスへジャンプ
@@ -267,12 +267,11 @@ gb_cart_header_no_title_mbc1() {
 	# Nintendoロゴデータ
 	gb_nintendo_logo
 
-	# アドレス0x0134-0x0142(15バイト)のヘッダ情報はすべて0にする
-	dd if=/dev/zero bs=1 count=15 2>/dev/null
+	# 0x0134-0142 - Title
+	echo -en 'DAISYOSGBV0.4.0'
 
 	# 0x0143 - CGB Flag
-	# 0x80 - Game supports CGB functions, but works on old gameboys also.
-	echo -en '\x80'
+	echo -en '\x00'
 
 	# 0x0144-0145 - New Licensee Code
 	# 0x00 - none
