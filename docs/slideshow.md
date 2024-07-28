@@ -28,7 +28,7 @@ include/gbos.shの`SS_LAST_BANK_FILE_NUM`を更新し、`SS_ENABLE`へ`1`を設�
 ### 5. ビルド、実行
 リポジトリ直下で以下を実行する。
 ```Shell
-$ ./make.sh clean && ./make.sh build --2mb-rom-only && ./make.sh run
+$ ./make.sh clean && ./make.sh build --2mb-rom-32kb-ram && ./make.sh run
 ````
 
 ## 実装について
