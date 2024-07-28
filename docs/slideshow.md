@@ -22,8 +22,8 @@ $ for src_img in ${img_dir}/${img_id}_gb_??.png; do
 ### 3. 作成した画像を取り込むようにmake.shを書き換える
 シェル関数`make_fs_rom_workdir_and_put_files`内の`image_name_head`変数へ「`<識別子>`」を設定するようにする。
 
-### 4. スライドショー機能を有効化する
-include/gbos.shの`SS_ENABLE`へ`1`を設定するようにする。
+### 4. 最後のスライドのバンク・ファイル番号の更新とスライドショー機能の有効化を行う
+include/gbos.shの`SS_LAST_BANK_FILE_NUM`を更新し、`SS_ENABLE`へ`1`を設定するようにする。`SS_LAST_BANK_FILE_NUM`の設定については[build.md](build.md)を参照。
 
 ### 5. ビルド、実行
 リポジトリ直下で以下を実行する。
