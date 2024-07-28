@@ -4,7 +4,7 @@ usage() {
 	echo -e "Usage:\t$0 ACTION [OPTION]"
 	echo
 	echo 'ACTION:'
-	echo -e '\tbuild [--32kb-rom] [--2mb-rom-only]'
+	echo -e '\tbuild [--32kb-rom] [--2mb-rom-only] [--2mb-rom-32kb-ram]'
 	echo -e '\tclean'
 	echo -e '\thelp'
 	echo -e '\trun [--browser]'
@@ -14,8 +14,11 @@ TARGET=daisy-os
 ROM_FILE_NAME=${TARGET}.gb
 RAM_FILE_NAME=${TARGET}.sav
 EMU=bgb
-# ROM領域のファイルシステムイメージや作業ディレクトリに使用する名前
+# ファイルシステムイメージや作業ディレクトリに使用する名前
+## ROM領域
 FS_ROM_NAME=fs_rom
+## RAM領域
+FS_RAM_NAME=fs_ram0
 # build時の各種ログを保存するファイル名
 BUILD_LOG_NAME=build.log
 # 外部GitHubリポジトリをcloneするディレクトリへのパス
@@ -136,8 +139,10 @@ print_boot_kern() {
 		local entry_addr_4digits=$(echo $bc_form | bc | cut -c2-5)
 		if [ "$opt" = "--32kb-rom" ]; then
 			gb_cart_header_no_title $entry_addr_4digits
-		else
+		elif [ "$opt" = "--2mb-rom-only" ]; then
 			gb_cart_header_no_title_mbc1 $entry_addr_4digits rom_only
+		else
+			gb_cart_header_no_title_mbc1 $entry_addr_4digits
 		fi
 
 		# 0x0150 - 0x3fff: const(文字タイルデータ, 定数データ, グローバル関数),
@@ -296,7 +301,7 @@ print_fs_ram0() {
 		return
 	fi
 
-	tools/make_fs fs_ram0_orig fs_ram0.img ram >/dev/null
+	tools/make_fs $FS_RAM_NAME fs_ram0.img ram >/dev/null
 	cat fs_ram0.img
 }
 
@@ -314,7 +319,9 @@ build() {
 	if [ "$opt" = "--32kb-rom" ] || [ "$opt" = "--2mb-rom-only" ]; then
 		return
 	fi
-	print_ram >$RAM_FILE_NAME
+	if [ -d $FS_RAM_NAME ]; then
+		print_ram >$RAM_FILE_NAME
+	fi
 }
 
 clean_boot_kern() {
