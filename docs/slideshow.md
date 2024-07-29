@@ -3,19 +3,20 @@
 
 ### 1. 画像を用意する
 - 解像度が160 x 144 pxであること
-- ファイル名に縛りは無いが、ここでは「`<識別子>_gb_[0-9][0-9].png`」というファイル名で用意したこととする
+- 後続の手順の都合上、画像はリポジトリ直下の`files_img`ディレクトリに「`<識別子>_gb_[0-9][0-9].png`」というファイル名で用意すること
 
 ### 2. GB用の画像形式へ変換する
+
 リポジトリ直下で以下を実行する。
 ```Shell
 $ img_id=<識別子>
-$ img_dir=/path/to/img_dir
-$ i=1
-$ for src_img in ${img_dir}/${img_id}_gb_??.png; do
+$ cd files_img
+$ for src_img in ${img_id}_gb_??.png; do
     date
-    echo "src_img=$src_img"
-    tools/img22bpp $src_img files_imgs/${img_id}_gb_$(printf "%02d" $i).img
-    i=$((i + 1))
+    name=$(echo $src_img | cut -d'.' -f1)
+    dst_img="${name}.img"
+    echo "converting $src_img to $dst_img"
+    ../tools/conv_img $src_img $dst_img
   done
 ```
 
